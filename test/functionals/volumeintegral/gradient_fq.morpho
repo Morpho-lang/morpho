@@ -20,3 +20,14 @@ fn fq(x, qv) {
 var lv = VolumeIntegral(fq, q, method={})
 print (lv.gradient(m) - numericalgradient(lv, m)).norm() < 1e-5
 // expect: true
+
+fn usesx(x, qv) {
+    return x[0]*qv
+}
+
+var sx = VolumeIntegral(usesx, q, method={})
+var sxo = VolumeIntegral(usesx, q, method={}, optimize=false)
+print (sx.gradient(m) - sxo.gradient(m)).norm() < 1e-5
+// expect: true
+print (sx.gradient(m) - numericalgradient(sx, m)).norm() < 1e-5
+// expect: true

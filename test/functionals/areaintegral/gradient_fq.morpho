@@ -35,6 +35,9 @@ fn usesx(x, qv) {
 }
 
 var sx = AreaIntegral(usesx, q, method={})
+var sxo = AreaIntegral(usesx, q, method={}, optimize=false)
+print (sx.gradient(m) - sxo.gradient(m)).norm() < 1e-5
+// expect: true
 print (sx.gradient(m) - numericalgradient(sx, m)).norm() < 1e-5
 // expect: true
 
@@ -45,4 +48,24 @@ fn usesgrad(x, qv) {
 
 var sg = AreaIntegral(usesgrad, q, method={})
 print (sg.gradient(m) - numericalgradient(sg, m)).norm() < 1e-4
+// expect: true
+
+var mb3 = MeshBuilder()
+mb3.addvertex([0,0,0])
+mb3.addvertex([1,0,0])
+mb3.addvertex([0,1,0])
+mb3.addface([0,1,2])
+var m3 = mb3.build()
+m3.addgrade(1)
+var q3 = Field(m3, fn (x,y,z) Matrix([0,0,1]))
+
+fn usesn(x, qv) {
+    return qv.inner(normal())
+}
+
+var sn = AreaIntegral(usesn, q3, method={})
+var sno = AreaIntegral(usesn, q3, method={}, optimize=false)
+print (sn.gradient(m3) - sno.gradient(m3)).norm() < 1e-5
+// expect: true
+print (sn.gradient(m3) - numericalgradient(sn, m3)).norm() < 1e-5
 // expect: true

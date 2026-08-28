@@ -1,6 +1,7 @@
-// weightByReference + f(q) integrand: measure is fixed, so shape gradient is zero.
+// weightByReference: f(q) shape gradient is zero; f(x) is not.
 
 import meshtools
+import "../numericalderivatives.morpho"
 
 var mb = MeshBuilder()
 mb.addvertex([0,0])
@@ -22,4 +23,18 @@ fn landau(x, qv) {
 
 var bulk = AreaIntegral(landau, q, reference=mref, weightByReference=true, method={})
 print bulk.gradient(m).norm() < 1e-12
+// expect: true
+
+fn usesx(x, qv) {
+    return x[0]*qv.inner(qv)
+}
+
+var sx = AreaIntegral(usesx, q, reference=mref, weightByReference=true, method={})
+print sx.gradient(m).norm() > 1e-8
+// expect: true
+print (sx.gradient(m) - numericalgradient(sx, m)).norm() < 1e-5
+// expect: true
+
+var sxo = AreaIntegral(usesx, q, reference=mref, weightByReference=true, method={}, optimize=false)
+print (sx.gradient(m) - sxo.gradient(m)).norm() < 1e-5
 // expect: true

@@ -1,5 +1,5 @@
 var m = Mesh("square.mesh")
 var e = LinearElasticity(m)
-e.reference = "invalid"
-print e.update()
+e.grade = 1
+print e.total(m)
 // expect error 'FnctlArgs'

@@ -28,6 +28,7 @@
 #define LINEARELASTICITY_REFERENCE_PROPERTY   "reference"
 #define LINEARELASTICITY_WTBYREF_PROPERTY     "weightByReference"
 #define LINEARELASTICITY_POISSON_PROPERTY     "poissonratio"
+#define LINEARELASTICITY_CACHE_PROPERTY       "_refcache"
 #define HYDROGEL_A_PROPERTY                   "a"
 #define HYDROGEL_B_PROPERTY                   "b"
 #define HYDROGEL_C_PROPERTY                   "c"
@@ -59,6 +60,7 @@
 #define FUNCTIONAL_FIELDGRADIENT_METHOD     "fieldgradient"
 #define FUNCTIONAL_HESSIAN_METHOD      "hessian"
 #define FUNCTIONAL_INTEGRANDFORELEMENT_METHOD      "integrandForElement"
+#define FUNCTIONAL_UPDATE_METHOD       "update"
 
 /* Special functions that can be used in integrands */
 #define ELEMENTID_FUNCTION             "elementid"

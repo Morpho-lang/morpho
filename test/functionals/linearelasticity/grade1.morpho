@@ -1,0 +1,23 @@
+var m = Mesh("stretchsquare.mesh")
+var mref = Mesh("square.mesh")
+m.addgrade(1)
+
+var e = LinearElasticity(mref, 1)
+e.poissonratio = 0.2
+
+print e.grade
+// expect: 1
+
+print abs(e.total(m) - 2.94194) < 1e-5
+// expect: true
+
+print e.integrand(m)
+// expect: [ 1.25 0 0.441942 0 1.25 ]
+
+// Changing .grade is inactive until update()
+var e2 = LinearElasticity(mref)
+e2.poissonratio = 0.2
+e2.grade = 1
+e2.update()
+print abs(e2.total(m) - 2.94194) < 1e-5
+// expect: true

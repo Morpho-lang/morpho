@@ -174,14 +174,22 @@ See the `Functionals` entry for general information about functionals.
 
 The `LinearElasticity` functional measures the linear elastic energy away from a reference state. 
 
-You must initialize with a reference mesh:
+Initialize with a reference mesh:
 
     var le = LinearElasticity(mref)
 
-Manually set the poisson's ratio and grade to operate on:
+Optionally choose the grade at construction:
+
+    var le = LinearElasticity(mref, 1)
+
+Manually set Poisson's ratio:
 
     le.poissonratio = 0.2
-    le.grade = 2
+
+To use a different reference configuration, if the reference mesh changes, call `update`:
+
+    le.update(newref) // Replace with a new reference mesh
+    le.update()       // Recalculate cached reference data
 
 The energy for each element in the Mesh is computed as follows: First the Gram matrix `S` is computed for the element as well as the Gram matrix `F` for the corresponding element in the reference Mesh. These quantities are used to compute the Cauchy-Green strain tensor:
 

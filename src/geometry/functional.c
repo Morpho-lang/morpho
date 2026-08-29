@@ -1526,7 +1526,7 @@ functional_maphessian_cleanup:
  * Common library functions
  * ********************************************************************** */
 
-/** Calculate the difference of two vectors */
+/** Add two vectors */
 void functional_vecadd(unsigned int n, double *a, double *b, double *out) {
     for (unsigned int i=0; i<n; i++) out[i]=a[i]+b[i];
 }
@@ -1536,7 +1536,7 @@ void functional_vecaddscale(unsigned int n, double *a, double lambda, double *b,
     for (unsigned int i=0; i<n; i++) out[i]=a[i]+lambda*b[i];
 }
 
-/** Calculate the difference of two vectors */
+/** Subtract two vectors */
 void functional_vecsub(unsigned int n, double *a, double *b, double *out) {
     for (unsigned int i=0; i<n; i++) out[i]=a[i]-b[i];
 }
@@ -1546,14 +1546,16 @@ void functional_vecscale(unsigned int n, double lambda, double *a, double *out) 
     for (unsigned int i=0; i<n; i++) out[i]=lambda*a[i];
 }
 
-/** Calculate the norm of a vector */
-double functional_vecnorm(unsigned int n, double *a) {
-    return cblas_dnrm2(n, a, 1);
+/** Dot product */
+double functional_vecdot(unsigned int n, double *a, double *b) {
+    double s=0.0;
+    for (unsigned int i=0; i<n; i++) s+=a[i]*b[i];
+    return s;
 }
 
-/** Dot product of two vectors */
-double functional_vecdot(unsigned int n, double *a, double *b) {
-    return cblas_ddot(n, a, 1, b, 1);
+/** Euclidean norm */
+double functional_vecnorm(unsigned int n, double *a) {
+    return sqrt(functional_vecdot(n, a, a));
 }
 
 /** 3D cross product  */
@@ -1566,6 +1568,84 @@ void functional_veccross(double *a, double *b, double *out) {
 /** 2D cross product  */
 void functional_veccross2d(double *a, double *b, double *out) {
     *out=a[0]*b[1]-a[1]*b[0];
+}
+
+/** In-place inverse of a 1×1, 2×2 or 3×3 column-major matrix. Returns false if singular.
+ *  2×2 is a closed form; 3×3 is a looped cofactor. See benchmarks/matrix/. */
+bool functional_matinv2x2(double *e) {
+    double det=e[0]*e[3]-e[2]*e[1];
+    if (det==0.0) return false;
+    double s=1.0/det, a00=e[0];
+    e[0]=e[3]*s; e[1]=-e[1]*s; e[2]=-e[2]*s; e[3]=a00*s;
+    return true;
+}
+
+static double _minor3(double *a, unsigned int i, unsigned int j) {
+    unsigned int r0=i?0:1, r1=i==2?1:2, c0=j?0:1, c1=j==2?1:2;
+    return a[r0+c0*3]*a[r1+c1*3]-a[r0+c1*3]*a[r1+c0*3];
+}
+
+bool functional_matinv3x3(double *e) {
+    double a[9], c[9], det=0.0;
+    memcpy(a, e, sizeof a);
+    for (unsigned int j=0; j<3; j++) {
+        for (unsigned int i=0; i<3; i++) {
+            double m=_minor3(a, i, j);
+            c[i+j*3]=(i+j)%2 ? -m : m;
+        }
+    }
+    det=a[0]*c[0]+a[3]*c[3]+a[6]*c[6];
+    if (det==0.0) return false;
+    det=1.0/det;
+    for (unsigned int j=0; j<3; j++) {
+        for (unsigned int i=0; i<3; i++) e[i+j*3]=c[j+i*3]*det;
+    }
+    return true;
+}
+
+bool functional_matinv(unsigned int n, double *e) {
+    if (n==1) { if (e[0]==0.0) return false; e[0]=1.0/e[0]; return true; }
+    if (n==2) return functional_matinv2x2(e);
+    if (n==3) return functional_matinv3x3(e);
+    return false;
+}
+
+/** C <- A*B for small column-major matrices. C may alias A or B. */
+static void _matvec2(double *A, double *b, double *c) {
+    c[0]=A[0]*b[0]+A[2]*b[1];
+    c[1]=A[1]*b[0]+A[3]*b[1];
+}
+
+static void _matvec3(double *A, double *b, double *c) {
+    c[0]=A[0]*b[0]+A[3]*b[1]+A[6]*b[2];
+    c[1]=A[1]*b[0]+A[4]*b[1]+A[7]*b[2];
+    c[2]=A[2]*b[0]+A[5]*b[1]+A[8]*b[2];
+}
+
+void functional_matmul2x2(double *A, double *B, double *C) {
+    double t[4];
+    for (int j=0; j<2; j++) _matvec2(A, B+2*j, t+2*j);
+    memcpy(C, t, sizeof t);
+}
+
+void functional_matmul3x3(double *A, double *B, double *C) {
+    double t[9];
+    for (int j=0; j<3; j++) _matvec3(A, B+3*j, t+3*j);
+    memcpy(C, t, sizeof t);
+}
+
+void functional_matmul(unsigned int m, unsigned int k, unsigned int n, double *A, double *B, double *C) {
+    if (m==2 && k==2 && n==2) { functional_matmul2x2(A, B, C); return; }
+    if (m==3 && k==3 && n==3) { functional_matmul3x3(A, B, C); return; }
+    double t[m*n];
+    for (unsigned int j=0; j<n; j++) {
+        for (unsigned int i=0; i<m; i++) {
+            double s=0.0;
+            for (unsigned int p=0; p<k; p++) s+=A[i+p*m]*B[p+j*k];
+            t[i+j*m]=s;
+        }
+    }
+    memcpy(C, t, sizeof(double)*(size_t)m*(size_t)n);
 }
 
 bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out);
@@ -2053,16 +2133,15 @@ bool linearelasticity_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     double gramrefel[gdim*gdim], gramdefel[gdim*gdim], qel[gdim*gdim], rel[gdim*gdim], cgel[gdim*gdim];
     objectmatrix gramref = MORPHO_STATICMATRIX(gramrefel, gdim, gdim); // Gram matrices
     objectmatrix gramdef = MORPHO_STATICMATRIX(gramdefel, gdim, gdim); //
-    objectmatrix q = MORPHO_STATICMATRIX(qel, gdim, gdim); // Inverse of Gram in source domain
     objectmatrix r = MORPHO_STATICMATRIX(rel, gdim, gdim); // Intermediate calculations
     objectmatrix cg = MORPHO_STATICMATRIX(cgel, gdim, gdim); // Cauchy-Green strain tensor
 
     linearelasticity_calculategram(info->refmesh->vert, mesh->dim, nv, vid, &gramref);
     linearelasticity_calculategram(mesh->vert, mesh->dim, nv, vid, &gramdef);
 
-    if (matrix_copy(&gramref, &q)!=LINALGERR_OK) return false;
-    if (matrix_inverse(&q)!=LINALGERR_OK) return false;
-    if (matrix_mul(&gramdef, &q, &r)!=LINALGERR_OK) return false;
+    memcpy(qel, gramrefel, sizeof(double)*(size_t)gdim*(size_t)gdim);
+    if (!functional_matinv(gdim, qel)) return false;
+    functional_matmul(gdim, gdim, gdim, gramdefel, qel, rel);
 
     if (matrix_identity(&cg)!=LINALGERR_OK) return false;
     matrix_scale(&cg, -0.5);
@@ -2071,7 +2150,7 @@ bool linearelasticity_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
     double trcg=0.0, trcgcg=0.0;
     matrix_trace(&cg, &trcg);
     
-    matrix_mul(&cg, &cg, &r);
+    functional_matmul(gdim, gdim, gdim, cgel, cgel, rel);
     matrix_trace(&r, &trcgcg);
 
     if (!functional_elementsize(v, info->refmesh, info->grade, id, nv, vid, &weight)) return false;
@@ -4101,9 +4180,8 @@ bool integral_prepareinvjacobian(unsigned int dim, grade g, double **x, objectma
     for (int i=0; i<g; i++) functional_vecsub(dim, x[i+1], x[0], s + i*dim);
     
     if (g==dim) {
-        objectmatrix smat = MORPHO_STATICMATRIX(s, dim, dim);
-        success=(matrix_copy(&smat, invj)==LINALGERR_OK &&
-                 matrix_inverse(invj)==LINALGERR_OK);
+        memcpy(invj->elements, s, sizeof(double)*dim*dim);
+        success=functional_matinv(dim, invj->elements);
     } else if (g==1) {
         double s01norm = functional_vecdot(dim, s, s);
         if (s01norm>0) {
@@ -4303,7 +4381,7 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
         double fmatdata[nnodes * dim];
         objectmatrix fmat = MORPHO_STATICMATRIX(fmatdata, nnodes, dim);
         
-        if (matrix_mul(&gmat, elref->invj, &fmat)!=LINALGERR_OK) MORPHO_FAIL(v, INTEGRAL_DFFEVL);
+        functional_matmul(nnodes, elref->g, dim, gdata, elref->invj->elements, fmatdata);
         
         for (int i=0; i<dim; i++) {
             value sum;
@@ -4438,15 +4516,14 @@ static bool integral_evaluatecg(vm *v) {
     double gramrefel[gdim*gdim], gramdefel[gdim*gdim], qel[gdim*gdim], rel[gdim*gdim];
     objectmatrix gramref = MORPHO_STATICMATRIX(gramrefel, gdim, gdim); // Gram matrices
     objectmatrix gramdef = MORPHO_STATICMATRIX(gramdefel, gdim, gdim); //
-    objectmatrix q = MORPHO_STATICMATRIX(qel, gdim, gdim); // Inverse of Gram in source domain
     objectmatrix r = MORPHO_STATICMATRIX(rel, gdim, gdim); // Intermediate calculations
     
     linearelasticity_calculategram(elref->iref->mref->vert, elref->mesh->dim, elref->nv, elref->vid, &gramref);
     linearelasticity_calculategram(elref->mesh->vert, elref->mesh->dim, elref->nv, elref->vid, &gramdef);
     
-    if (matrix_copy(&gramref, &q)!=LINALGERR_OK) return false;
-    if (matrix_inverse(&q)!=LINALGERR_OK) return false;
-    if (matrix_mul(&gramdef, &q, &r)!=LINALGERR_OK) return false;
+    memcpy(qel, gramrefel, sizeof(double)*(size_t)gdim*(size_t)gdim);
+    if (!functional_matinv(gdim, qel)) return false;
+    functional_matmul(gdim, gdim, gdim, gramdefel, qel, rel);
 
     if (matrix_identity(cg)!=LINALGERR_OK) return false;
     matrix_scale(cg, -0.5);
@@ -4508,20 +4585,19 @@ static bool integral_evaluatejacobian(vm *v) {
     
     // Construct matrix of edge vectors for target and reference elements
     double starget[dim*dim], sinv[dim*dim];
-    objectmatrix St = MORPHO_STATICMATRIX(starget, dim, dim),
-                 Sinv = MORPHO_STATICMATRIX(sinv, dim, dim);
+    objectmatrix Sinv = MORPHO_STATICMATRIX(sinv, dim, dim);
     
     _edgevectors(g, dim, X, starget);
     if (mref) {
         _edgevectors(g, dim, x, sinv);
-        matrix_inverse(&Sinv);
+        if (!functional_matinv(dim, sinv)) return false;
     } else {
         matrix_identity(&Sinv); // If no reference, the reference is the unit triangle
     }
     
-    matrix_mul(&St, &Sinv, J); // J = S . s^-1
-    matrix_copy(J, Jinv);
-    matrix_inverse(Jinv); // Compute J^-1
+    functional_matmul(dim, dim, dim, starget, sinv, J->elements); // J = S . s^-1
+    memcpy(Jinv->elements, J->elements, sizeof(double)*dim*dim);
+    if (!functional_matinv(dim, Jinv->elements)) return false;
     
     elref->flags |= ELREF_HASJACOBIAN;
     return true;
@@ -5036,9 +5112,9 @@ static bool integral_physical_gradNa(vm *v, objectintegralelementref *elref, obj
 
     double gdata[nnodes * elref->g];
     objectmatrix gmat=MORPHO_STATICMATRIX(gdata, nnodes, elref->g);
-    objectmatrix fmat=MORPHO_STATICMATRIX(out, nnodes, elref->mesh->dim);
     fespace_gradient(disc, elref->lambda, &gmat);
-    return matrix_mul(&gmat, elref->invj, &fmat)==LINALGERR_OK;
+    functional_matmul(nnodes, elref->g, elref->mesh->dim, gdata, elref->invj->elements, out);
+    return true;
 }
 
 /** Integrand for local fieldgradient assembly: (dfdq) Na [+ (dfdgrad) · ∇Na]. */
@@ -5754,13 +5830,11 @@ static bool jump_getelementcentroid(objectmesh *mesh, int nv, int *vid, double *
 static bool jump_parentlambda(unsigned int dim, grade g, double **x, double *posn, double *lambda) {
     double invjdata[g*dim], sdata[dim];
     objectmatrix invj = MORPHO_STATICMATRIX(invjdata, g, dim);
-    objectmatrix s = MORPHO_STATICMATRIX(sdata, dim, 1);
-    objectmatrix l = MORPHO_STATICMATRIX(lambda+1, g, 1);
 
     functional_vecsub(dim, posn, x[0], sdata);
 
     if (!integral_prepareinvjacobian(dim, g, x, &invj)) return false;
-    if (matrix_mul(&invj, &s, &l)!=LINALGERR_OK) return false;
+    functional_matmul(g, dim, 1, invjdata, sdata, lambda+1);
 
     lambda[0]=1.0;
     for (int i=1; i<g+1; i++) lambda[0]-=lambda[i];
@@ -5854,7 +5928,7 @@ static bool jump_evaluatesidegradient(objectjumpinterfaceref *iref, int ifld, bo
     objectmatrix fmat = MORPHO_STATICMATRIX(fdata, nnodes, dim);
 
     fespace_gradient(disc, lambda, &gmat);
-    if (matrix_mul(&gmat, side->invj, &fmat)!=LINALGERR_OK) return false;
+    functional_matmul(nnodes, g, dim, gdata, side->invj->elements, fdata);
 
     for (int i=0; i<dim; i++) {
         value sum=MORPHO_FLOAT(0.0);

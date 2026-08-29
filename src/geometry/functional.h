@@ -247,6 +247,13 @@ double functional_vecdot(unsigned int n, double *a, double *b);
 void functional_veccross(double *a, double *b, double *out);
 void functional_veccross2d(double *a, double *b, double *out);
 
+bool functional_matinv2x2(double *e);
+bool functional_matinv3x3(double *e);
+bool functional_matinv(unsigned int n, double *e);
+void functional_matmul2x2(double *A, double *B, double *C);
+void functional_matmul3x3(double *A, double *B, double *C);
+void functional_matmul(unsigned int m, unsigned int k, unsigned int n, double *A, double *B, double *C);
+
 bool functional_elementsize(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, double *out);
 bool functional_elementgradient_scale(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, objectmatrix *frc, double scale);
 bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, objectmatrix *frc);

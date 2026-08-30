@@ -184,6 +184,9 @@ typedef void (functional_taskend) (vm *v, struct s_functional_mapinfo *info);
 /** Map callback used by functional_runmap */
 typedef bool (functional_mapcallback) (vm *v, struct s_functional_mapinfo *info, value *out);
 
+/** Choose which map callback to run (Integral/ScalarPotential). NULL if bind failed. */
+typedef functional_mapcallback *(functional_mapchooser) (vm *v, objectinstance *self, struct s_functional_mapinfo *info);
+
 /** Clone reference function */
 typedef void * (functional_cloneref) (void *ref, objectfield *field, objectfield *sub);
 
@@ -193,13 +196,15 @@ typedef void (functional_freeref) (void *ref);
 /** Dependencies function */
 typedef bool (functional_dependencies) (struct s_functional_mapinfo *info, elementid id, varray_elementid *out);
 
-/** Workload cost hint. Remain serial if cost * nel < FORKWEIGHT * (nthreads-1). */
-#define FUNCTIONAL_FORKWEIGHT 400
+/** Workload cost hint. Remain serial if cost * nel < FORKWEIGHT * (nthreads-1).
+ * Calibrated so Length.total (CHEAPEST) stays serial through a few thousand
+ * edges at -w7 and parallelizes by ~10k; Area at 5k faces still forks. */
+#define FUNCTIONAL_FORKWEIGHT 800
 
 typedef enum {
-    FUNCTIONAL_COST_CHEAPEST = 1,  /* Very simple kernels like Length, NormSq */
-    FUNCTIONAL_COST_CHEAP    = 4,  /* Area, simple analytic gradients */
-    FUNCTIONAL_COST_REGULAR  = 10  /* Default */
+    FUNCTIONAL_COST_CHEAPEST = 1,  /* Length, Area.total, NormSq, LinearElasticity.total */
+    FUNCTIONAL_COST_CHEAP    = 4,  /* Curvature totals, NematicElectric.total */
+    FUNCTIONAL_COST_REGULAR  = 10  /* Integrals, FD/shape gradients, Jump, Hydrogel, GradSq/Nematic.total */
 } functional_cost;
 
 typedef struct s_functional_mapinfo {
@@ -335,77 +340,56 @@ bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *
     functional_mapinfo info; \
     _functional_mapinfo(&info, MORPHO_GETMESH(MORPHO_GETARG(args, 1)), MORPHO_GETSELECTION(MORPHO_GETARG(args, 2)), MORPHO_GETFIELD(MORPHO_GETARG(args, 0)))
 
-/* Constructs a function cls_mthod__suffix with a defined setup macro followed by remaining args */
+/* Constructs a function cls_method__suffix. WRAP_COST also sets info.cost. */
 #define FUNCTIONAL_MD_WRAP(cls, method, suffix, setup, ...) \
 value cls##_##method##__##suffix(vm *v, int nargs, value *args) { \
     setup; \
     return __VA_ARGS__; \
 }
 
-/* Builds cls_method__mesh [etc.] : run an INFO__* fragment, then return fn(v, &info, extra...).
- * extra... is typically the default grade and the integrand or gradient C function. */
-#define FUNCTIONAL_MD__MESH(cls, method, fn, ...) \
-    FUNCTIONAL_MD_WRAP(cls, method, mesh, FUNCTIONAL_MD_INFO__MESH(), fn(v, &info, __VA_ARGS__))
+#define FUNCTIONAL_MD_WRAP_COST(cls, method, suffix, setup, wkld, ...) \
+    FUNCTIONAL_MD_WRAP(cls, method, suffix, setup; info.cost=(wkld), __VA_ARGS__)
 
-#define FUNCTIONAL_MD__MESH_SEL(cls, method, fn, ...) \
-    FUNCTIONAL_MD_WRAP(cls, method, mesh_sel, FUNCTIONAL_MD_INFO__MESH_SEL(), fn(v, &info, __VA_ARGS__))
-
-#define FUNCTIONAL_MD__MESH_INT(cls, method, fn, ...) \
-    FUNCTIONAL_MD_WRAP(cls, method, mesh_int, FUNCTIONAL_MD_INFO__MESH_INT(), fn(v, &info, __VA_ARGS__))
-
-#define FUNCTIONAL_MD__MESH_INT_INT(cls, method, fn, ...) \
-    FUNCTIONAL_MD_WRAP(cls, method, mesh_int_int, FUNCTIONAL_MD_INFO__MESH_INT_INT(), fn(v, &info, __VA_ARGS__))
-
-#define FUNCTIONAL_MD__FIELD(cls, method, fn, ...) \
-    FUNCTIONAL_MD_WRAP(cls, method, field, FUNCTIONAL_MD_INFO__FIELD(), fn(v, &info, __VA_ARGS__))
-
-#define FUNCTIONAL_MD__FIELD_SEL(cls, method, fn, ...) \
-    FUNCTIONAL_MD_WRAP(cls, method, field_sel, FUNCTIONAL_MD_INFO__FIELD_SEL(), fn(v, &info, __VA_ARGS__))
-
-/* Emits Mesh and Field-as-mesh overloads for one C helper. A Field argument
- * supplies its mesh (_functional_mapinfo). */
-#define FUNCTIONAL_MD_OVERLOADS(cls, method, fn, ...) \
-    FUNCTIONAL_MD__MESH(cls, method, fn, __VA_ARGS__) \
-    FUNCTIONAL_MD__MESH_SEL(cls, method, fn, __VA_ARGS__) \
-    FUNCTIONAL_MD__FIELD(cls, method, fn, __VA_ARGS__) \
-    FUNCTIONAL_MD__FIELD_SEL(cls, method, fn, __VA_ARGS__)
-
+/* Geometry-only Morpho entry points. COST is the primitive (info.cost in WRAP).
+ * Bare names forward FUNCTIONAL_COST_REGULAR. INTEGRAND also adds
+ * (Mesh, Int) and (Mesh, Int, Int) -> Float. */
 #define FUNCTIONAL_MD_OVERLOADS_COST(cls, method, fn, wkld, ...) \
-    FUNCTIONAL_MD_WRAP(cls, method, mesh, FUNCTIONAL_MD_INFO__MESH(); info.cost=(wkld), fn(v, &info, __VA_ARGS__)) \
-    FUNCTIONAL_MD_WRAP(cls, method, mesh_sel, FUNCTIONAL_MD_INFO__MESH_SEL(); info.cost=(wkld), fn(v, &info, __VA_ARGS__)) \
-    FUNCTIONAL_MD_WRAP(cls, method, field, FUNCTIONAL_MD_INFO__FIELD(); info.cost=(wkld), fn(v, &info, __VA_ARGS__)) \
-    FUNCTIONAL_MD_WRAP(cls, method, field_sel, FUNCTIONAL_MD_INFO__FIELD_SEL(); info.cost=(wkld), fn(v, &info, __VA_ARGS__))
-
-/* Emit geometry-only Morpho entry points. INTEGRAND also adds (Mesh, Int) and
- * (Mesh, Int, Int) -> Float. Map methods accept Mesh or Field (mesh from Field).
- * Each wrapper calls the matching _functional_* helper with grade and kernel. */
-#define FUNCTIONAL_MD_INTEGRAND(cls, grade, integrandfn) \
-    FUNCTIONAL_MD_OVERLOADS(cls, integrand, _functional_integrand, grade, integrandfn) \
-    FUNCTIONAL_MD__MESH_INT(cls, integrand, _functional_integrand_elem, grade, integrandfn) \
-    FUNCTIONAL_MD__MESH_INT_INT(cls, integrand, _functional_integrand_elem, grade, integrandfn)
+    FUNCTIONAL_MD_WRAP_COST(cls, method, mesh, FUNCTIONAL_MD_INFO__MESH(), wkld, fn(v, &info, __VA_ARGS__)) \
+    FUNCTIONAL_MD_WRAP_COST(cls, method, mesh_sel, FUNCTIONAL_MD_INFO__MESH_SEL(), wkld, fn(v, &info, __VA_ARGS__)) \
+    FUNCTIONAL_MD_WRAP_COST(cls, method, field, FUNCTIONAL_MD_INFO__FIELD(), wkld, fn(v, &info, __VA_ARGS__)) \
+    FUNCTIONAL_MD_WRAP_COST(cls, method, field_sel, FUNCTIONAL_MD_INFO__FIELD_SEL(), wkld, fn(v, &info, __VA_ARGS__))
 
 #define FUNCTIONAL_MD_INTEGRAND_COST(cls, grade, integrandfn, wkld) \
     FUNCTIONAL_MD_OVERLOADS_COST(cls, integrand, _functional_integrand, wkld, grade, integrandfn) \
-    FUNCTIONAL_MD_WRAP(cls, integrand, mesh_int, FUNCTIONAL_MD_INFO__MESH_INT(); info.cost=(wkld), _functional_integrand_elem(v, &info, grade, integrandfn)) \
-    FUNCTIONAL_MD_WRAP(cls, integrand, mesh_int_int, FUNCTIONAL_MD_INFO__MESH_INT_INT(); info.cost=(wkld), _functional_integrand_elem(v, &info, grade, integrandfn))
+    FUNCTIONAL_MD_WRAP_COST(cls, integrand, mesh_int, FUNCTIONAL_MD_INFO__MESH_INT(), wkld, _functional_integrand_elem(v, &info, grade, integrandfn)) \
+    FUNCTIONAL_MD_WRAP_COST(cls, integrand, mesh_int_int, FUNCTIONAL_MD_INFO__MESH_INT_INT(), wkld, _functional_integrand_elem(v, &info, grade, integrandfn))
 
-#define FUNCTIONAL_MD_TOTAL(cls, grade, integrandfn) \
-    FUNCTIONAL_MD_OVERLOADS(cls, total, _functional_total, grade, integrandfn)
+#define FUNCTIONAL_MD_INTEGRAND(cls, grade, integrandfn) \
+    FUNCTIONAL_MD_INTEGRAND_COST(cls, grade, integrandfn, FUNCTIONAL_COST_REGULAR)
 
 #define FUNCTIONAL_MD_TOTAL_COST(cls, grade, integrandfn, wkld) \
     FUNCTIONAL_MD_OVERLOADS_COST(cls, total, _functional_total, wkld, grade, integrandfn)
 
-#define FUNCTIONAL_MD_GRADIENT(cls, grade, gradientfn, symbhvr) \
-    FUNCTIONAL_MD_OVERLOADS(cls, gradient, _functional_gradient, grade, gradientfn, symbhvr)
+#define FUNCTIONAL_MD_TOTAL(cls, grade, integrandfn) \
+    FUNCTIONAL_MD_TOTAL_COST(cls, grade, integrandfn, FUNCTIONAL_COST_REGULAR)
 
 #define FUNCTIONAL_MD_GRADIENT_COST(cls, grade, gradientfn, symbhvr, wkld) \
     FUNCTIONAL_MD_OVERLOADS_COST(cls, gradient, _functional_gradient, wkld, grade, gradientfn, symbhvr)
 
+#define FUNCTIONAL_MD_GRADIENT(cls, grade, gradientfn, symbhvr) \
+    FUNCTIONAL_MD_GRADIENT_COST(cls, grade, gradientfn, symbhvr, FUNCTIONAL_COST_REGULAR)
+
+#define FUNCTIONAL_MD_NUMERICALGRADIENT_COST(cls, grade, integrandfn, symbhvr, wkld) \
+    FUNCTIONAL_MD_OVERLOADS_COST(cls, gradient, _functional_numericalgradient, wkld, grade, integrandfn, symbhvr)
+
 #define FUNCTIONAL_MD_NUMERICALGRADIENT(cls, grade, integrandfn, symbhvr) \
-    FUNCTIONAL_MD_OVERLOADS(cls, gradient, _functional_numericalgradient, grade, integrandfn, symbhvr)
+    FUNCTIONAL_MD_NUMERICALGRADIENT_COST(cls, grade, integrandfn, symbhvr, FUNCTIONAL_COST_REGULAR)
+
+#define FUNCTIONAL_MD_HESSIAN_COST(cls, grade, integrandfn, wkld) \
+    FUNCTIONAL_MD_OVERLOADS_COST(cls, hessian, _functional_hessian, wkld, grade, integrandfn)
 
 #define FUNCTIONAL_MD_HESSIAN(cls, grade, integrandfn) \
-    FUNCTIONAL_MD_OVERLOADS(cls, hessian, _functional_hessian, grade, integrandfn)
+    FUNCTIONAL_MD_HESSIAN_COST(cls, grade, integrandfn, FUNCTIONAL_COST_REGULAR)
 
 /* MORPHO_BEGINCLASS rows that register the C wrappers under Morpho signatures.
  * METHODS_FLAGS takes explicit flags; METHODS plugs in MAPFLAGS / TOTALFLAGS / ELEMFLAGS. */
@@ -471,42 +455,40 @@ MORPHO_METHOD_SIGNATURE(FUNCTIONAL_FIELDGRADIENT_METHOD, "Field (Field, Mesh, Se
 
 /* Same WRAP/INFO as geometry-only, but the call is fn(v, self, &info) so the
  * helper can read instance properties and prepare a ref. */
+#define FUNCTIONAL_MD_REF_WRAP(cls, method, suffix, setup, fn) \
+    FUNCTIONAL_MD_WRAP(cls, method, suffix, setup, fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+
 #define FUNCTIONAL_MD_REF__MESH(cls, method, fn) \
-    FUNCTIONAL_MD_WRAP(cls, method, mesh, FUNCTIONAL_MD_INFO__MESH(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+    FUNCTIONAL_MD_REF_WRAP(cls, method, mesh, FUNCTIONAL_MD_INFO__MESH(), fn)
 
 #define FUNCTIONAL_MD_REF__MESH_SEL(cls, method, fn) \
-    FUNCTIONAL_MD_WRAP(cls, method, mesh_sel, FUNCTIONAL_MD_INFO__MESH_SEL(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+    FUNCTIONAL_MD_REF_WRAP(cls, method, mesh_sel, FUNCTIONAL_MD_INFO__MESH_SEL(), fn)
 
 #define FUNCTIONAL_MD_REF__MESH_INT(cls, method, fn) \
-    FUNCTIONAL_MD_WRAP(cls, method, mesh_int, FUNCTIONAL_MD_INFO__MESH_INT(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+    FUNCTIONAL_MD_REF_WRAP(cls, method, mesh_int, FUNCTIONAL_MD_INFO__MESH_INT(), fn)
 
 #define FUNCTIONAL_MD_REF__MESH_INT_INT(cls, method, fn) \
-    FUNCTIONAL_MD_WRAP(cls, method, mesh_int_int, FUNCTIONAL_MD_INFO__MESH_INT_INT(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+    FUNCTIONAL_MD_REF_WRAP(cls, method, mesh_int_int, FUNCTIONAL_MD_INFO__MESH_INT_INT(), fn)
 
 #define FUNCTIONAL_MD_REF__FIELD(cls, method, fn) \
-    FUNCTIONAL_MD_WRAP(cls, method, field, FUNCTIONAL_MD_INFO__FIELD(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+    FUNCTIONAL_MD_REF_WRAP(cls, method, field, FUNCTIONAL_MD_INFO__FIELD(), fn)
 
 #define FUNCTIONAL_MD_REF__FIELD_MESH(cls, method, fn) \
-    FUNCTIONAL_MD_WRAP(cls, method, field_mesh, FUNCTIONAL_MD_INFO__FIELD_MESH(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+    FUNCTIONAL_MD_REF_WRAP(cls, method, field_mesh, FUNCTIONAL_MD_INFO__FIELD_MESH(), fn)
 
 #define FUNCTIONAL_MD_REF__FIELD_SEL(cls, method, fn) \
-    FUNCTIONAL_MD_WRAP(cls, method, field_sel, FUNCTIONAL_MD_INFO__FIELD_SEL(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+    FUNCTIONAL_MD_REF_WRAP(cls, method, field_sel, FUNCTIONAL_MD_INFO__FIELD_SEL(), fn)
 
 #define FUNCTIONAL_MD_REF__FIELD_MESH_SEL(cls, method, fn) \
-    FUNCTIONAL_MD_WRAP(cls, method, field_mesh_sel, FUNCTIONAL_MD_INFO__FIELD_MESH_SEL(), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
+    FUNCTIONAL_MD_REF_WRAP(cls, method, field_mesh_sel, FUNCTIONAL_MD_INFO__FIELD_MESH_SEL(), fn)
 
-/* Emits Mesh and Field-as-mesh overloads for a self-taking helper. */
+/* Emits Mesh and Field-as-mesh overloads for a self-taking helper.
+ * Cost is set inside _Cls_method (RUN), not here. */
 #define FUNCTIONAL_MD_REF_OVERLOADS(cls, method, fn) \
     FUNCTIONAL_MD_REF__MESH(cls, method, fn) \
     FUNCTIONAL_MD_REF__MESH_SEL(cls, method, fn) \
     FUNCTIONAL_MD_REF__FIELD(cls, method, fn) \
     FUNCTIONAL_MD_REF__FIELD_SEL(cls, method, fn)
-
-#define FUNCTIONAL_MD_REF_OVERLOADS_COST(cls, method, fn, wkld) \
-    FUNCTIONAL_MD_WRAP(cls, method, mesh, FUNCTIONAL_MD_INFO__MESH(); info.cost=(wkld), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info)) \
-    FUNCTIONAL_MD_WRAP(cls, method, mesh_sel, FUNCTIONAL_MD_INFO__MESH_SEL(); info.cost=(wkld), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info)) \
-    FUNCTIONAL_MD_WRAP(cls, method, field, FUNCTIONAL_MD_INFO__FIELD(); info.cost=(wkld), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info)) \
-    FUNCTIONAL_MD_WRAP(cls, method, field_sel, FUNCTIONAL_MD_INFO__FIELD_SEL(); info.cost=(wkld), fn(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
 
 /* Field-first overloads for fieldgradient. */
 #define FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, method, fn) \
@@ -538,118 +520,127 @@ static bool _##cls##_bindref(vm *v, objectinstance *self, functional_mapinfo *in
 #define FUNCTIONAL_MD_REF_BIND(cls, reftype, prepare, integrandfn, err) \
     FUNCTIONAL_MD_REF_BIND_FORCEGRADE(cls, reftype, prepare, integrandfn, err, info->g)
 
-/* Defines _Cls_method: stack-allocate reftype, bindref, set grad/deps/sym,
- * then _functional_run. HELPER is RUN with those three left unused. */
-#define FUNCTIONAL_MD_REF_RUN(cls, method, reftype, grade, mapfn, bind, gradfn, deps, symbhvr) \
+/* Defines _Cls_method: bindref, set cost/grad/deps/sym/clone, then _functional_run.
+ * EMIT also registers Morpho overloads. HELPER is the no-grad/no-clone case. */
+#define FUNCTIONAL_MD_REF_RUN(cls, method, reftype, grade, mapfn, bind, gradfn, deps, symbhvr, clonefn, freefn, wkld) \
 static value _##cls##_##method(vm *v, objectinstance *self, functional_mapinfo *info) { \
     reftype ref; \
     if (!_##cls##_bindref(v, self, info, &ref)) return MORPHO_NIL; \
     info->grad = (gradfn); \
     info->dependencies = (deps); \
     info->sym = (symbhvr); \
+    info->cloneref = (clonefn); \
+    info->freeref = (freefn); \
+    info->cost = (wkld); \
     return _functional_run(v, info, grade, mapfn, bind); \
 }
 
-#define FUNCTIONAL_MD_REF_HELPER(cls, method, reftype, grade, mapfn, bind) \
-    FUNCTIONAL_MD_REF_RUN(cls, method, reftype, grade, mapfn, bind, NULL, NULL, SYMMETRY_NONE)
+#define FUNCTIONAL_MD_REF_EMIT(cls, method, reftype, grade, mapfn, bind, gradfn, deps, symbhvr, clonefn, freefn, overloads, wkld) \
+    FUNCTIONAL_MD_REF_RUN(cls, method, reftype, grade, mapfn, bind, gradfn, deps, symbhvr, clonefn, freefn, wkld) \
+    overloads(cls, method, _##cls##_##method)
+
+#define FUNCTIONAL_MD_REF_HELPER(cls, method, reftype, grade, mapfn, bind, wkld) \
+    FUNCTIONAL_MD_REF_RUN(cls, method, reftype, grade, mapfn, bind, NULL, NULL, SYMMETRY_NONE, NULL, NULL, wkld)
+
+#define FUNCTIONAL_MD_REF_MAP_COST(cls, method, reftype, grade, mapfn, bind, gradfn, deps, symbhvr, wkld) \
+    FUNCTIONAL_MD_REF_EMIT(cls, method, reftype, grade, mapfn, bind, gradfn, deps, symbhvr, NULL, NULL, FUNCTIONAL_MD_REF_OVERLOADS, wkld)
+
+/* Chooser: stack-allocate ref, set cost, let choosefn bind and pick mapfn. */
+#define FUNCTIONAL_MD_REF_RUN_CHOOSE(cls, method, reftype, grade, choosefn, bind, wkld) \
+static value _##cls##_##method(vm *v, objectinstance *self, functional_mapinfo *info) { \
+    reftype ref; \
+    functional_mapcallback *mapfn; \
+    info->ref = &ref; \
+    info->cost = (wkld); \
+    mapfn = (choosefn)(v, self, info); \
+    if (!mapfn) return MORPHO_NIL; \
+    return _functional_run(v, info, grade, mapfn, bind); \
+}
+
+#define FUNCTIONAL_MD_REF_CHOOSE_COST(cls, method, reftype, grade, choosefn, bind, overloads, wkld) \
+    FUNCTIONAL_MD_REF_RUN_CHOOSE(cls, method, reftype, grade, choosefn, bind, wkld) \
+    overloads(cls, method, _##cls##_##method)
 
 /* Emit prepare/ref Morpho entry points plus the _Cls_* helpers they call.
+ * COST is the primitive (info->cost in RUN). Bare names forward REGULAR.
  * INTEGRAND covers the four signatures; TOTAL mesh/sel; GRADIENT sets
  * info->grad; NUMERICALGRADIENT/HESSIAN set dependencies; FIELDGRADIENT
  * is Field-first (numerical sets cloneref/freeref; ANALYTICALFIELDGRADIENT
  * sets info->fieldgrad). */
-#define FUNCTIONAL_MD_REF_INTEGRAND(cls, reftype, grade) \
-    FUNCTIONAL_MD_REF_HELPER(cls, integrand, reftype, grade, functional_mapintegrand, true) \
-    FUNCTIONAL_MD_REF_HELPER(cls, integrand_elem, reftype, grade, functional_mapintegrandforelement, false) \
+#define FUNCTIONAL_MD_REF_INTEGRAND_COST(cls, reftype, grade, wkld) \
+    FUNCTIONAL_MD_REF_HELPER(cls, integrand, reftype, grade, functional_mapintegrand, true, wkld) \
+    FUNCTIONAL_MD_REF_HELPER(cls, integrand_elem, reftype, grade, functional_mapintegrandforelement, false, wkld) \
     FUNCTIONAL_MD_REF_OVERLOADS(cls, integrand, _##cls##_integrand) \
     FUNCTIONAL_MD_REF__MESH_INT(cls, integrand, _##cls##_integrand_elem) \
     FUNCTIONAL_MD_REF__MESH_INT_INT(cls, integrand, _##cls##_integrand_elem)
 
-#define FUNCTIONAL_MD_REF_INTEGRAND_COST(cls, reftype, grade, wkld) \
-    FUNCTIONAL_MD_REF_HELPER(cls, integrand, reftype, grade, functional_mapintegrand, true) \
-    FUNCTIONAL_MD_REF_HELPER(cls, integrand_elem, reftype, grade, functional_mapintegrandforelement, false) \
-    FUNCTIONAL_MD_REF_OVERLOADS_COST(cls, integrand, _##cls##_integrand, wkld) \
-    FUNCTIONAL_MD_WRAP(cls, integrand, mesh_int, FUNCTIONAL_MD_INFO__MESH_INT(); info.cost=(wkld), _##cls##_integrand_elem(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info)) \
-    FUNCTIONAL_MD_WRAP(cls, integrand, mesh_int_int, FUNCTIONAL_MD_INFO__MESH_INT_INT(); info.cost=(wkld), _##cls##_integrand_elem(v, MORPHO_GETINSTANCE(MORPHO_SELF(args)), &info))
-
-#define FUNCTIONAL_MD_REF_TOTAL(cls, reftype, grade) \
-    FUNCTIONAL_MD_REF_HELPER(cls, total, reftype, grade, functional_sumintegrand, false) \
-    FUNCTIONAL_MD_REF_OVERLOADS(cls, total, _##cls##_total)
+#define FUNCTIONAL_MD_REF_INTEGRAND(cls, reftype, grade) \
+    FUNCTIONAL_MD_REF_INTEGRAND_COST(cls, reftype, grade, FUNCTIONAL_COST_REGULAR)
 
 #define FUNCTIONAL_MD_REF_TOTAL_COST(cls, reftype, grade, wkld) \
-    FUNCTIONAL_MD_REF_HELPER(cls, total, reftype, grade, functional_sumintegrand, false) \
-    FUNCTIONAL_MD_REF_OVERLOADS_COST(cls, total, _##cls##_total, wkld)
+    FUNCTIONAL_MD_REF_MAP_COST(cls, total, reftype, grade, functional_sumintegrand, false, NULL, NULL, SYMMETRY_NONE, wkld)
+
+#define FUNCTIONAL_MD_REF_TOTAL(cls, reftype, grade) \
+    FUNCTIONAL_MD_REF_TOTAL_COST(cls, reftype, grade, FUNCTIONAL_COST_REGULAR)
+
+#define FUNCTIONAL_MD_REF_GRADIENT_COST(cls, reftype, grade, gradientfn, symbhvr, wkld) \
+    FUNCTIONAL_MD_REF_MAP_COST(cls, gradient, reftype, grade, functional_mapgradient, true, gradientfn, NULL, symbhvr, wkld)
 
 #define FUNCTIONAL_MD_REF_GRADIENT(cls, reftype, grade, gradientfn, symbhvr) \
-    FUNCTIONAL_MD_REF_RUN(cls, gradient, reftype, grade, functional_mapgradient, true, gradientfn, NULL, symbhvr) \
-    FUNCTIONAL_MD_REF_OVERLOADS(cls, gradient, _##cls##_gradient)
+    FUNCTIONAL_MD_REF_GRADIENT_COST(cls, reftype, grade, gradientfn, symbhvr, FUNCTIONAL_COST_REGULAR)
+
+#define FUNCTIONAL_MD_REF_NUMERICALGRADIENT_COST(cls, reftype, grade, deps, symbhvr, wkld) \
+    FUNCTIONAL_MD_REF_MAP_COST(cls, gradient, reftype, grade, functional_mapnumericalgradient, true, NULL, deps, symbhvr, wkld)
 
 #define FUNCTIONAL_MD_REF_NUMERICALGRADIENT(cls, reftype, grade, deps, symbhvr) \
-    FUNCTIONAL_MD_REF_RUN(cls, gradient, reftype, grade, functional_mapnumericalgradient, true, NULL, deps, symbhvr) \
-    FUNCTIONAL_MD_REF_OVERLOADS(cls, gradient, _##cls##_gradient)
+    FUNCTIONAL_MD_REF_NUMERICALGRADIENT_COST(cls, reftype, grade, deps, symbhvr, FUNCTIONAL_COST_REGULAR)
+
+#define FUNCTIONAL_MD_REF_HESSIAN_COST(cls, reftype, grade, deps, symbhvr, wkld) \
+    FUNCTIONAL_MD_REF_MAP_COST(cls, hessian, reftype, grade, functional_mapnumericalhessian, true, NULL, deps, symbhvr, wkld)
 
 #define FUNCTIONAL_MD_REF_HESSIAN(cls, reftype, grade, deps, symbhvr) \
-    FUNCTIONAL_MD_REF_RUN(cls, hessian, reftype, grade, functional_mapnumericalhessian, true, NULL, deps, symbhvr) \
-    FUNCTIONAL_MD_REF_OVERLOADS(cls, hessian, _##cls##_hessian)
+    FUNCTIONAL_MD_REF_HESSIAN_COST(cls, reftype, grade, deps, symbhvr, FUNCTIONAL_COST_REGULAR)
+
+#define FUNCTIONAL_MD_REF_CHOOSEGRADIENT_COST(cls, reftype, grade, choosefn, wkld) \
+    FUNCTIONAL_MD_REF_CHOOSE_COST(cls, gradient, reftype, grade, choosefn, true, FUNCTIONAL_MD_REF_OVERLOADS, wkld)
+
+#define FUNCTIONAL_MD_REF_CHOOSEGRADIENT(cls, reftype, grade, choosefn) \
+    FUNCTIONAL_MD_REF_CHOOSEGRADIENT_COST(cls, reftype, grade, choosefn, FUNCTIONAL_COST_REGULAR)
+
+#define FUNCTIONAL_MD_REF_CHOOSEFIELDGRADIENT_COST(cls, reftype, grade, choosefn, wkld) \
+    FUNCTIONAL_MD_REF_CHOOSE_COST(cls, fieldgradient, reftype, grade, choosefn, true, FUNCTIONAL_MD_REF_FIELD_OVERLOADS, wkld)
+
+#define FUNCTIONAL_MD_REF_CHOOSEFIELDGRADIENT(cls, reftype, grade, choosefn) \
+    FUNCTIONAL_MD_REF_CHOOSEFIELDGRADIENT_COST(cls, reftype, grade, choosefn, FUNCTIONAL_COST_REGULAR)
 
 /* Numerical fieldgradient sets cloneref/freeref so the map can clone the
  * target Field. MAP takes a custom mapfn (Jump); the default is numerical.
- * clonefn/freefn are named so they are not substituted into info->cloneref.
  * ANALYTICALFIELDGRADIENT maps info->fieldgrad; a NULL kernel (including a
  * Field argument that is not reftype.field) yields a zero Field. reftype
  * must have an objectfield *field member. */
-#define FUNCTIONAL_MD_REF_FIELDGRADIENT_RUN(cls, reftype, grade, mapfn, clonefn, freefn) \
-static value _##cls##_fieldgradient(vm *v, objectinstance *self, functional_mapinfo *info) { \
-    reftype ref; \
-    if (!_##cls##_bindref(v, self, info, &ref)) return MORPHO_NIL; \
-    info->cloneref = (clonefn); \
-    info->freeref = (freefn); \
-    return _functional_run(v, info, grade, mapfn, true); \
-}
+#define FUNCTIONAL_MD_REF_FIELDGRADIENT_MAP_COST(cls, reftype, grade, mapfn, clonefn, freefn, wkld) \
+    FUNCTIONAL_MD_REF_EMIT(cls, fieldgradient, reftype, grade, mapfn, true, NULL, NULL, SYMMETRY_NONE, clonefn, freefn, FUNCTIONAL_MD_REF_FIELD_OVERLOADS, wkld)
 
 #define FUNCTIONAL_MD_REF_FIELDGRADIENT_MAP(cls, reftype, grade, mapfn, clonefn, freefn) \
-    FUNCTIONAL_MD_REF_FIELDGRADIENT_RUN(cls, reftype, grade, mapfn, clonefn, freefn) \
-    FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, fieldgradient, _##cls##_fieldgradient)
-
-#define FUNCTIONAL_MD_REF_FIELDGRADIENT(cls, reftype, grade, clonefn, freefn) \
-    FUNCTIONAL_MD_REF_FIELDGRADIENT_MAP(cls, reftype, grade, functional_mapnumericalfieldgradient, clonefn, freefn)
-
-#define FUNCTIONAL_MD_REF_FIELDGRADIENT_RUN_COST(cls, reftype, grade, mapfn, clonefn, freefn, wkld) \
-static value _##cls##_fieldgradient(vm *v, objectinstance *self, functional_mapinfo *info) { \
-    reftype ref; \
-    if (!_##cls##_bindref(v, self, info, &ref)) return MORPHO_NIL; \
-    info->cloneref = (clonefn); \
-    info->freeref = (freefn); \
-    info->cost = (wkld); \
-    return _functional_run(v, info, grade, mapfn, true); \
-}
+    FUNCTIONAL_MD_REF_FIELDGRADIENT_MAP_COST(cls, reftype, grade, mapfn, clonefn, freefn, FUNCTIONAL_COST_REGULAR)
 
 #define FUNCTIONAL_MD_REF_FIELDGRADIENT_COST(cls, reftype, grade, clonefn, freefn, wkld) \
-    FUNCTIONAL_MD_REF_FIELDGRADIENT_RUN_COST(cls, reftype, grade, functional_mapnumericalfieldgradient, clonefn, freefn, wkld) \
-    FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, fieldgradient, _##cls##_fieldgradient)
+    FUNCTIONAL_MD_REF_FIELDGRADIENT_MAP_COST(cls, reftype, grade, functional_mapnumericalfieldgradient, clonefn, freefn, wkld)
 
-#define FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_RUN(cls, reftype, grade, fieldgradfn) \
-static value _##cls##_fieldgradient(vm *v, objectinstance *self, functional_mapinfo *info) { \
-    reftype ref; \
-    if (!_##cls##_bindref(v, self, info, &ref)) return MORPHO_NIL; \
-    return _functional_fieldgradient(v, info, grade, (ref.field==info->field ? (fieldgradfn) : NULL)); \
-}
+#define FUNCTIONAL_MD_REF_FIELDGRADIENT(cls, reftype, grade, clonefn, freefn) \
+    FUNCTIONAL_MD_REF_FIELDGRADIENT_COST(cls, reftype, grade, clonefn, freefn, FUNCTIONAL_COST_REGULAR)
 
-#define FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT(cls, reftype, grade, fieldgradfn) \
-    FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_RUN(cls, reftype, grade, fieldgradfn) \
-    FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, fieldgradient, _##cls##_fieldgradient)
-
-#define FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_RUN_COST(cls, reftype, grade, fieldgradfn, wkld) \
+#define FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_COST(cls, reftype, grade, fieldgradfn, wkld) \
 static value _##cls##_fieldgradient(vm *v, objectinstance *self, functional_mapinfo *info) { \
     reftype ref; \
     if (!_##cls##_bindref(v, self, info, &ref)) return MORPHO_NIL; \
     info->cost = (wkld); \
     return _functional_fieldgradient(v, info, grade, (ref.field==info->field ? (fieldgradfn) : NULL)); \
-}
-
-#define FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_COST(cls, reftype, grade, fieldgradfn, wkld) \
-    FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_RUN_COST(cls, reftype, grade, fieldgradfn, wkld) \
+} \
     FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, fieldgradient, _##cls##_fieldgradient)
+
+#define FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT(cls, reftype, grade, fieldgradfn) \
+    FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_COST(cls, reftype, grade, fieldgradfn, FUNCTIONAL_COST_REGULAR)
 
 /* -------------------------------------------------------
  * Compatibility shim

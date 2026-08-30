@@ -1849,9 +1849,9 @@ bool area_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void
 }
 
 FUNCTIONAL_INIT(Area, MESH_GRADE_AREA)
-FUNCTIONAL_MD_INTEGRAND_COST(Area, MESH_GRADE_AREA, area_integrand, FUNCTIONAL_COST_CHEAP)
-FUNCTIONAL_MD_TOTAL_COST(Area, MESH_GRADE_AREA, area_integrand, FUNCTIONAL_COST_CHEAP)
-FUNCTIONAL_MD_GRADIENT_COST(Area, MESH_GRADE_AREA, area_gradient, SYMMETRY_ADD, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_INTEGRAND_COST(Area, MESH_GRADE_AREA, area_integrand, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_TOTAL_COST(Area, MESH_GRADE_AREA, area_integrand, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_GRADIENT(Area, MESH_GRADE_AREA, area_gradient, SYMMETRY_ADD)
 FUNCTIONAL_MD_HESSIAN(Area, MESH_GRADE_AREA, area_integrand)
 
 MORPHO_BEGINCLASS(Area)
@@ -1900,9 +1900,9 @@ bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int 
 }
 
 FUNCTIONAL_INIT(VolumeEnclosed, MESH_GRADE_AREA)
-FUNCTIONAL_MD_INTEGRAND_COST(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand, FUNCTIONAL_COST_CHEAP)
-FUNCTIONAL_MD_TOTAL_COST(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand, FUNCTIONAL_COST_CHEAP)
-FUNCTIONAL_MD_GRADIENT_COST(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, SYMMETRY_ADD, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_INTEGRAND_COST(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_TOTAL_COST(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_GRADIENT_COST(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_gradient, SYMMETRY_ADD, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_HESSIAN(VolumeEnclosed, MESH_GRADE_AREA, volumeenclosed_integrand)
 
 MORPHO_BEGINCLASS(VolumeEnclosed)
@@ -1968,9 +1968,9 @@ bool volume_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, vo
 }
 
 FUNCTIONAL_INIT(Volume, MESH_GRADE_VOLUME)
-FUNCTIONAL_MD_INTEGRAND_COST(Volume, MESH_GRADE_VOLUME, volume_integrand, FUNCTIONAL_COST_CHEAP)
-FUNCTIONAL_MD_TOTAL_COST(Volume, MESH_GRADE_VOLUME, volume_integrand, FUNCTIONAL_COST_CHEAP)
-FUNCTIONAL_MD_GRADIENT_COST(Volume, MESH_GRADE_VOLUME, volume_gradient, SYMMETRY_ADD, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_INTEGRAND_COST(Volume, MESH_GRADE_VOLUME, volume_integrand, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_TOTAL_COST(Volume, MESH_GRADE_VOLUME, volume_integrand, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_GRADIENT_COST(Volume, MESH_GRADE_VOLUME, volume_gradient, SYMMETRY_ADD, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_HESSIAN(Volume, MESH_GRADE_VOLUME, volume_integrand)
 
 MORPHO_BEGINCLASS(Volume)
@@ -2059,26 +2059,28 @@ value ScalarPotential_init__fn_fn(vm *v, int nargs, value *args) {
 }
 
 FUNCTIONAL_MD_REF_BIND(ScalarPotential, scalarpotentialref, scalarpotential_prepareref, scalarpotential_integrand, SCALARPOTENTIAL_FNCLLBL)
-FUNCTIONAL_MD_REF_INTEGRAND(ScalarPotential, scalarpotentialref, MESH_GRADE_VERTEX)
-FUNCTIONAL_MD_REF_TOTAL(ScalarPotential, scalarpotentialref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_INTEGRAND_COST(ScalarPotential, scalarpotentialref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_REF_TOTAL_COST(ScalarPotential, scalarpotentialref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAPEST)
 
-static value _ScalarPotential_gradient(vm *v, objectinstance *self, functional_mapinfo *info) {
-    scalarpotentialref ref;
+static functional_mapcallback *ScalarPotential_choosegradient(vm *v, objectinstance *self, functional_mapinfo *info) {
+    scalarpotentialref *ref = info->ref;
     value fn;
 
     if (objectinstance_getpropertyinterned(self, scalarpotential_gradfunctionproperty, &fn)) {
-        if (!MORPHO_ISCALLABLE(fn)) MORPHO_RAISE(v, SCALARPOTENTIAL_FNCLLBL);
-        ref.fn = fn;
-        info->ref = &ref;
+        if (!MORPHO_ISCALLABLE(fn)) {
+            morpho_runtimeerror(v, SCALARPOTENTIAL_FNCLLBL);
+            return NULL;
+        }
+        ref->fn = fn;
         info->grad = scalarpotential_gradient;
-        return _functional_run(v, info, MESH_GRADE_VERTEX, functional_mapgradient, true);
+        return functional_mapgradient;
     }
 
-    if (!_ScalarPotential_bindref(v, self, info, &ref)) return MORPHO_NIL;
-    return _functional_run(v, info, MESH_GRADE_VERTEX, functional_mapnumericalgradient, true);
+    if (!_ScalarPotential_bindref(v, self, info, ref)) return NULL;
+    return functional_mapnumericalgradient;
 }
 
-FUNCTIONAL_MD_REF_OVERLOADS(ScalarPotential, gradient, _ScalarPotential_gradient)
+FUNCTIONAL_MD_REF_CHOOSEGRADIENT(ScalarPotential, scalarpotentialref, MESH_GRADE_VERTEX, ScalarPotential_choosegradient)
 FUNCTIONAL_MD_REF_HESSIAN(ScalarPotential, scalarpotentialref, MESH_GRADE_VERTEX, NULL, SYMMETRY_NONE)
 
 #define SP_MAPFLAGS (MORPHO_FN_REENTRANT|FUNCTIONAL_MD_MAPFLAGS)
@@ -2292,8 +2294,8 @@ static bool _LinearElasticity_bindref(vm *v, objectinstance *self, functional_ma
     return true;
 }
 
-FUNCTIONAL_MD_REF_INTEGRAND(LinearElasticity, linearelasticityref, ref.grade)
-FUNCTIONAL_MD_REF_TOTAL(LinearElasticity, linearelasticityref, ref.grade)
+FUNCTIONAL_MD_REF_INTEGRAND_COST(LinearElasticity, linearelasticityref, ref.grade, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_REF_TOTAL_COST(LinearElasticity, linearelasticityref, ref.grade, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_REF_NUMERICALGRADIENT(LinearElasticity, linearelasticityref, ref.grade, NULL, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(LinearElasticity)
@@ -2646,8 +2648,8 @@ value EquiElement_init(vm *v, int nargs, value *args) {
 }
 
 FUNCTIONAL_MD_REF_BIND_FORCEGRADE(EquiElement, equielementref, equielement_prepareref, equielement_integrand, FUNCTIONAL_ARGS, MESH_GRADE_VERTEX)
-FUNCTIONAL_MD_REF_INTEGRAND(EquiElement, equielementref, MESH_GRADE_VERTEX)
-FUNCTIONAL_MD_REF_TOTAL(EquiElement, equielementref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_INTEGRAND_COST(EquiElement, equielementref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAPEST)
+FUNCTIONAL_MD_REF_TOTAL_COST(EquiElement, equielementref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_REF_NUMERICALGRADIENT(EquiElement, equielementref, MESH_GRADE_VERTEX, equielement_dependencies, SYMMETRY_ADD)
 FUNCTIONAL_MD_REF_HESSIAN(EquiElement, equielementref, MESH_GRADE_VERTEX, equielement_dependencies, SYMMETRY_ADD)
 
@@ -2782,8 +2784,8 @@ linecurvsq_integrand_cleanup:
 
 FUNCTIONAL_INIT(LineCurvatureSq, MESH_GRADE_VERTEX)
 FUNCTIONAL_MD_REF_BIND_FORCEGRADE(LineCurvatureSq, curvatureref, curvature_prepareref, linecurvsq_integrand, FUNCTIONAL_ARGS, MESH_GRADE_VERTEX)
-FUNCTIONAL_MD_REF_INTEGRAND(LineCurvatureSq, curvatureref, MESH_GRADE_VERTEX)
-FUNCTIONAL_MD_REF_TOTAL(LineCurvatureSq, curvatureref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_INTEGRAND_COST(LineCurvatureSq, curvatureref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_REF_TOTAL_COST(LineCurvatureSq, curvatureref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAP)
 FUNCTIONAL_MD_REF_NUMERICALGRADIENT(LineCurvatureSq, curvatureref, MESH_GRADE_VERTEX, linecurvsq_dependencies, SYMMETRY_ADD)
 FUNCTIONAL_MD_REF_HESSIAN(LineCurvatureSq, curvatureref, MESH_GRADE_VERTEX, linecurvsq_dependencies, SYMMETRY_ADD)
 
@@ -2924,8 +2926,8 @@ linecurvsq_torsion_cleanup:
 
 FUNCTIONAL_INIT(LineTorsionSq, MESH_GRADE_LINE)
 FUNCTIONAL_MD_REF_BIND_FORCEGRADE(LineTorsionSq, curvatureref, curvature_prepareref, linetorsionsq_integrand, FUNCTIONAL_ARGS, MESH_GRADE_LINE)
-FUNCTIONAL_MD_REF_INTEGRAND(LineTorsionSq, curvatureref, MESH_GRADE_LINE)
-FUNCTIONAL_MD_REF_TOTAL(LineTorsionSq, curvatureref, MESH_GRADE_LINE)
+FUNCTIONAL_MD_REF_INTEGRAND_COST(LineTorsionSq, curvatureref, MESH_GRADE_LINE, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_REF_TOTAL_COST(LineTorsionSq, curvatureref, MESH_GRADE_LINE, FUNCTIONAL_COST_CHEAP)
 FUNCTIONAL_MD_REF_NUMERICALGRADIENT(LineTorsionSq, curvatureref, MESH_GRADE_LINE, linetorsionsq_dependencies, SYMMETRY_ADD)
 FUNCTIONAL_MD_REF_HESSIAN(LineTorsionSq, curvatureref, MESH_GRADE_LINE, linetorsionsq_dependencies, SYMMETRY_ADD)
 
@@ -3088,8 +3090,8 @@ meancurvsq_cleanup:
 
 FUNCTIONAL_INIT(MeanCurvatureSq, MESH_GRADE_VERTEX)
 FUNCTIONAL_MD_REF_BIND_FORCEGRADE(MeanCurvatureSq, areacurvatureref, areacurvature_prepareref, meancurvaturesq_integrand, FUNCTIONAL_ARGS, MESH_GRADE_VERTEX)
-FUNCTIONAL_MD_REF_INTEGRAND(MeanCurvatureSq, areacurvatureref, MESH_GRADE_VERTEX)
-FUNCTIONAL_MD_REF_TOTAL(MeanCurvatureSq, areacurvatureref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_INTEGRAND_COST(MeanCurvatureSq, areacurvatureref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_REF_TOTAL_COST(MeanCurvatureSq, areacurvatureref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAP)
 FUNCTIONAL_MD_REF_NUMERICALGRADIENT(MeanCurvatureSq, areacurvatureref, MESH_GRADE_VERTEX, meancurvaturesq_dependencies, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(MeanCurvatureSq)
@@ -3160,8 +3162,8 @@ gausscurv_cleanup:
 
 FUNCTIONAL_INIT(GaussCurvature, MESH_GRADE_VERTEX)
 FUNCTIONAL_MD_REF_BIND_FORCEGRADE(GaussCurvature, areacurvatureref, areacurvature_prepareref, gausscurvature_integrand, FUNCTIONAL_ARGS, MESH_GRADE_VERTEX)
-FUNCTIONAL_MD_REF_INTEGRAND(GaussCurvature, areacurvatureref, MESH_GRADE_VERTEX)
-FUNCTIONAL_MD_REF_TOTAL(GaussCurvature, areacurvatureref, MESH_GRADE_VERTEX)
+FUNCTIONAL_MD_REF_INTEGRAND_COST(GaussCurvature, areacurvatureref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_REF_TOTAL_COST(GaussCurvature, areacurvatureref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAP)
 FUNCTIONAL_MD_REF_NUMERICALGRADIENT(GaussCurvature, areacurvatureref, MESH_GRADE_VERTEX, meancurvaturesq_dependencies, SYMMETRY_ADD)
 
 MORPHO_BEGINCLASS(GaussCurvature)
@@ -3786,8 +3788,8 @@ value NematicElectric_init__field_field(vm *v, int nargs, value *args) {
 }
 
 FUNCTIONAL_MD_REF_BIND_START(NematicElectric, nematicelectricref, nematicelectric_prepareref, nematicelectric_integrand, FUNCTIONAL_ARGS, nematicelectric_startfn)
-FUNCTIONAL_MD_REF_INTEGRAND(NematicElectric, nematicelectricref, ref.grade)
-FUNCTIONAL_MD_REF_TOTAL(NematicElectric, nematicelectricref, ref.grade)
+FUNCTIONAL_MD_REF_INTEGRAND_COST(NematicElectric, nematicelectricref, ref.grade, FUNCTIONAL_COST_CHEAP)
+FUNCTIONAL_MD_REF_TOTAL_COST(NematicElectric, nematicelectricref, ref.grade, FUNCTIONAL_COST_CHEAP)
 FUNCTIONAL_MD_REF_NUMERICALGRADIENT(NematicElectric, nematicelectricref, ref.grade, NULL, SYMMETRY_NONE)
 FUNCTIONAL_MD_REF_FIELDGRADIENT(NematicElectric, nematicelectricref, ref.grade, nematicelectric_cloneref, NULL)
 
@@ -3841,7 +3843,7 @@ value NormSq_init__field(vm *v, int nargs, value *args) {
 FUNCTIONAL_MD_REF_BIND_FORCEGRADE_START(NormSq, fieldref, gradsq_prepareref, normsq_integrand, FUNCTIONAL_ARGS, MESH_GRADE_VERTEX, fieldref_startfn)
 FUNCTIONAL_MD_REF_INTEGRAND_COST(NormSq, fieldref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_REF_TOTAL_COST(NormSq, fieldref, MESH_GRADE_VERTEX, FUNCTIONAL_COST_CHEAPEST)
-FUNCTIONAL_MD_REF_NUMERICALGRADIENT(NormSq, fieldref, MESH_GRADE_VERTEX, NULL, SYMMETRY_NONE)
+FUNCTIONAL_MD_REF_NUMERICALGRADIENT_COST(NormSq, fieldref, MESH_GRADE_VERTEX, NULL, SYMMETRY_NONE, FUNCTIONAL_COST_CHEAPEST)
 FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_COST(NormSq, fieldref, MESH_GRADE_VERTEX, normsq_fieldgradient, FUNCTIONAL_COST_CHEAPEST)
 
 MORPHO_BEGINCLASS(NormSq)
@@ -5515,45 +5517,44 @@ static bool _Integral_bindref(vm *v, objectinstance *self, functional_mapinfo *i
     return true;
 }
 
-/** Select which gradient map to use and run it. */
-static value _Integral_gradient(vm *v, objectinstance *self, functional_mapinfo *info) {
-    integralref ref;
+/** Select which gradient map to use. */
+static functional_mapcallback *Integral_choosegradient(vm *v, objectinstance *self, functional_mapinfo *info) {
+    integralref *ref = info->ref;
 
-    if (!_Integral_bindref(v, self, info, &ref)) return MORPHO_NIL; // Setup info
+    if (!_Integral_bindref(v, self, info, ref)) return NULL;
 
-    functional_mapcallback *mapfn=functional_mapnumericalgradient; // Default finite difference
-    if (ref.optimize && integral_checkfieldonly(ref.uses)) {
+    if (ref->optimize && integral_checkfieldonly(ref->uses)) {
         info->grad=integral_gradient_fq;
-        mapfn=functional_mapgradient; // Analytical
-    } else if (ref.optimize && MORPHO_ISDICTIONARY(ref.method) &&
-               integral_checklocalshapegrad(ref.uses, ref.g, info->mesh->dim)) {
-        info->grad=integral_gradient_xgeom;
-        mapfn=functional_mapgradient; // Analytical
+        return functional_mapgradient;
     }
-    return _functional_run(v, info, ref.g, mapfn, true);
+    if (ref->optimize && MORPHO_ISDICTIONARY(ref->method) &&
+        integral_checklocalshapegrad(ref->uses, ref->g, info->mesh->dim)) {
+        info->grad=integral_gradient_xgeom;
+        return functional_mapgradient;
+    }
+    return functional_mapnumericalgradient;
 }
 
-/** Select which fieldgradient map to use and run it. */
-static value _Integral_fieldgradient(vm *v, objectinstance *self, functional_mapinfo *info) {
-    integralref ref;
+/** Select which fieldgradient map to use. */
+static functional_mapcallback *Integral_choosefieldgradient(vm *v, objectinstance *self, functional_mapinfo *info) {
+    integralref *ref = info->ref;
 
-    if (!_Integral_bindref(v, self, info, &ref)) return MORPHO_NIL; // Setup info
+    if (!_Integral_bindref(v, self, info, ref)) return NULL;
     info->cloneref=integral_cloneref;
     info->freeref=integral_freeref;
 
-    functional_mapcallback *mapfn=functional_mapnumericalfieldgradient; // Default finite difference
-    if (ref.optimize && MORPHO_ISDICTIONARY(ref.method) &&
-        integral_checklocalfieldgrad(ref.uses, info->field)) {
-        mapfn=integral_mapfieldgradient; // Analytical
+    if (ref->optimize && MORPHO_ISDICTIONARY(ref->method) &&
+        integral_checklocalfieldgrad(ref->uses, info->field)) {
+        return integral_mapfieldgradient;
     }
-    return _functional_run(v, info, ref.g, mapfn, true);
+    return functional_mapnumericalfieldgradient;
 }
 
 FUNCTIONAL_MD_REF_INTEGRAND(Integral, integralref, ref.g)
 FUNCTIONAL_MD_REF_TOTAL(Integral, integralref, ref.g)
-FUNCTIONAL_MD_REF_OVERLOADS(Integral, gradient, _Integral_gradient)
+FUNCTIONAL_MD_REF_CHOOSEGRADIENT(Integral, integralref, ref.g, Integral_choosegradient)
 FUNCTIONAL_MD_REF_HESSIAN(Integral, integralref, ref.g, NULL, SYMMETRY_NONE)
-FUNCTIONAL_MD_REF_FIELD_OVERLOADS(Integral, fieldgradient, _Integral_fieldgradient)
+FUNCTIONAL_MD_REF_CHOOSEFIELDGRADIENT(Integral, integralref, ref.g, Integral_choosefieldgradient)
 
 /** Initialize a Line/Area/Volume/Jump integral object */
 static value integral_init(vm *v, int nargs, value *args) {

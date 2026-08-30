@@ -1331,7 +1331,7 @@ static void integrator_transformtorefelement(integrator *integrate, double *rmat
 }
 
 /** Transform from reference element barycentric coordinates to physical coordinates */
-static void integrator_interpolatecoordinates(integrator *integrate, double *lambda, double *vmat, double *x) {
+static inline void integrator_interpolatecoordinates(integrator *integrate, double *lambda, double *vmat, double *x) {
     // Fast inlined multiply and add loop: Multiply dim x nbary (vmat) with nbary x 1 (lambda) to get dim x 1 (x)
     int dim=integrate->dim, nbary=integrate->nbary;
     for (int j=0; j<dim; j++) x[j]=0;
@@ -1339,11 +1339,18 @@ static void integrator_interpolatecoordinates(integrator *integrate, double *lam
 }
 
 /** Physical interpolation on the root element: x = sum lambda_k vertex_k (no packed vmat). */
-static void integrator_interpolatefromx(integrator *integrate, double *lambda, double *x) {
+static inline void integrator_interpolatefromx(integrator *integrate, double *lambda, double *x) {
     int dim=integrate->dim, nbary=integrate->nbary;
+    double **xv=integrate->x;
+    if (nbary==3) {
+        double l0=lambda[0], l1=lambda[1], l2=lambda[2];
+        double *a=xv[0], *b=xv[1], *c=xv[2];
+        for (int j=0; j<dim; j++) x[j]=l0*a[j]+l1*b[j]+l2*c[j];
+        return;
+    }
     for (int j=0; j<dim; j++) {
         double s=0.0;
-        for (int k=0; k<nbary; k++) s+=lambda[k]*integrate->x[k][j];
+        for (int k=0; k<nbary; k++) s+=lambda[k]*xv[k][j];
         x[j]=s;
     }
 }
@@ -1371,17 +1378,16 @@ bool integrator_sumquantityweighted(int n, double *wts, value *q, value *out) {
     return success;
 }
 
-/** Interpolates quantities */
-static void integrator_interpolatequantities(integrator *integrate, double *bary) {
+/** Interpolates quantities. CG1 (`nnodes==nbary`) uses barycentric weights directly. */
+static inline void integrator_interpolatequantities(integrator *integrate, double *bary) {
     for (int i=0; i<integrate->nquantity; i++) {
         int nnodes = integrate->quantity[i].nnodes;
-        double wts[nnodes];
-        if (integrate->quantity[i].ifn) {
-            (integrate->quantity[i].ifn) (bary, wts);
-        } else {
-            for (int k=0; k<nnodes; k++) wts[k]=bary[k];
+        double *wts=bary;
+        double wtbuf[nnodes];
+        if (integrate->quantity[i].ifn && nnodes!=integrate->nbary) {
+            (integrate->quantity[i].ifn) (bary, wtbuf);
+            wts=wtbuf;
         }
-        
         integrator_sumquantityweighted(nnodes, wts, integrate->quantity[i].vals, &integrate->qval[i]);
     }
 }
@@ -1391,7 +1397,7 @@ static void integrator_interpolatequantities(integrator *integrate, double *bary
  * -------------------------------- */
 
 /** Calculates the L_infinity norm of a vector. */
-static double integrator_linfinity(unsigned int n, const double *v) {
+static inline double integrator_linfinity(unsigned int n, const double *v) {
     if (n==1) return fabs(v[0]);
     double m=0.0;
     for (unsigned int i=0; i<n; i++) {
@@ -1450,7 +1456,7 @@ static double *integrator_worklval(integrator *integrate, quadratureworkitem *wo
 }
 
 /** Weighted sum of node values into out[nout]: out_c = sum_i wts[i] * f[i*nout+c]. */
-static void integrator_sumweighted(unsigned int nnodes, unsigned int nout, const double *f, const double *wts, double *out) {
+static inline void integrator_sumweighted(unsigned int nnodes, unsigned int nout, const double *f, const double *wts, double *out) {
     if (nout==1) {
         double s=0.0;
         for (unsigned int i=0; i<nnodes; i++) s+=wts[i]*f[i];
@@ -1492,7 +1498,7 @@ static void integrator_storecentroid(integrator *integrate, bool ridentity, cons
  * @param[out] f - the values of the integrand at the quadrature points (nout components per node)
  * @param[in] ridentity - set true to skip the transformation from local to reference element coordinates
  * @return true if the evaluation was successful, false otherwise */
-static bool integrator_evalfn(integrator *integrate, quadraturerule *rule, int imin, int imax, double *rmat, double *vmat, double *x, double *f, bool ridentity) {
+static inline bool integrator_evalfn(integrator *integrate, quadraturerule *rule, int imin, int imax, double *rmat, double *vmat, double *x, double *f, bool ridentity) {
     int nbary=integrate->nbary;
     unsigned int nout=integrate->nout;
     double nodebuf[nbary];
@@ -1527,12 +1533,19 @@ static bool integrator_evaluaterule(integrator *integrate, quadraturerule *rule,
     if (!integrator_evalfn(integrate, rule, imin, rule->nnodes, rmat, vmat, x, f, ridentity)) return false;
     integrator_storecentroid(integrate, ridentity, f);
     integrator_sumweighted(rule->nnodes, nout, f, rule->weights, r);
-    for (unsigned int c=0; c<nout; c++) {
-        wval[c]=work->weight*r[c];
-        wlval[c]=wval[c];
+    if (nout==1) {
+        *wval=work->weight*r[0];
+        *wlval=*wval;
+        work->val=fabs(*wval);
+        work->lval=work->val;
+    } else {
+        for (unsigned int c=0; c<nout; c++) {
+            wval[c]=work->weight*r[c];
+            wlval[c]=wval[c];
+        }
+        work->val=integrator_linfinity(nout, wval);
+        work->lval=work->val;
     }
-    work->val=integrator_linfinity(nout, wval);
-    work->lval=work->val;
     integrate->acceptedrule=rule;
     return true;
 }
@@ -1563,26 +1576,42 @@ static bool integrator_applyrule(integrator *integrate, quadraturerule *rule, do
     // Estimate error
     if (rule->ext!=NULL) {
         int nmin=rule->nnodes;
-        for (unsigned int c=0; c<nout; c++) rprev[c]=wval[c]/work->weight;
-
-        // Attempt p-refinement if available
-        for (quadraturerule *q=rule->ext; q!=NULL; q=q->ext) {
-            if (!integrator_evalfn(integrate, q, nmin, q->nnodes, rmat, vmat, x, f, ridentity)) return false;
-            integrator_sumweighted(q->nnodes, nout, f, q->weights, r);
-            for (unsigned int c=0; c<nout; c++) diff[c]=r[c]-rprev[c];
-            double eps=integrator_linfinity(nout, diff);
-            double rn=integrator_linfinity(nout, r);
-            nmin=q->nnodes;
-            for (unsigned int c=0; c<nout; c++) {
-                wlval[c]=work->weight*rprev[c];
-                wval[c]=work->weight*r[c];
-                rprev[c]=r[c];
+        if (nout==1) {
+            double rprev=*wval/work->weight, r;
+            for (quadraturerule *q=rule->ext; q!=NULL; q=q->ext) {
+                if (!integrator_evalfn(integrate, q, nmin, q->nnodes, rmat, vmat, x, f, ridentity)) return false;
+                integrator_sumweighted(q->nnodes, 1, f, q->weights, &r);
+                double eps=r-rprev, rn=fabs(r);
+                *wlval=work->weight*rprev;
+                *wval=work->weight*r;
+                work->lval=fabs(*wlval);
+                work->val=fabs(*wval);
+                work->err=work->weight*fabs(eps);
+                integrate->acceptedrule=q;
+                nmin=q->nnodes;
+                rprev=r;
+                if (rn<integrate->ztol || (rn>0.0 && fabs(eps)/rn<integrate->tol)) break;
             }
-            work->lval=integrator_linfinity(nout, wlval);
-            work->val=integrator_linfinity(nout, wval);
-            work->err=work->weight*eps;
-            integrate->acceptedrule=q;
-            if (rn<integrate->ztol || (rn>0.0 && eps/rn<integrate->tol)) break;
+        } else {
+            for (unsigned int c=0; c<nout; c++) rprev[c]=wval[c]/work->weight;
+            for (quadraturerule *q=rule->ext; q!=NULL; q=q->ext) {
+                if (!integrator_evalfn(integrate, q, nmin, q->nnodes, rmat, vmat, x, f, ridentity)) return false;
+                integrator_sumweighted(q->nnodes, nout, f, q->weights, r);
+                for (unsigned int c=0; c<nout; c++) diff[c]=r[c]-rprev[c];
+                double eps=integrator_linfinity(nout, diff);
+                double rn=integrator_linfinity(nout, r);
+                nmin=q->nnodes;
+                for (unsigned int c=0; c<nout; c++) {
+                    wlval[c]=work->weight*rprev[c];
+                    wval[c]=work->weight*r[c];
+                    rprev[c]=r[c];
+                }
+                work->lval=integrator_linfinity(nout, wlval);
+                work->val=integrator_linfinity(nout, wval);
+                work->err=work->weight*eps;
+                integrate->acceptedrule=q;
+                if (rn<integrate->ztol || (rn>0.0 && eps/rn<integrate->tol)) break;
+            }
         }
     } else if (integrate->errrule) {
         if (rule==integrate->errrule) return true;

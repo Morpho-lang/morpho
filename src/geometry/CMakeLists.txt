@@ -24,3 +24,5 @@ target_sources(morpho
         mesh.h
         selection.h
 )
+
+add_subdirectory(functionals)

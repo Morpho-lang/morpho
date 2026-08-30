@@ -11,6 +11,8 @@
 #ifdef MORPHO_INCLUDE_GEOMETRY
 
 #include <stdio.h>
+#include <string.h>
+#include <math.h>
 #include "morpho.h"
 #include "mesh.h"
 #include "field.h"
@@ -20,40 +22,13 @@
  * Functionals
  * ------------------------------------------------------- */
 
-/* Functional properties */
+/* -------------------------------------------------------
+ * Generic functional properties and methods
+ * ------------------------------------------------------- */
+
 #define FUNCTIONAL_GRADE_PROPERTY             "grade"
 #define FUNCTIONAL_FIELD_PROPERTY             "field"
-#define SCALARPOTENTIAL_FUNCTION_PROPERTY     "function"
-#define SCALARPOTENTIAL_GRADFUNCTION_PROPERTY "gradfunction"
-#define LINEARELASTICITY_REFERENCE_PROPERTY   "reference"
-#define LINEARELASTICITY_WTBYREF_PROPERTY     "weightByReference"
-#define LINEARELASTICITY_POISSON_PROPERTY     "poissonratio"
-#define LINEARELASTICITY_CACHE_PROPERTY       "_refcache"
-#define HYDROGEL_A_PROPERTY                   "a"
-#define HYDROGEL_B_PROPERTY                   "b"
-#define HYDROGEL_C_PROPERTY                   "c"
-#define HYDROGEL_D_PROPERTY                   "d"
-#define HYDROGEL_PHIREF_PROPERTY              "phiref"
-#define HYDROGEL_PHI0_PROPERTY                "phi0"
-#define EQUIELEMENT_WEIGHT_PROPERTY           "weight"
 
-#define NEMATIC_KSPLAY_PROPERTY               "ksplay"
-#define NEMATIC_KTWIST_PROPERTY               "ktwist"
-#define NEMATIC_KBEND_PROPERTY                "kbend"
-#define NEMATIC_PITCH_PROPERTY                "pitch"
-#define NEMATIC_DIRECTOR_PROPERTY             "director"
-
-#define CURVATURE_INTEGRANDONLY_PROPERTY      "integrandonly"
-#define CURVATURE_GEODESIC_PROPERTY           "geodesic"
-
-#define INTEGRAL_METHOD_PROPERTY              "method"
-#define INTEGRAL_OPTIMIZE_PROPERTY            "optimize"
-
-#define JUMP_STRATEGY_LABEL                   "strategy"
-#define JUMP_STRATEGY_QUADRATURE              "quadrature"
-#define JUMP_STRATEGY_CENTROID                "centroid"
-
-/* Functional methods */
 #define FUNCTIONAL_INTEGRAND_METHOD    "integrand"
 #define FUNCTIONAL_TOTAL_METHOD        "total"
 #define FUNCTIONAL_GRADIENT_METHOD     "gradient"
@@ -62,41 +37,10 @@
 #define FUNCTIONAL_INTEGRANDFORELEMENT_METHOD      "integrandForElement"
 #define FUNCTIONAL_UPDATE_METHOD       "update"
 
-/* Special functions that can be used in integrands */
-#define ELEMENTID_FUNCTION             "elementid"
-#define TANGENT_FUNCTION               "tangent"
-#define NORMAL_FUNCTION                "normal"
-#define GRAD_FUNCTION                  "grad"
-#define HESS_FUNCTION                  "hess"
-#define CGTENSOR_FUNCTION              "cgtensor"
-#define JUMPDN_FUNCTION                "jumpdn"
-#define JACOBIAN_FUNCTION              "jacobian"
-#define INVJACOBIAN_FUNCTION           "invjacobian"
+/* -------------------------------------------------------
+ * Generic functional error messages
+ * ------------------------------------------------------- */
 
-/* Functional names */
-#define LENGTH_CLASSNAME               "Length"
-#define AREA_CLASSNAME                 "Area"
-#define AREAENCLOSED_CLASSNAME         "AreaEnclosed"
-#define VOLUME_CLASSNAME               "Volume"
-#define VOLUMEENCLOSED_CLASSNAME       "VolumeEnclosed"
-#define SCALARPOTENTIAL_CLASSNAME      "ScalarPotential"
-#define LINEARELASTICITY_CLASSNAME     "LinearElasticity"
-#define HYDROGEL_CLASSNAME             "Hydrogel"
-#define EQUIELEMENT_CLASSNAME          "EquiElement"
-#define LINECURVATURESQ_CLASSNAME      "LineCurvatureSq"
-#define LINETORSIONSQ_CLASSNAME        "LineTorsionSq"
-#define MEANCURVATURESQ_CLASSNAME      "MeanCurvatureSq"
-#define GAUSSCURVATURE_CLASSNAME       "GaussCurvature"
-#define GRADSQ_CLASSNAME               "GradSq"
-#define NORMSQ_CLASSNAME               "NormSq"
-#define LINEINTEGRAL_CLASSNAME         "LineIntegral"
-#define AREAINTEGRAL_CLASSNAME         "AreaIntegral"
-#define VOLUMEINTEGRAL_CLASSNAME       "VolumeIntegral"
-#define JUMP_CLASSNAME                 "Jump"
-#define NEMATIC_CLASSNAME              "Nematic"
-#define NEMATICELECTRIC_CLASSNAME      "NematicElectric"
-
-/* Errors */
 #define FUNC_ELNTFND                   "FnctlELNtFnd"
 #define FUNC_ELNTFND_MSG               "Mesh does not provide elements of grade %u."
 
@@ -105,42 +49,6 @@
 
 #define FUNC_NOFESPACE                 "FnctlNoFESpc"
 #define FUNC_NOFESPACE_MSG             "This Field has no finite element space; pass finiteelementspace=... or omit the opt-out."
-
-#define SCALARPOTENTIAL_FNCLLBL        "SclrPtFnCllbl"
-#define SCALARPOTENTIAL_FNCLLBL_MSG    "ScalarPotential function is not callable."
-
-#define INTEGRAL_ARGS                  "IntgrlArgs"
-#define INTEGRAL_ARGS_MSG              "Integral functionals require a callable argument, followed by zero or more Fields."
-
-#define INTEGRAL_FLD                   "IntgrlFld"
-#define INTEGRAL_FLD_MSG               "Can't identify field."
-
-#define INTEGRAL_DFFEVL                "IntgrlDffEvl"
-#define INTEGRAL_DFFEVL_MSG            "Derivative evaluation failed or is unsupported by the finite element space."
-
-#define INTEGRAL_SPCLFN                "IntgrlSpclFn"
-#define INTEGRAL_SPCLFN_MSG            "Special function '%s' can't be called outside of an Integral."
-
-#define INTEGRAL_NESTED                "IntgrlNested"
-#define INTEGRAL_NESTED_MSG            "Nested Integrals are not supported."
-
-#define INTEGRAL_FASTPATH              "IntgrlFstPath"
-#define INTEGRAL_FASTPATH_MSG          "Special function '%s' is not supported by this local derivative path."
-
-#define JUMP_UNIMPL                    "JumpUnimpl"
-#define JUMP_UNIMPL_MSG                "This Jump evaluation is not implemented yet."
-
-#define VOLUMEENCLOSED_ZERO            "VolEnclZero"
-#define VOLUMEENCLOSED_ZERO_MSG        "VolumeEnclosed detected an element of zero size. Check that a mesh point is not coincident with the origin."
-
-#define HYDROGEL_FLDGRD                "HydrglFldGrd"
-#define HYDROGEL_FLDGRD_MSG            "Hydrogel has been given phi0 as a Field that lacks scalar elements in grade %u."
-
-#define HYDROGEL_ZEEROREFELEMENT       "HydrglZrRfVl"
-#define HYDROGEL_ZEEROREFELEMENT_MSG   "Reference element %u has tiny volume V=%g, V0=%g\n"
-
-#define HYDROGEL_BNDS                  "HydrglBnds"
-#define HYDROGEL_BNDS_MSG              "Phi outside bounds at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n"
 
 #define FUNCTIONAL_ARGS                "FnctlArgs"
 #define FUNCTIONAL_ARGS_MSG            "Invalid arguments passed to this functional."
@@ -245,21 +153,127 @@ bool functional_startmap(vm *v, functional_mapinfo *info);
 bool functional_endmap(vm *v, functional_mapinfo *info);
 bool functional_runmap(vm *v, functional_mapinfo *info, functional_mapcallback *mapfn, value *out);
 
-void functional_vecadd(unsigned int n, double *a, double *b, double *out);
-void functional_vecaddscale(unsigned int n, double *a, double lambda, double *b, double *out);
-void functional_vecsub(unsigned int n, double *a, double *b, double *out);
-void functional_vecscale(unsigned int n, double lambda, double *a, double *out);
-double functional_vecnorm(unsigned int n, double *a);
-double functional_vecdot(unsigned int n, double *a, double *b);
-void functional_veccross(double *a, double *b, double *out);
-void functional_veccross2d(double *a, double *b, double *out);
+/** Add two vectors */
+static inline void functional_vecadd(unsigned int n, double *a, double *b, double *out) {
+    for (unsigned int i=0; i<n; i++) out[i]=a[i]+b[i];
+}
 
-bool functional_matinv2x2(double *e);
-bool functional_matinv3x3(double *e);
-bool functional_matinv(unsigned int n, double *e);
-void functional_matmul2x2(double *A, double *B, double *C);
-void functional_matmul3x3(double *A, double *B, double *C);
-void functional_matmul(unsigned int m, unsigned int k, unsigned int n, double *A, double *B, double *C);
+/** Add with scale */
+static inline void functional_vecaddscale(unsigned int n, double *a, double lambda, double *b, double *out) {
+    for (unsigned int i=0; i<n; i++) out[i]=a[i]+lambda*b[i];
+}
+
+/** Subtract two vectors */
+static inline void functional_vecsub(unsigned int n, double *a, double *b, double *out) {
+    for (unsigned int i=0; i<n; i++) out[i]=a[i]-b[i];
+}
+
+/** Scale a vector */
+static inline void functional_vecscale(unsigned int n, double lambda, double *a, double *out) {
+    for (unsigned int i=0; i<n; i++) out[i]=lambda*a[i];
+}
+
+/** Dot product */
+static inline double functional_vecdot(unsigned int n, double *a, double *b) {
+    double s=0.0;
+    for (unsigned int i=0; i<n; i++) s+=a[i]*b[i];
+    return s;
+}
+
+/** Euclidean norm */
+static inline double functional_vecnorm(unsigned int n, double *a) {
+    return sqrt(functional_vecdot(n, a, a));
+}
+
+/** 3D cross product  */
+static inline void functional_veccross(double *a, double *b, double *out) {
+    out[0]=a[1]*b[2]-a[2]*b[1];
+    out[1]=a[2]*b[0]-a[0]*b[2];
+    out[2]=a[0]*b[1]-a[1]*b[0];
+}
+
+/** 2D cross product  */
+static inline void functional_veccross2d(double *a, double *b, double *out) {
+    *out=a[0]*b[1]-a[1]*b[0];
+}
+
+/** In-place inverse of a 1×1, 2×2 or 3×3 column-major matrix. Returns false if singular.
+ *  2×2 is a closed form; 3×3 is a looped cofactor. See benchmarks/matrix/. */
+static inline bool functional_matinv2x2(double *e) {
+    double det=e[0]*e[3]-e[2]*e[1];
+    if (det==0.0) return false;
+    double s=1.0/det, a00=e[0];
+    e[0]=e[3]*s; e[1]=-e[1]*s; e[2]=-e[2]*s; e[3]=a00*s;
+    return true;
+}
+
+static inline double _functional_minor3(double *a, unsigned int i, unsigned int j) {
+    unsigned int r0=i?0:1, r1=i==2?1:2, c0=j?0:1, c1=j==2?1:2;
+    return a[r0+c0*3]*a[r1+c1*3]-a[r0+c1*3]*a[r1+c0*3];
+}
+
+static inline bool functional_matinv3x3(double *e) {
+    double a[9], c[9], det=0.0;
+    memcpy(a, e, sizeof a);
+    for (unsigned int j=0; j<3; j++) {
+        for (unsigned int i=0; i<3; i++) {
+            double m=_functional_minor3(a, i, j);
+            c[i+j*3]=(i+j)%2 ? -m : m;
+        }
+    }
+    det=a[0]*c[0]+a[3]*c[3]+a[6]*c[6];
+    if (det==0.0) return false;
+    det=1.0/det;
+    for (unsigned int j=0; j<3; j++) {
+        for (unsigned int i=0; i<3; i++) e[i+j*3]=c[j+i*3]*det;
+    }
+    return true;
+}
+
+static inline bool functional_matinv(unsigned int n, double *e) {
+    if (n==1) { if (e[0]==0.0) return false; e[0]=1.0/e[0]; return true; }
+    if (n==2) return functional_matinv2x2(e);
+    if (n==3) return functional_matinv3x3(e);
+    return false;
+}
+
+/** C <- A*B for small column-major matrices. C may alias A or B. */
+static inline void _functional_matvec2(double *A, double *b, double *c) {
+    c[0]=A[0]*b[0]+A[2]*b[1];
+    c[1]=A[1]*b[0]+A[3]*b[1];
+}
+
+static inline void _functional_matvec3(double *A, double *b, double *c) {
+    c[0]=A[0]*b[0]+A[3]*b[1]+A[6]*b[2];
+    c[1]=A[1]*b[0]+A[4]*b[1]+A[7]*b[2];
+    c[2]=A[2]*b[0]+A[5]*b[1]+A[8]*b[2];
+}
+
+static inline void functional_matmul2x2(double *A, double *B, double *C) {
+    double t[4];
+    for (int j=0; j<2; j++) _functional_matvec2(A, B+2*j, t+2*j);
+    memcpy(C, t, sizeof t);
+}
+
+static inline void functional_matmul3x3(double *A, double *B, double *C) {
+    double t[9];
+    for (int j=0; j<3; j++) _functional_matvec3(A, B+3*j, t+3*j);
+    memcpy(C, t, sizeof t);
+}
+
+static inline void functional_matmul(unsigned int m, unsigned int k, unsigned int n, double *A, double *B, double *C) {
+    if (m==2 && k==2 && n==2) { functional_matmul2x2(A, B, C); return; }
+    if (m==3 && k==3 && n==3) { functional_matmul3x3(A, B, C); return; }
+    double t[m*n];
+    for (unsigned int j=0; j<n; j++) {
+        for (unsigned int i=0; i<m; i++) {
+            double s=0.0;
+            for (unsigned int p=0; p<k; p++) s+=A[i+p*m]*B[p+j*k];
+            t[i+j*m]=s;
+        }
+    }
+    memcpy(C, t, sizeof(double)*(size_t)m*(size_t)n);
+}
 
 bool functional_elementsize(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, double *out);
 bool functional_elementgradient_scale(vm *v, objectmesh *mesh, grade g, elementid id, int nv, int *vid, objectmatrix *frc, double scale);
@@ -267,6 +281,76 @@ bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, 
 
 bool functional_readgrade(objectinstance *self, grade *g);
 void functional_setgrade(objectinstance *self, grade g);
+
+double functional_fdstepsize(double x, int order);
+
+/** Shared Field + grade ref used by GradSq, NormSq and Nematic. */
+typedef struct {
+    objectfield *field;
+    grade grade;
+} fieldref;
+
+void functional_fespaceerror(vm *v, objectfield *field, grade g);
+bool functional_preparefespacefield(vm *v, objectfield *field, grade g);
+bool functional_preparefieldlist(vm *v, value *fields, int nfields, grade g);
+bool fieldref_startfn(vm *v, functional_mapinfo *info);
+
+#define FUNCTIONAL_FESPACE_FAIL(v, field, g) \
+    { functional_fespaceerror(v, field, g); return false; }
+
+bool functional_countelements(objectmesh *mesh, grade g, int *n, objectsparse **s);
+
+void functional_accum(double *p, double inc);
+bool functional_addtocolumn(objectmatrix *a, MatrixIdx_t col, double alpha, double *b);
+bool functional_addtoelement(objectmatrix *a, MatrixIdx_t row, MatrixIdx_t col, double inc);
+
+/* Internal map helpers used by Integral and Jump */
+typedef bool (functional_mapfn) (vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out);
+typedef bool (functional_processfn) (void *task);
+
+typedef struct {
+    elementid start, end;
+    elementid id;
+    elementid nel;
+    varray_elementid *skip;
+    unsigned int sindx;
+    grade g;
+    objectsparse *conn;
+    functional_mapfn *mapfn;
+    functional_processfn *processfn;
+    vm *v;
+    objectmesh *mesh;
+    objectfield *field;
+    objectselection *selection;
+    functional_mapinfo *mapinfo;
+    functional_taskstart *taskstart;
+    functional_taskend *taskend;
+    void *ref;
+    void *result;
+    void *out;
+    bool usesubkernel;
+    _MORPHO_PADDING;
+} functional_task;
+
+typedef struct sfespace fespace;
+
+typedef struct {
+    functional_mapinfo *info;
+    objectfield *field;
+    functional_integrand *integrand;
+    fespace *disc;
+    objectsparse *conn;
+    void *ref;
+} functional_numericalfieldgradientref;
+
+int functional_ntasks(functional_mapinfo *info);
+int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, functional_task *task, varray_elementid *imageids);
+void functional_cleanuptasks(vm *v, int ntask, functional_task *task, varray_elementid *imageids);
+bool functional_map(int ntasks, functional_task *tasks);
+bool functional_numericalfieldgradentry(vm *v, objectmesh *mesh, elementid eid, objectfield *field, grade g, elementid i, int indx, int nv, int *vid, functional_integrand *integrand, void *ref, objectfield *grad);
+bool functional_numericalfieldgradientmapfn(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, void *out);
+bool functional_preparenumericalfieldgradientref(vm *v, functional_mapinfo *info, bool clone, functional_numericalfieldgradientref *tref, objectfield **fieldclone);
+void functional_clearnumericalfieldgradientref(functional_mapinfo *info, functional_numericalfieldgradientref *tref, objectfield *fieldclone);
 
 /* Helpers used by FUNCTIONAL_MD_* macros. TODO: Make static once shims removed */
 void _functional_mapinfo(functional_mapinfo *info, objectmesh *mesh, objectselection *sel, objectfield *field);

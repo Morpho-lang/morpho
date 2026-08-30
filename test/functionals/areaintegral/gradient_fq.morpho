@@ -18,24 +18,20 @@ fn landau(x, qv) {
     return qt2 + qt2*qt2
 }
 
-var bulk = AreaIntegral(landau, q, method={})
+var bulk = AreaIntegral(landau, q)
 print (bulk.gradient(m) - numericalgradient(bulk, m)).norm() < 1e-5
 // expect: true
 
-var bulko = AreaIntegral(landau, q, method={}, optimize=false)
+var bulko = AreaIntegral(landau, q, optimize=false)
 print (bulko.gradient(m) - numericalgradient(bulko, m)).norm() < 1e-5
-// expect: true
-
-var bulkold = AreaIntegral(landau, q)
-print (bulkold.gradient(m) - numericalgradient(bulkold, m)).norm() < 1e-5
 // expect: true
 
 fn usesx(x, qv) {
     return x[0]*qv.inner(qv)
 }
 
-var sx = AreaIntegral(usesx, q, method={})
-var sxo = AreaIntegral(usesx, q, method={}, optimize=false)
+var sx = AreaIntegral(usesx, q)
+var sxo = AreaIntegral(usesx, q, optimize=false)
 print (sx.gradient(m) - sxo.gradient(m)).norm() < 1e-5
 // expect: true
 print (sx.gradient(m) - numericalgradient(sx, m)).norm() < 1e-5
@@ -46,7 +42,7 @@ fn usesgrad(x, qv) {
     return g[0].inner(g[0]) + g[1].inner(g[1])
 }
 
-var sg = AreaIntegral(usesgrad, q, method={})
+var sg = AreaIntegral(usesgrad, q)
 print (sg.gradient(m) - numericalgradient(sg, m)).norm() < 1e-4
 // expect: true
 
@@ -63,8 +59,8 @@ fn usesn(x, qv) {
     return qv.inner(normal())
 }
 
-var sn = AreaIntegral(usesn, q3, method={})
-var sno = AreaIntegral(usesn, q3, method={}, optimize=false)
+var sn = AreaIntegral(usesn, q3)
+var sno = AreaIntegral(usesn, q3, optimize=false)
 print (sn.gradient(m3) - sno.gradient(m3)).norm() < 1e-5
 // expect: true
 print (sn.gradient(m3) - numericalgradient(sn, m3)).norm() < 1e-5

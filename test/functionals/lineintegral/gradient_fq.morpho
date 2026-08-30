@@ -10,7 +10,7 @@ fn fq(x, qv) {
     return qv^2
 }
 
-var ll = LineIntegral(fq, q, method={})
+var ll = LineIntegral(fq, q)
 print (ll.gradient(m) - numericalgradient(ll, m)).norm() < 1e-5
 // expect: true
 
@@ -18,8 +18,8 @@ fn usesx(x, qv) {
     return x[0]*qv
 }
 
-var sx = LineIntegral(usesx, q, method={})
-var sxo = LineIntegral(usesx, q, method={}, optimize=false)
+var sx = LineIntegral(usesx, q)
+var sxo = LineIntegral(usesx, q, optimize=false)
 print (sx.gradient(m) - sxo.gradient(m)).norm() < 1e-5
 // expect: true
 print (sx.gradient(m) - numericalgradient(sx, m)).norm() < 1e-5
@@ -29,8 +29,8 @@ fn usestangent(x, qv) {
     return qv*tangent()[0]
 }
 
-var st = LineIntegral(usestangent, q, method={})
-var sto = LineIntegral(usestangent, q, method={}, optimize=false)
+var st = LineIntegral(usestangent, q)
+var sto = LineIntegral(usestangent, q, optimize=false)
 print (st.gradient(m) - sto.gradient(m)).norm() < 1e-5
 // expect: true
 print (st.gradient(m) - numericalgradient(st, m)).norm() < 1e-5

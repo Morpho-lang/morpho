@@ -16,9 +16,9 @@ print f.evalElement(0, [1, 0]) == f.evalElement(0, [0.5, 0.5])
 print abs(f.evalElement(0, [0.25, 0.75]) - 0.25) < 1e-12
 // expect: true
 
-print abs(LineIntegral(fn (x, u) u, f, method={ }).total(m) - 0.5) < 1e-10
+print abs(LineIntegral(fn (x, u) u, f).total(m) - 0.5) < 1e-10
 // expect: true
 
 var g = Field(m, fn (x,y,z) 2, finiteelementspace=l)
-print abs(LineIntegral(fn (x, u) u, g, method={ }).total(m) - 2) < 1e-10
+print abs(LineIntegral(fn (x, u) u, g).total(m) - 2) < 1e-10
 // expect: true

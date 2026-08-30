@@ -50,7 +50,7 @@ class QTensor {
       var qt2=qt*qt
       return self.a2*qt2 + self.a4*qt2*qt2
     }
-    var bulk = AreaIntegral(landau, self.q_tensor, method={})
+    var bulk = AreaIntegral(landau, self.q_tensor)
     self.problem.addenergy(bulk)
 
     // Define anchoring energy functional at the boundary
@@ -60,7 +60,7 @@ class QTensor {
       var wxy = t[0]*t[1]
       return (q[0]-wxx)^2+(q[1]-wxy)^2
     }
-    var anchor = LineIntegral(anchoring, self.q_tensor, method={})
+    var anchor = LineIntegral(anchoring, self.q_tensor)
     self.problem.addenergy(anchor, selection=self.bnd, prefactor = self.EA)
 
     // The elastic energy is the grad-squared of the q-tensor
@@ -69,7 +69,7 @@ class QTensor {
       return g[0].inner(g[0]) + g[1].inner(g[1]) 
     }
 
-    var elastic = AreaIntegral(elasticity, self.q_tensor, method={})
+    var elastic = AreaIntegral(elasticity, self.q_tensor)
     self.problem.addenergy(elastic, prefactor = self.K)
 
     return self.problem

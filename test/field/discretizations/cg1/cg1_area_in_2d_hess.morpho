@@ -20,4 +20,4 @@ fn integrand(x, q) {
 }
 
 var f = Field(m, fn (x,y) 3 - 4*x + 2*y, finiteelementspace=l)
-print AreaIntegral(integrand, f, method={ }).total(m)
+print AreaIntegral(integrand, f).total(m)

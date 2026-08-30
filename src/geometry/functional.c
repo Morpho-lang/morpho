@@ -3934,7 +3934,7 @@ static unsigned integral_fnuses(vm *v, value integrand) {
 /** Integral element references
  @brief Thread-local integral context. */
 #define ELREF_PERSISTENT   (1u<<0) /* Heap elref outlives a single integrand call */
-#define ELREF_CONFIGURED   (1u<<1) /* method={} integrator is ready */
+#define ELREF_CONFIGURED   (1u<<1) /* integrator is ready */
 #define ELREF_HASTANGENT   (1u<<2)
 #define ELREF_HASNORMAL    (1u<<3)
 #define ELREF_HASJACOBIAN  (1u<<4)
@@ -4250,8 +4250,6 @@ static value integral_normal(vm *v, int nargs, value *args) {
  * Gradient
  * -------- */
 
-bool integrator_sumquantityweighted(int n, double *wts, value *q, value *out);
-
 /** @brief Prepares an inverse jacobian matrix.
     @param[in] dim - dimension of physical space
     @param[in] g - grade of the object
@@ -4383,33 +4381,6 @@ bool integral_hesssumcopy(int i, int j, value sum, value dest) {
     } else return true;
 }
 
-/** Copies the component of the gradient into the relevant destination */
-bool integral_oldgradcopy(int dim, int ndof, double *grad, value prototype, value dest) {
-    bool success=false;
-    if (MORPHO_ISMATRIX(dest)) {
-        objectmatrix *mdest = MORPHO_GETMATRIX(dest);
-        memcpy(mdest->elements, grad, sizeof(double)*dim);
-        success=true;
-    } else if (MORPHO_ISLIST(dest)) {
-        objectlist *lst = MORPHO_GETLIST(dest);
-        objectmatrix *proto = MORPHO_GETMATRIX(prototype);
-        for (int i=0; i<dim; i++) {
-            objectmatrix *mgrad=NULL;
-            value el;
-            
-            if (i>=list_length(lst)) {
-                mgrad=matrix_new(proto->nrows, proto->ncols, false); // Should copy prototype dimensions!
-                if (mgrad) {
-                    for (int k=0; k<ndof; k++) mgrad->elements[k]=grad[k*dim+i];
-                    list_append(lst, MORPHO_OBJECT(mgrad));
-                    success=true;
-                }
-            }
-        }
-    }
-    return success;
-}
-
 /** Evaluates the gradient of a field */
 bool integral_evaluategradient(vm *v, value q, value *out) {
     objectintegralelementref *elref = integral_getelementref(v);
@@ -4446,54 +4417,36 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
         if (!integral_gradalloc(dim, fld->prototype, &elref->qgrad[ifld])) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
     }
     
-    bool success=false;
+    if (!(MORPHO_ISFESPACE(fld->fnspc) && elref->quantities)) MORPHO_FAIL(v, INTEGRAL_DFFEVL);
+    if (!integral_ensureinvj(v, elref)) return false;
     
-    // Evaluate gradient. TODO: remove quantities check as we deprecate old integrator.
-    if (MORPHO_ISFESPACE(fld->fnspc) && elref->quantities) {
-        if (!integral_ensureinvj(v, elref)) return false;
+    fespace *disc = MORPHO_GETFESPACE(fld->fnspc)->fespace;
+    if (!FESPACE_HASGRADIENT(disc)) MORPHO_FAIL(v, INTEGRAL_DFFEVL);
+    
+    int nnodes = disc->nnodes;
+    double gdata[nnodes * elref->g];
+    objectmatrix gmat = MORPHO_STATICMATRIX(gdata, nnodes, elref->g);
+    
+    // Compute gradient in reference frame
+    fespace_gradient(disc, elref->lambda, &gmat);
+    
+    // Compute matrix
+    double fmatdata[nnodes * dim];
+    objectmatrix fmat = MORPHO_STATICMATRIX(fmatdata, nnodes, dim);
+    
+    functional_matmul(nnodes, elref->g, dim, gdata, elref->invj->elements, fmatdata);
+    
+    for (int i=0; i<dim; i++) {
+        value sum;
         
-        fespace *disc = MORPHO_GETFESPACE(fld->fnspc)->fespace;
-        if (!FESPACE_HASGRADIENT(disc)) MORPHO_FAIL(v, INTEGRAL_DFFEVL);
-        
-        int nnodes = disc->nnodes;
-        double gdata[nnodes * elref->g];
-        objectmatrix gmat = MORPHO_STATICMATRIX(gdata, nnodes, elref->g);
-        
-        // Compute gradient in reference frame
-        fespace_gradient(disc, elref->lambda, &gmat);
-        
-        // Compute matrix
-        double fmatdata[nnodes * dim];
-        objectmatrix fmat = MORPHO_STATICMATRIX(fmatdata, nnodes, dim);
-        
-        functional_matmul(nnodes, elref->g, dim, gdata, elref->invj->elements, fmatdata);
-        
-        for (int i=0; i<dim; i++) {
-            value sum;
-            
-            if (integral_gradsuminit(i, fld->prototype, elref->qgrad[ifld], &sum) &&
-                integrator_sumquantityweighted(nnodes, fmat.elements+i*nnodes, elref->quantities[ifld].vals, &sum)) {
-                integral_gradsumcopy(i, sum, elref->qgrad[ifld]);
-            } else MORPHO_FAIL(v, INTEGRAL_DFFEVL);
-        }
-        
-        success=true;
-    } else { // Old gradient calculation
-        int ndof = fld->psize; // Number of degrees of freedom per element
-        double grad[ndof*dim]; // Storage for gradient
-        
-        // Evaluate correct gradient
-        if (elref->g==2) success=gradsq_evaluategradient(elref->mesh, fld, elref->nv, elref->vid, grad);
-        else if (elref->g==3) success=gradsq_evaluategradient3d(elref->mesh, fld, elref->nv, elref->vid, grad);
-        
-        integral_oldgradcopy(dim, ndof, grad, fld->prototype, elref->qgrad[ifld]);
-        success=true;
+        if (integral_gradsuminit(i, fld->prototype, elref->qgrad[ifld], &sum) &&
+            integrator_sumquantityweighted(nnodes, fmat.elements+i*nnodes, elref->quantities[ifld].vals, &sum)) {
+            integral_gradsumcopy(i, sum, elref->qgrad[ifld]);
+        } else MORPHO_FAIL(v, INTEGRAL_DFFEVL);
     }
     
-    // Store for further use
-    if (success) *out=elref->qgrad[ifld];
-    
-    return success;
+    *out=elref->qgrad[ifld];
+    return true;
 }
 
 static value integral_gradfn(vm *v, int nargs, value *args) {
@@ -4917,6 +4870,14 @@ static void integral_detachquantities(objectintegralelementref *elref, int nfiel
     integral_clearquantities(nfields, quantities);
 }
 
+/** Configure an integrator from an optional method dictionary. Nil method uses the default rule. */
+static bool integral_configureintegrator(integrator *integ, error *err, grade g, value method) {
+    if (MORPHO_ISDICTIONARY(method)) {
+        return integrator_configurewithdictionary(integ, err, g, MORPHO_GETDICTIONARY(method));
+    }
+    return integrator_configure(integ, err, true, g, -1, NULL);
+}
+
 /** Integrate a callable over elements of the grade stored in the integral ref */
 bool integral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     integralref *iref = (integralref *) ref;
@@ -4944,29 +4905,17 @@ bool integral_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
     elref->v=v;
     if (!integral_bindelement(v, mesh, id, nv, vid, iref, elref, x)) goto integral_integrand_cleanup;
 
-    if (MORPHO_ISDICTIONARY(iref->method)) {
-        if (!integral_prepareelementquantities(iref, elref, nv, vid, quantities_local, &quantities, &localquantities))
-            goto integral_integrand_cleanup;
-        
-        if (elref->flags & ELREF_CONFIGURED) {
-            success=integrator_integrate(&elref->integ, integral_integrandfn, mesh->dim, x, iref->nfields, quantities, elref, 1, out);
-        } else {
-            double err;
-            success=integrate(integral_integrandfn, MORPHO_GETDICTIONARY(iref->method), morpho_geterror(v), mesh->dim, g, x, iref->nfields, quantities, elref, out, &err);
-        }
-    } else { // Old integrator
-        value qstore[nv][iref->nfields+1];
-        value *q[nv];
-        for (unsigned int i=0; i<nv; i++) q[i]=qstore[i];
-        for (unsigned int k=0; k<iref->nfields; k++) {
-            for (unsigned int i=0; i<nv; i++) {
-                field_getelement(MORPHO_GETFIELD(iref->fields[k]), MESH_GRADE_VERTEX, vid[i], 0, &q[i][k]);
-            }
-        }
-        
-        success=integrate_integrate(integral_integrandfn, mesh->dim, g, x, iref->nfields, q, elref, out);
+    if (!integral_prepareelementquantities(iref, elref, nv, vid, quantities_local, &quantities, &localquantities))
+        goto integral_integrand_cleanup;
+
+    if (elref->flags & ELREF_CONFIGURED) {
+        success=integrator_integrate(&elref->integ, integral_integrandfn, mesh->dim, x, iref->nfields, quantities, elref, 1, out);
+    } else {
+        double err;
+        objectdictionary *method=MORPHO_ISDICTIONARY(iref->method) ? MORPHO_GETDICTIONARY(iref->method) : NULL;
+        success=integrate(integral_integrandfn, method, morpho_geterror(v), mesh->dim, g, x, iref->nfields, quantities, elref, out, &err);
     }
-    
+
     if (success) *out *= elref->elementsize;
 
 integral_integrand_cleanup:
@@ -5001,22 +4950,16 @@ static bool integral_taskstart(vm *v, functional_mapinfo *info) {
     elref->iref=iref;
     integrator_init(&elref->integ);
     elref->flags |= ELREF_PERSISTENT | ELREF_HASINTEG;
-    
-    if (MORPHO_ISDICTIONARY(iref->method)) {
-        if (!integrator_configurewithdictionary(&elref->integ, morpho_geterror(v), info->g, MORPHO_GETDICTIONARY(iref->method))) goto integral_taskstart_cleanup;
-        elref->flags |= ELREF_CONFIGURED;
-    }
-    
+
+    if (!integral_configureintegrator(&elref->integ, morpho_geterror(v), info->g, iref->method)) goto integral_taskstart_cleanup;
+    elref->flags |= ELREF_CONFIGURED;
+
     elref->nfields=iref->nfields;
     if (iref->nfields>0) {
         elref->qgrad=_integral_zalloc(iref->nfields, sizeof(value));
         elref->qhess=_integral_zalloc(iref->nfields, sizeof(value));
-        if (!elref->qgrad || !elref->qhess) goto integral_taskstart_cleanup;
-        
-        if (elref->flags & ELREF_CONFIGURED) {
-            elref->quantities=_integral_zalloc(iref->nfields, sizeof(quantity));
-            if (!elref->quantities) goto integral_taskstart_cleanup;
-        }
+        elref->quantities=_integral_zalloc(iref->nfields, sizeof(quantity));
+        if (!elref->qgrad || !elref->qhess || !elref->quantities) goto integral_taskstart_cleanup;
     }
     
     vm_settlvar(v, elementhandle, MORPHO_OBJECT(elref));
@@ -5527,7 +5470,7 @@ static functional_mapcallback *Integral_choosegradient(vm *v, objectinstance *se
         info->grad=integral_gradient_fq;
         return functional_mapgradient;
     }
-    if (ref->optimize && MORPHO_ISDICTIONARY(ref->method) &&
+    if (ref->optimize &&
         integral_checklocalshapegrad(ref->uses, ref->g, info->mesh->dim)) {
         info->grad=integral_gradient_xgeom;
         return functional_mapgradient;
@@ -5543,7 +5486,7 @@ static functional_mapcallback *Integral_choosefieldgradient(vm *v, objectinstanc
     info->cloneref=integral_cloneref;
     info->freeref=integral_freeref;
 
-    if (ref->optimize && MORPHO_ISDICTIONARY(ref->method) &&
+    if (ref->optimize &&
         integral_checklocalfieldgrad(ref->uses, info->field)) {
         return integral_mapfieldgradient;
     }

@@ -20,5 +20,5 @@ fn integrand(x, q) {
     return g.norm()^2
 }
 
-print abs(AreaIntegral(integrand, f, method={ }).total(m)) < 1e-10
+print abs(AreaIntegral(integrand, f).total(m)) < 1e-10
 // expect: true

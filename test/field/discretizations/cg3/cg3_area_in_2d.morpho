@@ -19,5 +19,5 @@ var f = Field(m, fn (x,y) (x+y)^3, finiteelementspace=l)
 print f.shape()
 // expect: (1, 2, 1)
 
-print abs(AreaIntegral(fn (x, phi) phi, f, method={ }).total(m)-3/2) < 1e-6
+print abs(AreaIntegral(fn (x, phi) phi, f).total(m)-3/2) < 1e-6
 // expect: true

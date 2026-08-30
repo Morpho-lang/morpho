@@ -21,7 +21,7 @@ fn landau(x, qv) {
     return qt2 + qt2*qt2
 }
 
-var bulk = AreaIntegral(landau, q, reference=mref, weightByReference=true, method={})
+var bulk = AreaIntegral(landau, q, reference=mref, weightByReference=true)
 print bulk.gradient(m).norm() < 1e-12
 // expect: true
 
@@ -29,12 +29,12 @@ fn usesx(x, qv) {
     return x[0]*qv.inner(qv)
 }
 
-var sx = AreaIntegral(usesx, q, reference=mref, weightByReference=true, method={})
+var sx = AreaIntegral(usesx, q, reference=mref, weightByReference=true)
 print sx.gradient(m).norm() > 1e-8
 // expect: true
 print (sx.gradient(m) - numericalgradient(sx, m)).norm() < 1e-5
 // expect: true
 
-var sxo = AreaIntegral(usesx, q, reference=mref, weightByReference=true, method={}, optimize=false)
+var sxo = AreaIntegral(usesx, q, reference=mref, weightByReference=true, optimize=false)
 print (sx.gradient(m) - sxo.gradient(m)).norm() < 1e-5
 // expect: true

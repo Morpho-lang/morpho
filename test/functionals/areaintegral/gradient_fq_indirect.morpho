@@ -18,6 +18,6 @@ fn sneaky(x, qv) {
     return g[0].inner(g[0])
 }
 
-var bulk = AreaIntegral(sneaky, q, method={})
+var bulk = AreaIntegral(sneaky, q)
 print bulk.gradient(m)
 // expect error 'IntgrlFstPath'

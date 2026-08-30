@@ -18,6 +18,6 @@ var E = AreaIntegral(f, q, method={ "adapt": false })
 print (E.fieldgradient(q, m) - numericalfieldgradient(E, m, q)).linearize().norm() < 1e-5
 // expect: true
 
-var Ea = AreaIntegral(f, q, method={ })
+var Ea = AreaIntegral(f, q)
 print (Ea.fieldgradient(q, m) - numericalfieldgradient(Ea, m, q)).linearize().norm() < 1e-4
 // expect: true

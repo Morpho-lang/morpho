@@ -24,5 +24,5 @@ fn q0(x,y) {
 
 var f = Field(m, q0)
 
-print abs(AreaIntegral(integrand, f, method={ }).total(m) - 160) < 1e-8
+print abs(AreaIntegral(integrand, f).total(m) - 160) < 1e-8
 // expect: true

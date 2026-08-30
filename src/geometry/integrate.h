@@ -10,7 +10,6 @@
 #include "build.h"
 #ifdef MORPHO_INCLUDE_GEOMETRY
 
-#include <stdio.h>
 #include "morpho.h"
 #include "dict.h"
 #include "fespace.h"
@@ -26,7 +25,6 @@
 
 #define INTEGRATE_ACCURACYGOAL 1e-6
 #define INTEGRATE_ZEROCHECK 1e-15
-#define INTEGRATE_MAXRECURSION 100
 #define INTEGRATE_MAXITERATIONS 1000
 
 /* -------------------------------------------------------
@@ -220,6 +218,9 @@ bool integrator_configurewithdictionary(integrator *integrate, error *err, grade
 bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref, unsigned int nout, double *out);
 void integrator_clear(integrator *integrate);
 
+/** Weighted sum of quantity values (floats or Matrices) at interpolation nodes. */
+bool integrator_sumquantityweighted(int n, double *wts, value *q, value *out);
+
 /* Expert staged replacement for integrator_integrate:
    1) Call integrator_try to evaluate the integrand on the base element.
    2) if ACCEPTED: call integrator_apply to evaluate a (potentially different) integrand using that formula.
@@ -236,9 +237,6 @@ bool integrator_refine(integrator *integrate);
 
 /* Easy interface for one-off integrals */
 bool integrate(integrandfunction *integrand, objectdictionary *method, error *err, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, quantity *quantity, void *ref, double *out, double *errest);
-
-/* Old interface */
-bool integrate_integrate(integrandfunction *integrand, unsigned int dim, unsigned int grade, double **x, unsigned int nquantity, value **quantity, void *ref, double *out);
 
 void integrate_initialize(void);
 

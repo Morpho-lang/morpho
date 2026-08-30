@@ -24,7 +24,7 @@ var Eg = LineIntegral(gradsqp, P, method={ "adapt": false })
 print (Eg.fieldgradient(P, m) - numericalfieldgradient(Eg, m, P)).linearize().norm() < 1e-4
 // expect: true
 
-var Egd = LineIntegral(gradsqp, P, method={ })
+var Egd = LineIntegral(gradsqp, P)
 print (Egd.fieldgradient(P, m) - numericalfieldgradient(Egd, m, P)).linearize().norm() < 1e-4
 // expect: true
 

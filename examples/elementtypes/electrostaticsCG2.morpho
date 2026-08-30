@@ -33,13 +33,13 @@ fn integrand(x, q) {
 }
 
 var v1 = 0, v2 = 1
-var lt1 = LineIntegral(fn (x, v) (v-v1)^2, phi, method={})
+var lt1 = LineIntegral(fn (x, v) (v-v1)^2, phi)
 problem.addenergy(lt1, selection=bnd1, prefactor=100)
 
-var lt2 = LineIntegral(fn (x, v) (v-v2)^2, phi, method={})
+var lt2 = LineIntegral(fn (x, v) (v-v2)^2, phi)
 problem.addenergy(lt2, selection=bnd2, prefactor=100)
 
-var le = AreaIntegral(integrand, phi, method={})
+var le = AreaIntegral(integrand, phi)
 problem.addenergy(le)
 
 var adapt = ProblemAdapter(problem, phi)

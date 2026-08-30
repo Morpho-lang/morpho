@@ -102,8 +102,8 @@ var feRho = FiniteElementSpace("CG3", grade=2)
 var Q = Field(m, uniformQ, finiteelementspace=feQ)
 var rho = Field(m, fn (x, y, z) 0.3 + 0.05*cos(sqrt(qsq)*x), finiteelementspace=feRho)
 
-var qbulk = AreaIntegral(landauQ, Q, method={})
-var qcoupling = AreaIntegral(coupling, rho, Q, method={})
+var qbulk = AreaIntegral(landauQ, Q)
+var qcoupling = AreaIntegral(coupling, rho, Q)
 
 print checkfunctional("q bulk", qbulk, m, Q)
 // expect: true
@@ -112,8 +112,8 @@ print checkfunctional("q coupling", qcoupling, m, Q)
 print checkstage("Q stage", [qbulk, qcoupling], [1, Bcouple], m, Q)
 // expect: true
 
-var rholandau = AreaIntegral(landauRho, rho, method={})
-var rhocoupling = AreaIntegral(coupling, rho, Q, method={})
+var rholandau = AreaIntegral(landauRho, rho)
+var rhocoupling = AreaIntegral(coupling, rho, Q)
 var jump = Jump(fn (x, q) jumpdn(q)^2, rho, method={ "strategy": "quadrature" })
 
 print checkfunctional("rho landau", rholandau, m, rho)

@@ -18,7 +18,7 @@ fn elasticity(x, f) {
     return g[0].inner(g[0])+g[1].inner(g[1]) 
 }
 
-var lel = AreaIntegral(elasticity, f, method={})
+var lel = AreaIntegral(elasticity, f)
 
 print (lel.fieldgradient(f) - numericalfieldgradient(lel, m, f)).__linearize().norm() < 1e-6
 // expect: true

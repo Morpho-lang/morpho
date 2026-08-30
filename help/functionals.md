@@ -336,13 +336,15 @@ See the `Functionals` entry for general information about functionals.
 ## Quadrature
 [tagquadrature]: # (quadrature)
 
-`LineIntegral`, `AreaIntegral` and `VolumeIntegral` accept an optional `method` dictionary that selects the quadrature rule and the adaptive stopping test:
+`LineIntegral`, `AreaIntegral` and `VolumeIntegral` use an adaptive quadrature engine by default. An optional `method` dictionary customizes the rule and the adaptive stopping test:
 
-    AreaIntegral(fn (x) x[0]*x[1], method={ })
+    AreaIntegral(fn (x) x[0]*x[1])
     AreaIntegral(fn (x) x[0]*x[1], method={ "rule": "cubtri7" })
     AreaIntegral(fn (x) x[0]*x[1], method={ "rule": "tri4", "adapt": false })
     AreaIntegral(fn (x) x[0]*x[1], method={ "errornorm": "sum" })
     AreaIntegral(fn (x) x[0]*x[1], method={ "tol": 1e-8 })
+
+Omitting `method`, or passing an empty dictionary, uses the default adaptive engine for that grade.
 
 Recognized keys in the `method` dictionary are:
 
@@ -362,7 +364,7 @@ Useful named quadrature rules include:
 
 Integral functionals attempt to evaluate the integral efficiently, and may use a number of optimizations that typically accelerate performance but can degrade it in pathological cases. An optional `optimize` argument, `true` by default, may be set to `false` as a hint not to use those shortcuts:
 
-    AreaIntegral(fn (x) x[0]*x[1], method={ }, optimize=false)
+    AreaIntegral(fn (x) x[0]*x[1], optimize=false)
 
 ## LineIntegral
 [taglineintegral]: # (lineintegral)
@@ -387,7 +389,7 @@ The gradient of a field is available within an integrand function using the `gra
 
 The field derivative of the integral is `fieldgradient(f)` for a field `f` supplied to the constructor.
 
-An optional `method` dictionary selects the quadrature; see the `quadrature` help entry for further details.
+An optional `method` dictionary customizes the quadrature; see the `quadrature` help entry for further details.
 
 See the `Functionals` entry for general information about functionals.
 
@@ -412,7 +414,7 @@ More than one field can be used; they are passed as arguments to the integrand f
 
 The gradient of a field is available within an integrand function using the `gradient()` function.
 
-An optional `method` dictionary selects the quadrature; see the `quadrature` help entry for further details.
+An optional `method` dictionary customizes the quadrature; see the `quadrature` help entry for further details.
 
 See the `Functionals` entry for general information about functionals.
 
@@ -433,7 +435,7 @@ More than one field can be used; they are passed as arguments to the integrand f
 
 The gradient of a field is available within an integrand function using the `gradient()` function.
 
-An optional `method` dictionary selects the quadrature; see the `quadrature` help entry for further details.
+An optional `method` dictionary customizes the quadrature; see the `quadrature` help entry for further details.
 
 See the `Functionals` entry for general information about functionals.
 

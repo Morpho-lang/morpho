@@ -6,9 +6,9 @@ var f = Field(m, fn (x, y, z) x, grade=1)
 print f.finiteElementSpace()
 // expect: <FunctionSpace CG0>
 
-print abs(LineIntegral(fn (x, q) q, f, method={ }).total(m) - 0.5) < 1e-10
+print abs(LineIntegral(fn (x, q) q, f).total(m) - 0.5) < 1e-10
 // expect: true
 
 var g = Field(m, fn (x, y, z) 2, grade=1)
-print abs(LineIntegral(fn (x, q) q, g, method={ }).total(m) - 2) < 1e-10
+print abs(LineIntegral(fn (x, q) q, g).total(m) - 2) < 1e-10
 // expect: true

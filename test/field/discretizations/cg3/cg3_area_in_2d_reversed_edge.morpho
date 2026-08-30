@@ -43,5 +43,5 @@ print abs(f[1,2,0]-8/27) < 1e-10
 print abs(f[1,2,1]-1/27) < 1e-10
 // expect: true
 
-print abs(AreaIntegral(fn (x, phi) phi, f, method={ }).total(m)-1/4) < 1e-6
+print abs(AreaIntegral(fn (x, phi) phi, f).total(m)-1/4) < 1e-6
 // expect: true

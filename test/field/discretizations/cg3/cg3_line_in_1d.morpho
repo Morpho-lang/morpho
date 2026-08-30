@@ -26,6 +26,6 @@ print l.layout(f)
 print f.shape()
 // expect: (1, 2)
 
-print (LineIntegral(fn (x, u) u, f, method={ }).total(m) - 1/4) < 1e-10
+print (LineIntegral(fn (x, u) u, f).total(m) - 1/4) < 1e-10
 // expect: true
 

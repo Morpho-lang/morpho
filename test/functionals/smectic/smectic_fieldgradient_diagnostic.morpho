@@ -23,7 +23,7 @@ fn coupling(x, rho, q) {
     return u*u
 }
 
-var area = AreaIntegral(coupling, rho, Q, method={})
+var area = AreaIntegral(coupling, rho, Q)
 var jump = Jump(fn (x, q) jumpdn(q)^2, rho, method={ "strategy": "quadrature" })
 
 var areafg = area.fieldgradient(rho)

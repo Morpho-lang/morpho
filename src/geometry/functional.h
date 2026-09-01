@@ -478,10 +478,10 @@ value cls##_##method##__##suffix(vm *v, int nargs, value *args) { \
 /* MORPHO_BEGINCLASS rows that register the C wrappers under Morpho signatures.
  * METHODS_FLAGS takes explicit flags; METHODS plugs in MAPFLAGS / TOTALFLAGS / ELEMFLAGS. */
 #define FUNCTIONAL_MD_INTEGRAND_METHODS_FLAGS(cls, mapflags, elemflags) \
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Mesh)", cls##_integrand__mesh, mapflags), \
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Mesh, Selection)", cls##_integrand__mesh_sel, mapflags), \
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Field)", cls##_integrand__field, mapflags), \
-MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Matrix (Field, Selection)", cls##_integrand__field_sel, mapflags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Field (Mesh)", cls##_integrand__mesh, mapflags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Field (Mesh, Selection)", cls##_integrand__mesh_sel, mapflags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Field (Field)", cls##_integrand__field, mapflags), \
+MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Field (Field, Selection)", cls##_integrand__field_sel, mapflags), \
 MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Float (Mesh, Int)", cls##_integrand__mesh_int, elemflags), \
 MORPHO_METHOD_SIGNATURE(FUNCTIONAL_INTEGRAND_METHOD, "Float (Mesh, Int, Int)", cls##_integrand__mesh_int_int, elemflags)
 

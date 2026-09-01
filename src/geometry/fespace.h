@@ -11,6 +11,7 @@
 #ifdef MORPHO_INCLUDE_GEOMETRY
 
 #include "geometry.h"
+#include "elements.h"
 
 /* -------------------------------------------------------
  * fespace type definitions

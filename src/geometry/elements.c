@@ -18,6 +18,46 @@
 #define ELEMENT_VOLUME(id, v1, v2, v3, v4) ELEMENT_VOLUME_OPCODE, id, v1, v2, v3, v4    // Identify a grade 3 subelement given by four vertex indices
 #define ELEMENT_QUANTITY(grade, id, qno)   ELEMENT_QUANTITY_OPCODE, grade, id, qno      // Fetch quantity from subelement of grade with id and quantity number
 
+void cg0_interpolate(double *lambda, double *wts) {
+    wts[0]=1.0;
+}
+
+/* -------------------------------------------------------
+ * CG0 element in 0D
+ * ------------------------------------------------------- */
+
+/*
+ *   0    // One degree of freedom on the vertex
+ */
+
+void cg0_0dgrad(double *lambda, double *grad) {
+    double g[] = { 0 };
+    memcpy(grad, g, sizeof(g));
+}
+
+unsigned int cg0_0dshape[] = { 1 };
+
+double cg0_0dnodes[] = { 1.0 };
+
+eldefninstruction cg0_0ddefn[] = {
+    ELEMENT_QUANTITY(0,0,0),
+    ELEMENT_ENDDEFN
+};
+
+fespace cg0_0d = {
+    .name = FESPACE_CG0,
+    .grade = 0,
+    .shape = cg0_0dshape,
+    .degree = 0,
+    .nnodes = 1,
+    .nsubel = 0,
+    .nodes = cg0_0dnodes,
+    .ifn = cg0_interpolate,
+    .gfn = cg0_0dgrad,
+    .eldefn = cg0_0ddefn,
+    .lower = NULL
+};
+
 /* -------------------------------------------------------
  * CG0 element in 1D
  * ------------------------------------------------------- */
@@ -25,10 +65,6 @@
 /*
  *   0 ----- 1    // One degree of freedom on the line (centroid)
  */
-
-void cg0_interpolate(double *lambda, double *wts) {
-    wts[0]=1.0;
-}
 
 void cg0_1dgrad(double *lambda, double *grad) {
     double g[] = { 0, 0 };
@@ -46,7 +82,7 @@ eldefninstruction cg0_1ddefn[] = {
 };
 
 fespace cg0_1d = {
-    .name = "CG0",
+    .name = FESPACE_CG0,
     .grade = 1,
     .shape = cg0_1dshape,
     .degree = 0,
@@ -79,7 +115,7 @@ eldefninstruction cg0_2ddefn[] = {
 };
 
 fespace cg0_2d = {
-    .name = "CG0",
+    .name = FESPACE_CG0,
     .grade = 2,
     .shape = cg0_2dshape,
     .degree = 0,
@@ -112,7 +148,7 @@ eldefninstruction cg0_3ddefn[] = {
 };
 
 fespace cg0_3d = {
-    .name = "CG0",
+    .name = FESPACE_CG0,
     .grade = 3,
     .shape = cg0_3dshape,
     .degree = 0,
@@ -156,7 +192,7 @@ eldefninstruction cg1_1ddefn[] = {
 };
 
 fespace cg1_1d = {
-    .name = "CG1",
+    .name = FESPACE_CG1,
     .grade = 1,
     .shape = cg1_1dshape,
     .degree = 1,
@@ -207,7 +243,7 @@ eldefninstruction cg2_1ddefn[] = {
 };
 
 fespace cg2_1d = {
-    .name = "CG2",
+    .name = FESPACE_CG2,
     .grade = 1,
     .shape = cg2_1dshape,
     .degree = 2,
@@ -274,7 +310,7 @@ eldefninstruction cg3_1ddefn[] = {
 };
 
 fespace cg3_1d = {
-    .name = "CG3",
+    .name = FESPACE_CG3,
     .grade = 1,
     .shape = cg3_1dshape,
     .degree = 3,
@@ -330,7 +366,7 @@ fespace *cg1_2d_lower[] = {
 };
 
 fespace cg1_2d = {
-    .name = "CG1",
+    .name = FESPACE_CG1,
     .grade = 2,
     .shape = cg1_2dshape,
     .degree = 1,
@@ -411,7 +447,7 @@ fespace *cg2_2d_lower[] = {
 };
 
 fespace cg2_2d = {
-    .name = "CG2",
+    .name = FESPACE_CG2,
     .grade = 2,
     .shape = cg2_2dshape,
     .degree = 2,
@@ -564,7 +600,7 @@ fespace *cg3_2d_lower[] = {
 };
 
 fespace cg3_2d = {
-    .name = "CG3",
+    .name = FESPACE_CG3,
     .grade = 2,
     .shape = cg3_2dshape,
     .degree = 3,
@@ -626,7 +662,7 @@ fespace *cg1_3d_lower[] = {
 };
 
 fespace cg1_3d = {
-    .name = "CG1",
+    .name = FESPACE_CG1,
     .grade = 3,
     .shape = cg1_3dshape,
     .degree = 1,
@@ -741,7 +777,7 @@ fespace *cg2_3d_lower[] = {
 };
 
 fespace cg2_3d = {
-    .name = "CG2",
+    .name = FESPACE_CG2,
     .grade = 3,
     .shape = cg2_3dshape,
     .degree = 2,
@@ -907,7 +943,7 @@ fespace *cg3_3d_lower[] = {
 };
 
 fespace cg3_3d = {
-    .name = "CG3",
+    .name = FESPACE_CG3,
     .grade = 3,
     .shape = cg3_3dshape,
     .degree = 3,
@@ -926,6 +962,7 @@ fespace cg3_3d = {
  * ------------------------------------------------------- */
 
 fespace *fespaces[] = {
+    &cg0_0d,
     &cg0_1d,
     &cg1_1d,
     &cg2_1d,

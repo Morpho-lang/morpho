@@ -645,7 +645,7 @@ static bool field_attachlinear(vm *v, objectmesh *mesh, value *fnspc) {
     grade g=mesh_maxgrade(mesh);
     if (g==0) return true;
     objectfespace *obj=fespace_newlinear(g);
-    if (!obj) MORPHO_FAILVARGS(v, FNSPC_NOTFOUND, "CG1", (int) g);
+    if (!obj) MORPHO_FAILVARGS(v, FNSPC_NOTFOUND, FESPACE_CG1, (int) g);
     *fnspc=MORPHO_OBJECT(obj);
     return true;
 }
@@ -673,8 +673,8 @@ static bool field_layoutfromoptions(vm *v, objectmesh *mesh, value grd, value *f
 
     if (g==0) return field_attachlinear(v, mesh, fnspc); // grade ommitted and grade=0 are mapped to CG1
 
-    objectfespace *obj=fespace_newfromname("CG0", g); // Default is a CG0 field
-    if (!obj) MORPHO_FAILVARGS(v, FNSPC_NOTFOUND, "CG0", g);
+    objectfespace *obj=fespace_newfromname(FESPACE_CG0, g); // Default is a CG0 field
+    if (!obj) MORPHO_FAILVARGS(v, FNSPC_NOTFOUND, FESPACE_CG0, g);
     *fnspc=MORPHO_OBJECT(obj);
     return true;
 }

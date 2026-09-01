@@ -99,7 +99,7 @@ value _functional_run(vm *v, functional_mapinfo *info, grade g, functional_mapca
     value out=MORPHO_NIL;
     functional_runmap(v, info, mapfn, &out);
     if (!bind || !MORPHO_ISOBJECT(out) || !MORPHO_GETOBJECT(out)) return out;
-    return morpho_wrapandbind(v, MORPHO_GETOBJECT(out));
+    return morpho_wrapandbindrecursive(v, MORPHO_GETOBJECT(out));
 }
 
 value _functional_integrand(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn) {
@@ -610,7 +610,7 @@ bool functional_sumintegrand(vm *v, functional_mapinfo *info, value *out) {
 /** Calculate the integrand at a particular element
  * @param[in] v - virtual machine in use
  * @param[in] info - map info
- * @param[out] out - a matrix of integrand values
+ * @param[out] out - the integrand value as a Float
  * @returns true on success, false otherwise. Error reporting through VM. */
 bool functional_mapintegrandforelement(vm *v, functional_mapinfo *info, value *out) {
     objectmesh *mesh = info->mesh;
@@ -644,15 +644,35 @@ bool functional_mapintegrandforelement(vm *v, functional_mapinfo *info, value *o
     return ret;
 }
 
-/** Set relevant matrix element to the result of the integrand */
-bool functional_mapintegrandprocessfn(void *arg) {
-    functional_task *task = (functional_task *) arg;
-    objectmatrix *new = (objectmatrix *) task->out;
-    matrix_setelement(new, 0, task->id, *(double *) task->result);
-    return true;
+/** Scalar CG0 Field on grade `g` (one value per element of that grade). */
+static objectfield *functional_newintegrandfield(objectmesh *mesh, grade g) {
+    if (!mesh) return NULL;
+    int ngrades=mesh_maxgrade(mesh)+1;
+    if (g<0 || g>=ngrades) return NULL;
+
+    value fnspc=MORPHO_NIL;
+    unsigned int dof[ngrades];
+    unsigned int *shape=NULL;
+    for (int i=0; i<ngrades; i++) dof[i]=(i==g ? 1 : 0);
+
+    objectfespace *obj=fespace_newfromname(FESPACE_CG0, g);
+    if (obj) fnspc=MORPHO_OBJECT(obj);
+    else shape=dof;
+
+    objectfield *new=object_newfield(mesh, MORPHO_NIL, fnspc, shape);
+    if (!new) morpho_freeobject(fnspc);
+    return new;
 }
 
-/** Map integrand function, storing the results in a matrix */
+/** Write the integrand value into the output Field at this element */
+bool functional_mapintegrandprocessfn(void *arg) {
+    functional_task *task = (functional_task *) arg;
+    objectfield *new = (objectfield *) task->out;
+    value val = MORPHO_FLOAT(*(double *) task->result);
+    return field_setelement(new, task->g, task->id, 0, val);
+}
+
+/** Map integrand function, storing the results in a scalar Field on info->g */
 bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
     int ntask=functional_ntasks(info);
@@ -662,31 +682,29 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
     varray_elementid imageids;
     varray_elementidinit(&imageids);
     
-    objectmatrix *new = NULL;
+    objectfield *new = NULL;
     
     if (!functional_preparetasks(v, info, ntask, task, &imageids)) return false;
     
-    if (task[0].nel>0) {
-        new=matrix_new(1, task[0].nel, true);
-        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); goto functional_mapintegrand_cleanup; }
+    new=functional_newintegrandfield(info->mesh, info->g);
+    if (new) {
+        for (int i=0; i<ntask; i++) {
+            task[i].mapfn=(functional_mapfn *) info->integrand;
+            task[i].processfn=functional_mapintegrandprocessfn;
+            
+            task[i].result=(void *) &sums[i].result;
+            task[i].out=(void *) new;
+        }
+        success=functional_map(ntask, task);
     }
     
-    for (int i=0; i<ntask; i++) {
-        task[i].mapfn=(functional_mapfn *) info->integrand;
-        task[i].processfn=functional_mapintegrandprocessfn;
-    
-        task[i].result=(void *) &sums[i].result;
-        task[i].out=(void *) new;
+    if (!success && new) {
+        morpho_freeobject(new->fnspc);
+        object_free((object *) new);
+        new=NULL;
     }
     
-    if (!functional_map(ntask, task)) goto functional_mapintegrand_cleanup;
-    
-    success=true;
-    *out = MORPHO_OBJECT(new);
-    
-functional_mapintegrand_cleanup:
-    if (!success && new) object_free((object *) new);
-    
+    *out = morpho_wrapandbindrecursive(v, (object *) new);
     functional_cleanuptasks(v, ntask, task, &imageids);
     return success;
 }

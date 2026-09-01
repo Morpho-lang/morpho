@@ -1,7 +1,7 @@
 target_sources(morpho
     PRIVATE
         fespace.c           fespace.h
-        elements.c
+        elements.c          elements.h
         field.c             field.h
         quadrature.c
         functional.c        functional.h
@@ -17,6 +17,7 @@ target_sources(morpho
     TYPE HEADERS
     FILES
         fespace.h
+        elements.h
         field.h
         functional.h
         geometry.h

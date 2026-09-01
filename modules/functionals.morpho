@@ -1,112 +1,271 @@
 /* ***************************************************************
  * Functionals
  * ===========
- * This module provides a class that helps implement new
- * functionals in morpho, as well as some less common functionals
+ * Library to support functionals written in morpho.
  **************************************************************** */
 
 import kdtree
 
+/* ----------------------------------------------------------------
+ * Functional
+ *
+ * Implements the functional protocol (target is a Mesh or a Field;
+ * an optional Selection restricts the element loop):
+ *   integrand()      -> Field   per-element contributions on `grade`
+ *   integrand(id)    -> Float   contribution for one element
+ *   total()          -> Float   sum over all elements
+ *   gradient()       -> Matrix  gradient wrt vertex posns in columns
+ *   fieldgradient(f) -> Field   gradient wrt field values []
+ *
+ * Subclasses:
+ *   - call super.init(grade) with the grade defined on
+ *   - implement the per-element hooks which will be called by Functional
+ *   integrandFn(mesh, vert, id, el)           -> Float     [optional; default 0]
+ *     mesh   = Mesh being integrated
+ *     vert   = mesh.vertexmatrix()  (cached by the parent for the loop)
+ *     id     = element id of `grade`
+ *     el     = connectivity 0 -> grade (vertex ids); nil if grade is 0
+ *   gradientFn(mesh, vert, id, el, grd)                    [optional; default no-op]
+ *     grd    = output Matrix; accumulate with setcolumn
+ *   - mix in FieldGradientMixin and define fieldGradientFn if we depend on a field:
+ *   fieldGradientFn(fld, mesh, vert, id, el, fldgrd)       [optional]
+ *     fld    = field we are differentiating wrt
+ *     fldgrd = output Field (same layout as fld); write into it
+ *   - OR: override integrand/gradient entirely if the energy is not a grade loop
+ * ---------------------------------------------------------------- */
+
 class Functional {
   init(grade) {
     self.grade = grade
+    self.field = nil
   }
 
-  integrand(mesh) {
-    var conn
-    if (self.grade>0) conn=mesh.connectivitymatrix(0, self.grade)
-    var vert=mesh.vertexmatrix()
-    var nel = mesh.count(self.grade)
+// Default implementations; subclasses replace
+  integrandFn(mesh, vert, id, el) { return 0 } 
+  gradientFn(mesh, vert, id, el, grd) { } 
 
-    var out = Matrix(nel)
+// Element loop:
+  _connectivity(mesh) { // Obtain connectivity matrix
+    if (self.grade>0) return mesh.connectivitymatrix(0, self.grade)
+    return nil
+  }
 
-    for (i in 0...nel) {
-      var el
-      if (conn) el=conn.rowindices(i)
-      out[i]=self.integrandfn(mesh, vert, i, el)
+  // Construct a collection of element ids
+  _elementIds(mesh, Selection sel) { return sel.idlistforgrade(self.grade) }
+  _elementIds(mesh, sel) { return 0...mesh.count(self.grade) }
+
+  // Obtain element definition
+  _elementDefinition(Sparse conn, id) { return conn.rowindices(id) }
+  _elementDefinition(conn, id) { return nil }
+
+  // Loop over element ids calling a visitor function 
+  _elementLoop(mesh, sel, visit) {
+    var vert = mesh.vertexmatrix()
+    var conn = self._connectivity(mesh)
+    for (id in self._elementIds(mesh, sel)) {
+      visit(mesh, vert, id, self._elementDefinition(conn, id))
     }
+  }
 
+  // Produce a new Field for the integrand
+  _newIntegrandField(mesh) { return Field(mesh, grade=self.grade) }
+
+  // Map the integrandFn over required elements
+  _mapIntegrand(mesh, sel) { 
+    var out = self._newIntegrandField(mesh)
+    self._elementLoop(mesh, sel, fn (mesh, vert, id, el) {
+      out[id] = self.integrandFn(mesh, vert, id, el)
+    })
     return out
   }
 
-  gradient(mesh) {
-    var conn
-    if (self.grade>0) conn=mesh.connectivitymatrix(0, self.grade)
-    var vert=mesh.vertexmatrix()
-    var nel = mesh.count(self.grade)
+// Standard public methods:
+  integrand(Mesh mesh) { return self._mapIntegrand(mesh, nil) }
+  integrand(Mesh mesh, Selection sel) { return self._mapIntegrand(mesh, sel) }
+  integrand(Field field) { return self.integrand(field.mesh()) }
+  integrand(Field field, Selection sel) { return self.integrand(field.mesh(), sel) }
 
-    var dim=vert.dimensions()[0]
-    var nv=vert.dimensions()[1]
-    var out = Matrix(dim,nv)
+  integrand(Mesh mesh, Int id) { // Single element implementation
+    var vert = mesh.vertexmatrix()
+    var el = self._elementDefinition(self._connectivity(mesh), id)
+    return self.integrandFn(mesh, vert, id, el)
+  }
 
-    for (i in 0...nel) {
-      var el
-      if (conn) el=conn.rowindices(i)
-      self.gradientfn(mesh, vert, i, el, out)
-    }
+  total(Mesh mesh) { return self.integrand(mesh).sum() }
+  total(Mesh mesh, Selection sel) { return self.integrand(mesh, sel).sum() }
+  total(Field field) { return self.total(field.mesh()) }
+  total(Field field, Selection sel) { return self.total(field.mesh(), sel) }
 
+  _zeroGradient(mesh) { // Construct a Matrix with same dimensions as the vertexmatrix. 
+    var vert = mesh.vertexmatrix()
+    return Matrix(vert.dimensions()[0], vert.dimensions()[1])
+  }
+
+  // Map the gradientFn over required elements
+  _mapGradient(mesh, sel) {
+    var out = self._zeroGradient(mesh)
+    self._elementLoop(mesh, sel, fn (mesh, vert, id, el) {
+      self.gradientFn(mesh, vert, id, el, out)
+    })
     return out
   }
 
-  total(mesh) {
-    var a = self.integrand(mesh)
-    return a.sum()
-  }
+  gradient(Mesh mesh) { return self._mapGradient(mesh, nil) }
+  gradient(Mesh mesh, Selection sel) { return self._mapGradient(mesh, sel) }
+  gradient(Field field) { return self.gradient(field.mesh()) }
+  gradient(Field field, Selection sel) { return self.gradient(field.mesh(), sel) }
 }
 
-/** Hookean elasticity:
-  F = 1/2 ((L-L0)/L0)^2
-  Construct with a field of reference lengths */
-class HookeElasticity < Functional {
-  init(field) {
-    self.ref = field
+/* ----------------------------------------------------------------
+ * FieldGradient 
+ * 
+ * Mixin to support fieldgradient protocol. 
+ * ---------------------------------------------------------------- */
+
+class FieldGradientMixin {
+  fieldGradientFn(fld, mesh, vert, id, el, fldgrd) { }
+
+
+  _zeroField(field) { // Construct a zero'd Field with same layout as field
+    var p = field.prototype()
+    if (ismatrix(p)) p = Matrix(p.dimensions()[0], p.dimensions()[1])
+    else p = 0
+    return Field(field.mesh(), p, grade=field.shape(), finiteelementspace=field.finiteElementSpace())
+  }
+
+  _mapFieldgradient(field, mesh, sel) {
+    var out = self._zeroField(field)
+    self._elementLoop(mesh, sel, fn (mesh, vert, id, el) {
+      self.fieldGradientFn(field, mesh, vert, id, el, out)
+    })
+    return out
+  }
+
+  fieldgradient(Field field) { return self.fieldgradient(field, field.mesh()) }
+  fieldgradient(Field field, Mesh mesh) { return self._mapFieldgradient(field, mesh, nil) }
+  fieldgradient(Field field, Mesh mesh, Selection sel) { return self._mapFieldgradient(field, mesh, sel) }
+}
+
+/* ***************************************************************
+ * Functionals
+ **************************************************************** */
+
+/* ----------------------------------------------------------------
+ * HookeElasticity
+ *
+ * Hookean springs on line elements with energy:
+ *    F = k/2 ((L-L0)/L0)^2
+ * len0 is a grade-1 Field of rest lengths.
+ * stiffness is a Field or a scalar (default 1 on each edge).
+ * ---------------------------------------------------------------- */
+
+class HookeElasticity is Functional with FieldGradientMixin {
+  init(len0) {
     super.init(1)
+    self.field = len0
+    self.stiffness = Field(len0.mesh(), 1, grade=1)
+  }
+  init(len0, stiffness) {
+    super.init(1)
+    self.field = len0
+    if (isnumber(stiffness)) stiffness = Field(len0.mesh(), stiffness, grade=1)
+    self.stiffness = stiffness
   }
 
-  integrandfn(mesh, vert, id, el) {
+  integrandFn(mesh, vert, id, el) {
     var len = (vert.column(el[0])-vert.column(el[1])).norm()
-    var len0 = self.ref[self.grade, id]
-    return ((len-len0)/len0)^2/2
+    var len0 = self.field[self.grade, id]
+    var k = self.stiffness[self.grade, id]
+    return k*((len-len0)/len0)^2/2
   }
 
-  gradientfn(mesh, vert, id, el, grd) {
-    var x0 = vert.column(el[0])
-    var x1 = vert.column(el[1])
+  gradientFn(mesh, vert, id, el, grd) {
+    var x0 = vert.column(el[0]), x1 = vert.column(el[1])
     var dx = x0-x1
-
     var len = dx.norm()
-    var len0 = self.ref[self.grade, id]
-    var g = dx*(len-len0)/(len0^2*len)
-
+    var len0 = self.field[self.grade, id]
+    var k = self.stiffness[self.grade, id]
+    var g = dx*(k*(len-len0)/(len0^2*len))
     grd.setcolumn(el[0], g+grd.column(el[0]))
     grd.setcolumn(el[1], -g+grd.column(el[1]))
   }
+
+  fieldGradientFn(field, mesh, vert, id, el, out) {
+    if (field!=self.field) return
+    var len = (vert.column(el[0])-vert.column(el[1])).norm()
+    var len0 = field[self.grade, id]
+    var k = self.stiffness[self.grade, id]
+    out[self.grade, id] = -k*len*(len-len0)/len0^3
+  }
 }
 
-/* Pairwise potential */
-class PairwisePotential < Functional {
+/* ----------------------------------------------------------------
+ * OneSidedHookeElasticity
+ *
+ * Hookean springs under compression only; no cost for L > L0.
+ * ---------------------------------------------------------------- */
+class OneSidedHookeElasticity is HookeElasticity {
+  integrandFn(mesh, vert, id, el) {
+    if ((vert.column(el[0])-vert.column(el[1])).norm() > self.field[self.grade, id]) return 0
+    return super.integrandFn(mesh, vert, id, el)
+  }
+
+  gradientFn(mesh, vert, id, el, grd) {
+    if ((vert.column(el[0])-vert.column(el[1])).norm() > self.field[self.grade, id]) return
+    super.gradientFn(mesh, vert, id, el, grd)
+  }
+
+  fieldGradientFn(field, mesh, vert, id, el, out) {
+    if ((vert.column(el[0])-vert.column(el[1])).norm() > self.field[self.grade, id]) return
+    super.fieldGradientFn(field, mesh, vert, id, el, out)
+  }
+}
+
+/* ----------------------------------------------------------------
+ * ScalarPotentialMidpoint
+ *
+ * Scalar function at the midpoint of each grade-1 element (meshgen sizing).
+ * ---------------------------------------------------------------- */
+class ScalarPotentialMidpoint is Functional {
+  init(hbar) {
+    super.init(1)
+    self.func = hbar
+  }
+
+  integrandFn(mesh, vert, id, el) {
+    var n = el.count()
+    var x = vert.column(el[0])
+    for (var i=1; i<n; i+=1) x+=vert.column(el[i])
+    x/=n
+    return self.func(x)
+  }
+}
+
+/* ----------------------------------------------------------------
+ * PairwisePotential
+ *
+ * Pairwise potential on vertices with kdtree cutoff
+ * ---------------------------------------------------------------- */
+class PairwisePotential is Functional {
   init (func, grad, cutoff=nil) {
+    super.init(0)
     self.func = func
     self.grad = grad
     self.cutoff = cutoff
-    super.init(0)
   }
 
-  buildtree(mesh) {
+  buildTree(mesh) {
     var vert = mesh.vertexmatrix()
     var nv = mesh.count()
     var pts = []
-    for (i in 0...nv) {
-      pts.append(vert.column(i))
-    }
+    for (i in 0...nv) pts.append(vert.column(i))
     return KDTree(pts)
   }
 
-  integrand(mesh) {
+  integrand(Mesh mesh) {
     var nv = mesh.count()
-    var out = Matrix(nv)
+    var out = Field(mesh)
     var vert = mesh.vertexmatrix()
-
     for (i in 0...nv) {
       var x = vert.column(i)
       for (j in i+1...nv) {
@@ -120,12 +279,10 @@ class PairwisePotential < Functional {
     return out
   }
 
-  gradient(mesh) {
+  gradient(Mesh mesh) {
     var nv = mesh.count()
     var vert = mesh.vertexmatrix()
-    var dim = vert.dimensions()[0]
-    var out = Matrix(dim, nv)
-
+    var out = Matrix(vert.dimensions()[0], nv)
     for (i in 0...nv) {
       for (j in i+1...nv) {
         var dx = vert.column(i)-vert.column(j)
@@ -138,5 +295,4 @@ class PairwisePotential < Functional {
     }
     return out
   }
-
 }

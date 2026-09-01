@@ -92,63 +92,6 @@ fn RectangularDomain(ranges) {
 }
 
 /* ********************************************************
- * Functionals to control mesh quality
- * ******************************************************** */
-
-/* -------------------------------------------------------
- * One sided hookean elasticity:
- * Energy F = 1/2 ((L-L0)/L0)^2 for L<L0, 0 otherwise
- * Construct with a Field of reference lengths L0
- * ------------------------------------------------------- */
-class OneSidedHookeElasticity is Functional {
-  init(l0) {
-    self.ref = l0
-    super.init(1)
-  }
-
-  integrandfn(mesh, vert, id, el) {
-    var len = (vert.column(el[0])-vert.column(el[1])).norm()
-    var len0 = self.ref[self.grade, id]
-    if (len>len0) return 0
-    return ((len-len0)/len0)^2/2
-  }
-
-  gradientfn(mesh, vert, id, el, grd) {
-    var x0 = vert.column(el[0])
-    var x1 = vert.column(el[1])
-    var dx = x0-x1
-
-    var len = dx.norm()
-    var len0 = self.ref[self.grade, id]
-    if (len>len0) return
-    var g = dx*(len-len0)/(len0^2*len)
-
-    grd.setcolumn(el[0], g+grd.column(el[0]))
-    grd.setcolumn(el[1], -g+grd.column(el[1]))
-  }
-}
-
-/* -------------------------------------------------------
- * Evaluates a scalar potential at the midpoint of
- * an element. Will be used to detect elements inside
- * forbidden areas.
- * ------------------------------------------------------- */
-class ScalarPotentialMidpoint is Functional {
-  init(hbar) {
-    self.func = hbar
-    super.init(1)
-  }
-
-  integrandfn(mesh, vert, id, el) {
-    var dim = el.count()
-    var x = vert.column(el[0])
-    for (var i=1; i<dim; i+=1) x+=vert.column(el[i])
-    x/=dim
-    return self.func(x)
-  }
-}
-
-/* ********************************************************
  * Shape optimizer
  * We subclass ShapeOptimizer to add a special convergence
  * criterion, which additionally tests if the mesh has

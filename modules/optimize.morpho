@@ -153,13 +153,12 @@ class OptimizationProblem {
 
       if (en.functional.has("field")) {
         var f = en.functional.field
-
         if (isfield(f) && dict.contains(f)) {
           en.functional.field = dict[f]
         } else if (islist(f)) {
           var newlist = []
           for (fel in f) {
-            if (dict.contains(fel)) newlist.append(dict[fel])
+            if (isfield(fel) && dict.contains(fel)) newlist.append(dict[fel])
             else newlist.append(fel)
           }
           en.functional.field = newlist
@@ -730,16 +729,15 @@ class FieldOptimizer is Optimizer {
   }
 
   checkfield(fld) {
+    if (isfield(fld)) return fld==self.target
     if (islist(fld)) return fld.ismember(self.target)
-    return (fld==self.target)
+    return false
   }
 
-  energies() { // Selects which energies are pertinent to the optimization problem
+  energies() { // Energies whose field property names this target
     var en = []
     for (e in self.problem.energies) {
-      if (e.functional.has("field")) {
-        if (self.checkfield(e.functional.field)) en.append(e)
-      }
+      if (e.functional.has("field") && self.checkfield(e.functional.field)) en.append(e)
     }
     return en
   }

@@ -4554,7 +4554,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
     codeinfo ret, right=CODEINFO_EMPTY;
     value var=MORPHO_NIL;
     registerindx reg=REGISTER_UNALLOCATED, istart=0, iend=0, tmp=REGISTER_UNALLOCATED;
-    enum { ASSIGN_VAR, ASSIGN_UPVALUE, ASSIGN_OBJ, ASSIGN_GLBL, ASSIGN_INDEX, ASSIGN_UPINDEX } mode=ASSIGN_VAR;
+    enum { ASSIGN_VAR, ASSIGN_UPVALUE, ASSIGN_OBJ, ASSIGN_GLBL, ASSIGN_INDEX } mode=ASSIGN_VAR;
     unsigned int ninstructions = 0;
 
     /* Find the symbol or check if it's an object */
@@ -4585,7 +4585,16 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
             /* Perhaps it's an upvalue? */
             if (reg==REGISTER_UNALLOCATED) {
                 reg=compiler_resolveupvalue(c, var);
-                if (reg!=REGISTER_UNALLOCATED) mode=(mode==ASSIGN_INDEX ? ASSIGN_UPINDEX : ASSIGN_UPVALUE);
+                if (reg!=REGISTER_UNALLOCATED) {
+                    if (indxnode) {
+                        /* Indexed upvalue: LUP into a register, then SIX (same as globals) */
+                        tmp=compiler_regalloctop(c);
+                        codeinfo mv=compiler_movetoregister(c, node, CODEINFO(UPVALUE, reg, 0), tmp);
+                        ninstructions+=mv.ninstructions;
+                        reg=tmp;
+                        mode=ASSIGN_INDEX;
+                    } else mode=ASSIGN_UPVALUE;
+                }
             }
 
             /* .. or a global? */
@@ -4654,9 +4663,6 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
                 compiler_addinstruction(c, ENCODE(OP_SIX, reg, istart, right.dest), node);
                 ninstructions++;
             }
-                break;
-            case ASSIGN_UPINDEX:
-                UNREACHABLE("Assign to indexed upvalue not implemented.");
                 break;
         }
     } else {

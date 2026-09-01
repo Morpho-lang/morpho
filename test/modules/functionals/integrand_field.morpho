@@ -1,0 +1,47 @@
+// Morpho-side Functional: Field integrand, Selection, FieldGradient mixin
+import functionals
+
+var m = Mesh("line.mesh")
+var len0 = Field(m, 0.5, grade=1)
+var h = HookeElasticity(len0)
+var en = h.integrand(m)
+
+print isfield(en)
+// expect: true
+print en.count()==1
+// expect: true
+print abs(en[0] - 0.5) < 1e-12
+// expect: true
+print abs(h.integrand(m, 0) - 0.5) < 1e-12
+// expect: true
+print abs(h.total(m) - 0.5) < 1e-12
+// expect: true
+
+print h.respondsto("fieldgradient")
+// expect: true
+print OneSidedHookeElasticity(len0).respondsto("fieldgradient")
+// expect: true
+
+var dlen0 = h.fieldgradient(len0, m)
+print abs(dlen0[0] - (-1*(1-0.5)/0.5^3)) < 1e-12
+// expect: true
+
+var other = Field(m, 1, grade=1)
+print abs(h.fieldgradient(other, m)[0]) < 1e-12
+// expect: true
+
+var lv = PairwisePotential(fn (r) 1/r, fn (r) -1/r^2)
+var pe = lv.integrand(m)
+
+print isfield(pe)
+// expect: true
+print pe.count()==2
+// expect: true
+print abs(pe[0] - 0.5) < 1e-12
+// expect: true
+print abs(pe[1] - 0.5) < 1e-12
+// expect: true
+print abs(lv.total(m) - 1) < 1e-12
+// expect: true
+print lv.respondsto("fieldgradient")
+// expect: false

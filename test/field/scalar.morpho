@@ -30,6 +30,18 @@ write(f + g)
 write(f - g)
 // expect: [0, 0.5, 1, 1.5]
 
+write(f + 1)
+// expect: [1, 2, 3, 4]
+
+write(1 + f)
+// expect: [1, 2, 3, 4]
+
+write(f - 0.5)
+// expect: [-0.5, 0.5, 1.5, 2.5]
+
+write(1 - f)
+// expect: [1, 0, -1, -2]
+
 // Clone
 var h = f.clone()
 

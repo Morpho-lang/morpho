@@ -14,7 +14,7 @@ or by supplying a single constant value,
 
     var f = Field(mesh, Matrix([1,0,0]))
 
-Fields can then be added and subtracted using the `+` and `-` operators.
+Fields can then be added and subtracted using the `+` and `-` operators, including elementwise addition or subtraction of a number.
 
 To access elements of a `Field`, use index notation:
 

@@ -813,6 +813,7 @@ value Field_assign__matrix(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Perform a binary operation on the contents of two fields */
 static value _field_binop(vm *v, objectfield *a, objectfield *b, bool (*op) (objectfield *, objectfield *, objectfield *)) {
     if (!field_compareshape(a, b)) MORPHO_RAISE(v, FIELD_INCOMPATIBLEMATRICES);
 
@@ -827,15 +828,26 @@ value Field_add__field(vm *v, int nargs, value *args) {
                         MORPHO_GETFIELD(MORPHO_GETARG(args, 0)), field_add);
 }
 
-/** Right add of nil or numeric zero */
+/** Returns a new field containing alpha*a + beta. */
+static value _field_addscalar(vm *v, objectfield *a, double alpha, double beta) {
+    objectfield *new=field_clone(a);
+    if (new) matrix_addscalar(&new->data, alpha, beta);
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value Field_add__number(vm *v, int nargs, value *args) {
+    double x;
+    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &x)) MORPHO_RAISE(v, VM_INVALIDARGS);
+    return _field_addscalar(v, MORPHO_GETFIELD(MORPHO_SELF(args)), 1.0, x);
+}
+
+/** Right add of nil or a number */
 value Field_addr__nil(vm *v, int nargs, value *args) {
     return MORPHO_SELF(args);
 }
 
 value Field_addr__number(vm *v, int nargs, value *args) {
-    double x;
-    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &x) || fabs(x)>=MORPHO_EPS) MORPHO_RAISE(v, VM_INVALIDARGS);
-    return MORPHO_SELF(args);
+    return Field_add__number(v, nargs, args);
 }
 
 /** Field subtraction */
@@ -850,14 +862,21 @@ static value _field_neg(vm *v, objectfield *a) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
-/** Right subtract of nil or integer zero */
+/** Right subtract of nil or a number: x - field */
 value Field_subr__nil(vm *v, int nargs, value *args) {
     return _field_neg(v, MORPHO_GETFIELD(MORPHO_SELF(args)));
 }
 
-value Field_subr__int(vm *v, int nargs, value *args) {
-    if (MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0))!=0) MORPHO_RAISE(v, VM_INVALIDARGS);
-    return _field_neg(v, MORPHO_GETFIELD(MORPHO_SELF(args)));
+value Field_subr__number(vm *v, int nargs, value *args) {
+    double x;
+    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &x)) MORPHO_RAISE(v, VM_INVALIDARGS);
+    return _field_addscalar(v, MORPHO_GETFIELD(MORPHO_SELF(args)), -1.0, x);
+}
+
+value Field_sub__number(vm *v, int nargs, value *args) {
+    double x;
+    if (!morpho_valuetofloat(MORPHO_GETARG(args, 0), &x)) MORPHO_RAISE(v, VM_INVALIDARGS);
+    return _field_addscalar(v, MORPHO_GETFIELD(MORPHO_SELF(args)), 1.0, -x);
 }
 
 /** Field accumulate */
@@ -1086,12 +1105,17 @@ MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Field_count, MORPHO_FN_PU
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(Field)", Field_assign__field, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(Matrix)", Field_assign__matrix, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Field (Field)", Field_add__field, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Field (Int)", Field_add__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Field (Float)", Field_add__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Field (Nil)", Field_addr__nil, MORPHO_FN_PUREFN),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Field (Int)", Field_addr__number, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
-MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Field (Float)", Field_addr__number, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Field (Int)", Field_addr__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADDR_METHOD, "Field (Float)", Field_addr__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Field (Field)", Field_sub__field, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Field (Int)", Field_sub__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Field (Float)", Field_sub__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "Field (Nil)", Field_subr__nil, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "Field (Int)", Field_subr__int, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "Field (Int)", Field_subr__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUBR_METHOD, "Field (Float)", Field_subr__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(Int, Field)", Field_acc__number_field, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ACC_METHOD, "(Float, Field)", Field_acc__number_field, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_MUL_METHOD, "Field (Int)", Field_mul__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),

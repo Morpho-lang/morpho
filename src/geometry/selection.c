@@ -14,6 +14,7 @@
 #include "linalg.h"
 #include "sparse.h"
 #include "mesh.h"
+#include "field.h"
 #include "selection.h"
 
 /* **********************************************************************
@@ -202,6 +203,34 @@ void selection_selectwithmatrix(vm *v, objectselection *sel, value fn, objectmat
         
         if (!morpho_call(v, fn, nargs, args, &ret)) break;
         if (MORPHO_ISTRUE(ret)) selection_selectelement(sel, MESH_GRADE_VERTEX, i);
+    }
+}
+
+/** Selects elements by mapping a function over a Field.
+ * Iterates every nonempty grade; `fn` receives each stored value. */
+void selection_selectwithfield(vm *v, objectselection *sel, value fn, objectfield *field) {
+    if (!sel->mesh || field->mesh!=sel->mesh) {
+        morpho_runtimeerror(v, SELECTION_FLDMSH);
+        return;
+    }
+
+    value arg, ret=MORPHO_NIL;
+
+    for (grade g=0; g<(grade) field->ngrades; g++) {
+        unsigned int dof=field_dofforgrade(field, g);
+        if (dof==0) continue;
+
+        elementid nel=mesh_nelementsforgrade(sel->mesh, g);
+        for (elementid id=0; id<nel; id++) {
+            for (unsigned int indx=0; indx<dof; indx++) {
+                if (!field_getelement(field, g, id, indx, &arg)) continue;
+                if (!morpho_call(v, fn, 1, &arg, &ret)) return;
+                if (MORPHO_ISTRUE(ret)) {
+                    selection_selectelement(sel, g, id);
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -404,6 +433,8 @@ value selection_constructor(vm *v, int nargs, value *args) {
                 selection_selectwithfunction(v, new, fn);
             } else if (MORPHO_ISMATRIX(fnargs)) {
                 selection_selectwithmatrix(v, new, fn, MORPHO_GETMATRIX(fnargs));
+            } else if (MORPHO_ISFIELD(fnargs)) {
+                selection_selectwithfield(v, new, fn, MORPHO_GETFIELD(fnargs));
             }
         } else if (MORPHO_ISTRUE(boundary)) {
             selection_selectboundary(v, new);
@@ -596,6 +627,7 @@ void selection_initialize(void) {
     morpho_defineerror(SELECTION_GRADEARG, ERROR_HALT, SELECTION_GRADEARG_MSG);
     morpho_defineerror(SELECTION_STARG, ERROR_HALT, SELECTION_STARG_MSG);
     morpho_defineerror(SELECTION_BND, ERROR_HALT, SELECTION_BND_MSG);
+    morpho_defineerror(SELECTION_FLDMSH, ERROR_HALT, SELECTION_FLDMSH_MSG);
 }
 
 #endif

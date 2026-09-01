@@ -14,6 +14,10 @@ Select vertices above the z=0 plane using an anonymous function:
 
     var s = Selection(mesh, fn (x,y,z) z>0)
 
+Select elements by mapping a function over a `Field` (for example a functional integrand). The function is applied to each value stored in the Field:
+
+    var s = Selection(mesh, fn (q) q>0, fld)
+
 Select the boundary of a mesh:
 
     var s = Selection(mesh, boundary=true)

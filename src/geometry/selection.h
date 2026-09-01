@@ -71,6 +71,9 @@ objectselection *object_newselection(objectmesh *mesh);
 #define SELECTION_BND                        "SlBnd"
 #define SELECTION_BND_MSG                    "Mesh has no boundary elements."
 
+#define SELECTION_FLDMSH                     "SlFldMsh"
+#define SELECTION_FLDMSH_MSG                 "Field must refer to the same Mesh as the Selection."
+
 void selection_clear(objectselection *s);
 
 bool selection_isselected(objectselection *sel, grade g, elementid id);

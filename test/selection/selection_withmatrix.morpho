@@ -7,12 +7,7 @@ var p = ScalarPotential(
   fn (x,y,z) Matrix([0,-1,0])
 )
 
-// Threshold the integrand Field by hand; Selection(mesh, fn, Field) is later glue.
-var fld = p.integrand(m)
-var s = Selection(m)
-for (id in 0...fld.count()) {
-  if (fld[id] > 0) s[0, id] = true
-}
+var s = Selection(m, fn (q) q>0, p.integrand(m))
 print s // expect: <Selection>
 
 print s.isselected(0, 0) // expect: false
@@ -20,3 +15,9 @@ print s.isselected(0, 1) // expect: false
 print s.isselected(0, 2) // expect: true
 
 print s.idlistforgrade(0) // expect: [ 2, 3 ]
+
+// Matrix path still maps over vertices (one column per vertex)
+var sm = Selection(m, fn (q) q>0, Matrix([[-0.5, -0.5, 0.5, 0.5]]))
+print sm.isselected(0, 0) // expect: false
+print sm.isselected(0, 2) // expect: true
+print sm.count(0) // expect: 2

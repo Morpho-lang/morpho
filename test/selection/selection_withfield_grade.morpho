@@ -1,0 +1,24 @@
+// Field mapping selects every nonempty grade, not always vertices
+
+var m = Mesh("square.mesh")
+
+var faces = Selection(m, fn (q) q>0.4, Area().integrand(m))
+print faces.count(2) // expect: 2
+print faces.count(0) // expect: 0
+print faces.isselected(2, 0) // expect: true
+print faces.isselected(2, 1) // expect: true
+
+m.addgrade(1)
+var edges = Selection(m, fn (q) q>1.1, Length().integrand(m))
+print edges.count(1) // expect: 1
+print edges.count(0) // expect: 0
+
+var f = Field(m, 0, grade=[1, 0, 1])
+f[0, 2] = 1
+f[2, 0] = 1
+var both = Selection(m, fn (q) q>0.5, f)
+print both.isselected(0, 2) // expect: true
+print both.isselected(2, 0) // expect: true
+print both.count(0) // expect: 1
+print both.count(2) // expect: 1
+print both.count(1) // expect: 0

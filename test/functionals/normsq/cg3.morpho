@@ -1,0 +1,42 @@
+// NormSq on CG3: |q|^2 at vertices, edge nodes, and face nodes
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+m.addgrade(1)
+
+var fe = FiniteElementSpace("CG3", grade=2)
+var q = Field(m, fn (x,y) x, finiteelementspace=fe)
+var nsq = NormSq(q)
+var en = nsq.integrand(m)
+
+print en.shape()
+// expect: (1, 2, 1)
+
+print en.count()==q.count()
+// expect: true
+
+fn nodeok(g, id, k) {
+    return abs(en[g, id, k] - q[g, id, k]^2) < 1e-12
+}
+
+print nodeok(0, 0, 0) && nodeok(0, 1, 0)
+// expect: true
+
+print nodeok(1, 0, 0) && nodeok(1, 0, 1)
+// expect: true
+
+print nodeok(2, 0, 0)
+// expect: true
+
+print abs(nsq.total(m) - en.sum()) < 1e-12
+// expect: true
+
+var fg = nsq.fieldgradient(q)
+print (fg - q*2).norm() < 1e-12
+// expect: true

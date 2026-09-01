@@ -336,7 +336,7 @@ See the `Functionals` entry for general information about functionals.
 ## NormSq
 [tagnormsq]: # (normsq)
 
-The `NormSq` functional measures the elementwise L2 norm squared of a field.
+The `NormSq` functional measures the L2 norm squared of a field at every node of its finite element space.
 
 See the `Functionals` entry for general information about functionals.
 

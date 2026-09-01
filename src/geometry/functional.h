@@ -359,7 +359,6 @@ value _functional_integrand(vm *v, functional_mapinfo *info, grade g, functional
 value _functional_integrand_elem(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn);
 value _functional_total(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn);
 value _functional_gradient(vm *v, functional_mapinfo *info, grade g, functional_gradient *fn, symmetrybhvr sym);
-value _functional_fieldgradient(vm *v, functional_mapinfo *info, grade g, functional_fieldgradient *fn);
 value _functional_numericalgradient(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn, symmetrybhvr sym);
 value _functional_hessian(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn);
 bool functional_validateargs(vm *v, int nargs, value *args, functional_mapinfo *info);
@@ -649,8 +648,7 @@ static value _##cls##_##method(vm *v, objectinstance *self, functional_mapinfo *
  * COST is the primitive (info->cost in RUN). Bare names forward REGULAR.
  * INTEGRAND covers the four signatures; TOTAL mesh/sel; GRADIENT sets
  * info->grad; NUMERICALGRADIENT/HESSIAN set dependencies; FIELDGRADIENT
- * is Field-first (numerical sets cloneref/freeref; ANALYTICALFIELDGRADIENT
- * sets info->fieldgrad). */
+ * is Field-first (numerical sets cloneref/freeref; MAP takes a custom mapfn). */
 #define FUNCTIONAL_MD_REF_INTEGRAND_COST(cls, reftype, grade, wkld) \
     FUNCTIONAL_MD_REF_HELPER(cls, integrand, reftype, grade, functional_mapintegrand, true, wkld) \
     FUNCTIONAL_MD_REF_HELPER(cls, integrand_elem, reftype, grade, functional_mapintegrandforelement, false, wkld) \
@@ -698,10 +696,8 @@ static value _##cls##_##method(vm *v, objectinstance *self, functional_mapinfo *
     FUNCTIONAL_MD_REF_CHOOSEFIELDGRADIENT_COST(cls, reftype, grade, choosefn, FUNCTIONAL_COST_REGULAR)
 
 /* Numerical fieldgradient sets cloneref/freeref so the map can clone the
- * target Field. MAP takes a custom mapfn (Jump); the default is numerical.
- * ANALYTICALFIELDGRADIENT maps info->fieldgrad; a NULL kernel (including a
- * Field argument that is not reftype.field) yields a zero Field. reftype
- * must have an objectfield *field member. */
+ * target Field. MAP takes a custom mapfn (Jump, NormSq); the default is
+ * numerical. reftype must have an objectfield *field member. */
 #define FUNCTIONAL_MD_REF_FIELDGRADIENT_MAP_COST(cls, reftype, grade, mapfn, clonefn, freefn, wkld) \
     FUNCTIONAL_MD_REF_EMIT(cls, fieldgradient, reftype, grade, mapfn, true, NULL, NULL, SYMMETRY_NONE, clonefn, freefn, FUNCTIONAL_MD_REF_FIELD_OVERLOADS, wkld)
 
@@ -713,18 +709,6 @@ static value _##cls##_##method(vm *v, objectinstance *self, functional_mapinfo *
 
 #define FUNCTIONAL_MD_REF_FIELDGRADIENT(cls, reftype, grade, clonefn, freefn) \
     FUNCTIONAL_MD_REF_FIELDGRADIENT_COST(cls, reftype, grade, clonefn, freefn, FUNCTIONAL_COST_REGULAR)
-
-#define FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_COST(cls, reftype, grade, fieldgradfn, wkld) \
-static value _##cls##_fieldgradient(vm *v, objectinstance *self, functional_mapinfo *info) { \
-    reftype ref; \
-    if (!_##cls##_bindref(v, self, info, &ref)) return MORPHO_NIL; \
-    info->cost = (wkld); \
-    return _functional_fieldgradient(v, info, grade, (ref.field==info->field ? (fieldgradfn) : NULL)); \
-} \
-    FUNCTIONAL_MD_REF_FIELD_OVERLOADS(cls, fieldgradient, _##cls##_fieldgradient)
-
-#define FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT(cls, reftype, grade, fieldgradfn) \
-    FUNCTIONAL_MD_REF_ANALYTICALFIELDGRADIENT_COST(cls, reftype, grade, fieldgradfn, FUNCTIONAL_COST_REGULAR)
 
 /* -------------------------------------------------------
  * Compatibility shim

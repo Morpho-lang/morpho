@@ -1,0 +1,43 @@
+// NormSq on CG2: |q|^2 at every node (vertices and edges)
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+m.addgrade(1)
+
+var fe = FiniteElementSpace("CG2", grade=2)
+var q = Field(m, fn (x,y) Matrix([x, y]), finiteelementspace=fe)
+var nsq = NormSq(q)
+var en = nsq.integrand(m)
+
+print en.shape()
+// expect: (1, 1, 0)
+
+print en.count()==q.count()
+// expect: true
+
+fn nodeok(g, id) {
+    var qi = q[g, id]
+    return abs(en[g, id] - qi.inner(qi)) < 1e-12
+}
+
+print nodeok(0, 0) && nodeok(0, 1) && nodeok(0, 2)
+// expect: true
+
+print nodeok(1, 0) && nodeok(1, 1) && nodeok(1, 2)
+// expect: true
+
+print abs(nsq.total(m) - en.sum()) < 1e-12
+// expect: true
+
+print abs(nsq.integrand(m, 0) - q[0].inner(q[0])) < 1e-12
+// expect: true
+
+var fg = nsq.fieldgradient(q)
+print (fg - q*2).norm() < 1e-12
+// expect: true

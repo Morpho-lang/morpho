@@ -123,11 +123,6 @@ value _functional_gradient(vm *v, functional_mapinfo *info, grade g, functional_
     return _functional_run(v, info, g, functional_mapgradient, true);
 }
 
-value _functional_fieldgradient(vm *v, functional_mapinfo *info, grade g, functional_fieldgradient *fn) {
-    info->fieldgrad = fn;
-    return _functional_run(v, info, g, functional_mapfieldgradient, true);
-}
-
 value _functional_numericalgradient(vm *v, functional_mapinfo *info, grade g, functional_integrand *fn, symmetrybhvr sym) {
     info->integrand = fn;
     info->sym = sym;
@@ -779,45 +774,46 @@ functional_mapgradient_cleanup:
  * Map analytic field gradients
  * ---------------------------- */
 
-/** Compute an analytic field gradient. A NULL fieldgrad yields a zero Field. */
+/** Compute an analytic field gradient. A NULL fieldgrad yields a zero Field.
+ * Maps over info->g only; multigrade Fields (CG2+) need a custom walker. */
 bool functional_mapfieldgradient(vm *v, functional_mapinfo *info, value *out) {
     int success=false;
     objectfield *new=NULL;
-    
+
     if (!info->field) MORPHO_FAIL(v, FUNCTIONAL_ARGS);
-    
+
     new=object_newfield(info->mesh, info->field->prototype, info->field->fnspc, info->field->dof);
     if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return false; }
     field_zero(new);
-    
+
     if (!info->fieldgrad) {
         *out = MORPHO_OBJECT(new);
         return true;
     }
-    
+
     int ntask=functional_ntasks(info);
     functional_task task[ntask];
     varray_elementid imageids;
     varray_elementidinit(&imageids);
-    
+
     if (!functional_preparetasks(v, info, ntask, task, &imageids)) {
         object_free((object *) new);
         return false;
     }
-    
+
     for (int i=0; i<ntask; i++) {
         task[i].mapfn=(functional_mapfn *) info->fieldgrad;
         task[i].result=(void *) new;
     }
-    
+
     if (!functional_map(ntask, task)) goto functional_mapfieldgradient_analytic_cleanup;
-    
+
     success=true;
     *out = MORPHO_OBJECT(new);
-    
+
 functional_mapfieldgradient_analytic_cleanup:
     if (!success && new) object_free((object *) new);
-    
+
     functional_cleanuptasks(v, ntask, task, &imageids);
     return success;
 }

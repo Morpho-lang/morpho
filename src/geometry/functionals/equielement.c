@@ -27,20 +27,58 @@ typedef struct {
     grade grade;
     objectsparse *vtoel; // Connect vertices to elements
     objectsparse *eltov; // Connect elements to vertices
-    objectmatrix *weight; // Weight field
+    objectmatrix *weight; // Weight matrix (one row), possibly a view of a Field
     double mean;
+    objectmatrix wview; // Field grade slice viewed as Matrix(1, nel)
 } equielementref;
+
+/** Bind optional weight: nil, Matrix row, or scalar Field on the functional grade. */
+static bool equielement_bindweight(objectinstance *self, objectmesh *mesh, equielementref *ref) {
+    value weight=MORPHO_NIL;
+    if (!objectinstance_getpropertyinterned(self, equielement_weightproperty, &weight) ||
+        MORPHO_ISNIL(weight)) return true;
+
+    if (MORPHO_ISMATRIX(weight)) {
+        ref->weight=MORPHO_GETMATRIX(weight);
+    } else if (MORPHO_ISFIELD(weight)) { // Construct a view onto the field's data
+        objectfield *f=MORPHO_GETFIELD(weight);
+        if (f->mesh!=mesh) return false;
+
+        double *p;
+        unsigned int nent;
+        if (!field_getelementaslist(f, ref->grade, 0, 0, &nent, &p) || nent!=1) return false; // Find first element
+        if (field_dofforgrade(f, ref->grade)!=1) return false; // Check 1 dof
+
+        elementid n=mesh_nelementsforgrade(mesh, ref->grade);
+        if (n==0) return false;
+
+        ref->wview=(objectmatrix) MORPHO_STATICMATRIX(p, 1, (MatrixIdx_t) n);
+        ref->weight=&ref->wview;
+    } else {
+        return false;
+    }
+
+    if (ref->weight) {
+        double sum[ref->weight->nvals];
+        matrix_sum(ref->weight, sum);
+        ref->mean=sum[0];
+        ref->mean/=ref->weight->ncols;
+    }
+
+    return true;
+}
 
 /** Prepares the reference structure from the Equielement object's properties */
 bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, equielementref *ref) {
     bool success=false;
     value grade=MORPHO_NIL;
-    value weight=MORPHO_NIL;
+
+    ref->weight=NULL;
+    ref->mean=0.0;
 
     if (objectinstance_getpropertyinterned(self, functional_gradeproperty, &grade) &&
         MORPHO_ISINTEGER(grade) ) {
         ref->grade=MORPHO_GETINTEGERVALUE(grade);
-        ref->weight=NULL;
 
         int maxgrade=mesh_maxgrade(mesh);
         if (ref->grade<0 || ref->grade>maxgrade) ref->grade = maxgrade;
@@ -48,18 +86,7 @@ bool equielement_prepareref(objectinstance *self, objectmesh *mesh, grade g, obj
         ref->vtoel=mesh_addconnectivityelement(mesh, ref->grade, 0);
         ref->eltov=mesh_addconnectivityelement(mesh, 0, ref->grade);
 
-        if (ref->vtoel && ref->eltov) success=true;
-    }
-
-    if (objectinstance_getpropertyinterned(self, equielement_weightproperty, &weight) &&
-        MORPHO_ISMATRIX(weight) ) {
-        ref->weight=MORPHO_GETMATRIX(weight);
-        if (ref->weight) {
-            double sum[ref->weight->nvals];
-            matrix_sum(ref->weight, sum);
-            ref->mean = sum[0];
-            ref->mean/=ref->weight->ncols;
-        }
+        if (ref->vtoel && ref->eltov && equielement_bindweight(self, mesh, ref)) success=true;
     }
 
     return success;

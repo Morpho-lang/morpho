@@ -209,6 +209,12 @@ See the `Functionals` entry for general information about functionals.
 
 The `EquiElement` functional measures the discrepency between the size of elements adjacent to each vertex. It can be used to equalize elements for regularization purposes.
 
+Optionally weight elements with a scalar `Field` on the functional's grade, or a row `Matrix` with one entry per element:
+
+    var w = Field(mesh, grade=1)
+    var le = EquiElement(grade=1, weight=w)
+    le.weight = w
+
 See the `Functionals` entry for general information about functionals.
 
 ## LineCurvatureSq

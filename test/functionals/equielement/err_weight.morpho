@@ -1,0 +1,7 @@
+import meshtools
+
+var m = LineMesh(fn (t) [t, 0, 0], 0..1:0.5)
+var le = EquiElement(grade=1)
+le.weight = Field(m)
+print le.total(m)
+// expect error 'FnctlArgs'

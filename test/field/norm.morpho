@@ -1,0 +1,14 @@
+// Frobenius norm of the store (same as linearize().norm())
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var f = Field(m)
+for (i in 0...4) f[i]=i
+
+print abs(f.norm() - sqrt(14)) < 1e-12
+// expect: true
+
+print abs(f.norm() - f.linearize().norm()) < 1e-12
+// expect: true

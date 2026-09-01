@@ -908,6 +908,12 @@ value Field_inner__field(vm *v, int nargs, value *args) {
     return MORPHO_FLOAT(prod);
 }
 
+/** Frobenius norm of the store */
+value Field_norm(vm *v, int nargs, value *args) {
+    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
+    return MORPHO_FLOAT(matrix_norm(&f->data, MATRIX_NORM_FROBENIUS));
+}
+
 /** Generalized operations */
 value Field_op__callable(vm *v, int nargs, value *args) {
     objectfield *slf=MORPHO_GETFIELD(MORPHO_SELF(args));
@@ -1095,6 +1101,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_MULR_METHOD, "Field (Float)", Field_mul__number, 
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "Field (Int)", Field_div__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_DIV_METHOD, "Field (Float)", Field_div__number, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MATRIX_INNER_METHOD, "Float (Field)", Field_inner__field, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MATRIX_NORM_METHOD, "Float ()", Field_norm, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(FIELD_OP_METHOD, "Field (Callable, ...)", Field_op__callable, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", Field_print, MORPHO_FN_IO),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Field ()", Field_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),

@@ -122,6 +122,15 @@ For example:
     var dofs = f.elementDofs(el)
     print dofs
 
+## Norm
+[tagnorm]: # (norm)
+
+Returns the Frobenius norm of the values stored in the field:
+
+    print f.norm()
+
+This is the same as `f.linearize().norm()`.
+
 ## Linearize
 [taglinearize]: # (linearize)
 

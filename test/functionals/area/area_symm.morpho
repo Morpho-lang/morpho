@@ -13,7 +13,7 @@ var area = Area()
 print abs(area.total(m) - 1) < 1e-12
 // expect: true
 
-print (area.integrand(m) - Matrix([[0.5, 0.5]])).norm() < 1e-12
+print (area.integrand(m) - Field(m, 0.5, grade=2)).norm() < 1e-12
 // expect: true
 
 var grad = area.gradient(m)

@@ -88,5 +88,5 @@ print h.grade==2
 
 // Property matches the grade the integrand is mapped over
 var ln = Length()
-print ln.integrand(m).dimensions()[1]==m.count(ln.grade)
+print ln.integrand(m).count()==m.count(ln.grade)
 // expect: true

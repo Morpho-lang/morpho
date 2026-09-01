@@ -14,5 +14,5 @@ var a = GradSq(phi)
 print a.total(m)
 // expect: 0
 
-print a.integrand(m)
-// expect: [ 0 ]
+print a.integrand(m)[0]
+// expect: 0

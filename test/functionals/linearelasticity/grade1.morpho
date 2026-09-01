@@ -11,8 +11,12 @@ print e.grade
 print abs(e.total(m) - 2.94194) < 1e-5
 // expect: true
 
-print e.integrand(m)
-// expect: [ 1.25 0 0.441942 0 1.25 ]
+var got = e.integrand(m)
+var exp = got.clone()
+var vals = [1.25, 0, 0.441942, 0, 1.25]
+for (i in 0...vals.count()) exp[i] = vals[i]
+print got.count()==vals.count() && (got-exp).norm() < 1e-5
+// expect: true
 
 // Changing .grade is inactive until update()
 var e2 = LinearElasticity(mref)

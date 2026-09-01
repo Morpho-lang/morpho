@@ -9,8 +9,8 @@ phi[1]=1
 
 var lel = GradSq(phi)
 
-print lel.integrand(m)
-// expect: [ 0.57735 ]
+print abs(lel.integrand(m)[0] - 0.57735) < 1e-5
+// expect: true
 
 print lel.total(m)
 // expect: 0.57735

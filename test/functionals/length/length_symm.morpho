@@ -14,7 +14,7 @@ var len = Length()
 print abs(len.total(m) - 1) < 1e-12
 // expect: true
 
-print (len.integrand(m) - Matrix([1])).norm() < 1e-12
+print (len.integrand(m) - Field(m, 1, grade=1)).norm() < 1e-12
 // expect: true
 
 var grad = len.gradient(m)

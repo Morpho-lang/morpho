@@ -5,8 +5,8 @@ var a = Volume()
 print m
 // expect: <Mesh: 4 vertices>
 
-print a.integrand(m)
-// expect: [ 0.117851 ]
+print abs(a.integrand(m)[0] - 0.117851) < 1e-5
+// expect: true
 
 print a.total(m)
 // expect: 0.117851

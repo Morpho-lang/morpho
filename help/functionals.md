@@ -13,7 +13,7 @@ Many functionals are built in. Additional functionals are available by importing
 Functionals provide a number of standard methods:
 
 * `total`(mesh) — value of the integral; also `total`(mesh, selection)
-* `integrand`(mesh) — contribution from each element as a `Matrix`; also `integrand`(mesh, selection)
+* `integrand`(mesh) — contribution from each element as a scalar `Field` on the functional's grade; also `integrand`(mesh, selection)
 * `integrand`(mesh, id) — contribution from a single element as a `Float`; `integrand`(mesh, grade, id) sets the grade explicitly
 * `gradient`(mesh) — derivative with respect to vertex motion; also `gradient`(mesh, selection)
 * `hessian`(mesh) — sparse second derivative with respect to vertex motion, where provided; also `hessian`(mesh, selection)
@@ -32,12 +32,13 @@ The `total` method returns the value of a functional:
 ## Integrand
 [tagintegrand]: # (integrand)
 
-The `integrand` method returns the contribution from each element:
+The `integrand` method returns a scalar `Field` with one value per element of the functional's grade. 
 
-    print fnl.integrand(mesh)
+    var fld = fnl.integrand(mesh)
+    print fld[id]
     print fnl.integrand(mesh, selection)
 
-Evaluate a single element with the functional's default grade, or choose an explicit grade:
+Evaluate a single element as a `Float` with the functional's default grade, or choose an explicit grade:
 
     print fnl.integrand(mesh, id)
     print fnl.integrand(mesh, grade, id)

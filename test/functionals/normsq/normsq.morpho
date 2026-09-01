@@ -8,8 +8,8 @@ var nn = Field(m, Matrix([1,1,1/2]))
 
 var lnn = NormSq(nn)
 
-print lnn.integrand(m)
-// expect: [ 2.25 2.25 2.25 ]
+print (lnn.integrand(m) - Field(m, 2.25)).norm() < 1e-5
+// expect: true
 
 print lnn.total(m)
 // expect: 6.75

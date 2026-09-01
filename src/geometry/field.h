@@ -98,6 +98,9 @@ extern value field_gradeoption;
 #define FIELD_OPRETURN                   "FldOpFn"
 #define FIELD_OPRETURN_MSG               "Could not construct a Field from the return value of the function passed to 'op'."
 
+#define FIELD_IDXFALLBACK                "FldIdxAutoGrd"
+#define FIELD_IDXFALLBACK_MSG            "Field indexed using the form f[0,id], but grade zero is empty. Using the lowest nonempty grade, but recommend using the form f[id] to select the grade automatically."
+
 objectfield *field_clone(objectfield *f);
 
 void field_zero(objectfield *field);

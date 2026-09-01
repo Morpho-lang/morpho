@@ -718,8 +718,21 @@ value field_constructor__mesh_fn(vm *v, int nargs, value *args) {
  * Method implementations
  * ---------------------------------------------- */
 
+static int field_indexfallbackwarned = 0;
+
+/** Compatibility shim to find a fallback grade if grade 0 is empty; returns true on success */
+static bool _indexresolvefallback(vm *v, objectfield *f, grade *g) {
+    if (*g!=MESH_GRADE_VERTEX || field_dofforgrade(f, MESH_GRADE_VERTEX)!=0) return true;
+    if (!field_lowestgrade(f, g)) return false; // Identify lowest grade
+    if (MorphoAtomic_addint(&field_indexfallbackwarned, 1)==0) { // Warn if first use
+        morpho_runtimewarning(v, FIELD_IDXFALLBACK);
+    }
+    return true;
+}
+
 static value _indexget(vm *v, objectfield *f, grade g, elementid el, int indx) {
     value out = MORPHO_NIL;
+    if (!_indexresolvefallback(v, f, &g)) MORPHO_RAISE(v, FIELD_INDICESOUTSIDEBOUNDS);
     if (!field_getelement(f, g, el, indx, &out)) MORPHO_RAISE(v, FIELD_INDICESOUTSIDEBOUNDS);
     return out;
 }
@@ -746,6 +759,7 @@ value Field_getindex__int_int_int(vm *v, int nargs, value *args) {
 }
 
 static value _indexset(vm *v, objectfield *f, grade g, elementid el, int indx, value val) {
+    if (!_indexresolvefallback(v, f, &g)) MORPHO_RAISE(v, FIELD_INCOMPATIBLEVAL);
     if (!field_setelement(f, g, el, indx, val)) MORPHO_RAISE(v, FIELD_INCOMPATIBLEVAL);
     return MORPHO_NIL;
 }
@@ -791,6 +805,27 @@ value Field_enumerate__int(vm *v, int nargs, value *args) {
 value Field_count(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
     return MORPHO_INTEGER(f->nelements);
+}
+
+/** Sum stored values. Scalars return a Float; matrix-valued fields return the summed Matrix. */
+value Field_sum(vm *v, int nargs, value *args) {
+    objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
+
+    if (MORPHO_ISMATRIX(f->prototype)) {
+        objectmatrix *proto=MORPHO_GETMATRIX(f->prototype);
+        objectmatrix *new=matrix_new(proto->nrows, proto->ncols, true);
+        if (!new) MORPHO_RAISE(v, ERROR_ALLOCATIONFAILED);
+        for (unsigned int i=0; i<f->nelements; i++) {
+            cblas_daxpy((linalg_int_t) f->psize, 1.0,
+                        f->data.elements+i*f->psize, 1,
+                        new->elements, 1);
+        }
+        return morpho_wrapandbind(v, (object *) new);
+    }
+
+    double sum=0.0;
+    matrix_sum(&f->data, &sum);
+    return MORPHO_FLOAT(sum);
 }
 
 /** Field assign */
@@ -1102,6 +1137,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Int, _)", Field_setindex_
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Int, Int, _)", Field_setindex__int_int_int_x, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "_ (Int)", Field_enumerate__int, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Field_count, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUM_METHOD, "_ ()", Field_sum, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(Field)", Field_assign__field, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(Matrix)", Field_assign__matrix, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Field (Field)", Field_add__field, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
@@ -1177,6 +1213,7 @@ void field_initialize(void) {
     morpho_defineerror(FIELD_ARGS, ERROR_HALT, FIELD_ARGS_MSG);
     morpho_defineerror(FIELD_OP, ERROR_HALT, FIELD_OP_MSG);
     morpho_defineerror(FIELD_OPRETURN, ERROR_HALT, FIELD_OPRETURN_MSG);
+    morpho_defineerror(FIELD_IDXFALLBACK, ERROR_WARNING, FIELD_IDXFALLBACK_MSG);
 }
 
 #endif

@@ -22,6 +22,8 @@ To access elements of a `Field`, use index notation:
     print f[g, id] // Prints element id on grade `g`
     print f[g, id, index] // Prints quantity `index` on element `id` on grade `g`
 
+If grade 0 is empty, `f[0, id]` is treated as `f[id]`. Prefer `f[id]`.
+
 Fields are associated with a `FiniteElementSpace` to allow calculus operations, including integration, local derivatives, etc. Unless another `FiniteElementSpace` is specified, the default is piecewise-linear (`CG1`) with values defined on vertices.
 
 Create a `Field` with a specified `FiniteElementSpace`:
@@ -130,6 +132,15 @@ Returns the Frobenius norm of the values stored in the field:
     print f.norm()
 
 This is the same as `f.linearize().norm()`.
+
+## Sum
+[tagsum]: # (sum)
+
+Returns the sum of the values stored in the field:
+
+    print f.sum()
+
+For a scalar field this is a `Float`. For a matrix-valued field it is a `Matrix` of the same shape as each stored entry.
 
 ## Linearize
 [taglinearize]: # (linearize)

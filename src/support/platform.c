@@ -525,6 +525,18 @@ void MorphoCond_wait(MorphoCond *cond, MorphoMutex *mutex) {
  * Atomics
  * ********************************************************************** */
 
+/** @brief: Atomic add: *p <- *p + inc. Returns the previous value of *p.
+ * @warning: Only safe for concurrent callers if all use this function. */
+int MorphoAtomic_addint(int *p, int inc) {
+#ifdef _WIN32
+    return (int) InterlockedExchangeAdd((volatile LONG *) p, (LONG) inc);
+#elif defined(__GNUC__) || defined(__clang__)
+    return __atomic_fetch_add(p, inc, __ATOMIC_RELAXED);
+#else
+#error "Atomics not supported on this platform."
+#endif
+}
+
 /** @brief: Atomic add: *p <- *p + inc. 
  * @warning: Only safe for concurrent callers if all use this function. 
  * @warning: *p must be 8-byte aligned. */

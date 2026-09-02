@@ -1408,15 +1408,11 @@ class MeshChecker {
       var func = self._functionalForGrade(grade)
       if (!func) continue
 
-      var sizes = func().integrand(self.mesh) 
-      var glist = []
+      var sizes = func().integrand(self.mesh)
+      var glist = Selection(self.mesh, fn (q) q<=self.sizetol, sizes).idlistforgrade(grade)
 
-      for (id in 0...nel) {
-        var size = sizes[grade, id]
-        if (size<=self.sizetol) {
-          Error("MshZroSz", "Grade ${grade} element ${id} has non-positive size [${size}]").warning() 
-          glist.append(id)
-        }
+      for (id in glist) {
+        Error("MshZroSz", "Grade ${grade} element ${id} has non-positive size [${sizes[grade, id]}]").warning() 
       }
       dict[grade] = glist 
     }

@@ -43,8 +43,7 @@ for (i in 1..10) {
   // Select elements that have an above average contribution to the energy
   var en = le.integrand(phi) // energy in each element
   var mean = en.sum()/en.count() // mean energy per element
-  var srefine = Selection(mesh)
-  for (id in 0...en.count()) if (en[0,id]>1.5*mean) srefine[2,id]=true // identify large contributions
+  var srefine = Selection(mesh, fn (q) q>1.5*mean, en)
 
   // Refine
   var ref = MeshRefiner([mesh, phi, bnd, bnd1, bnd2])

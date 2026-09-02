@@ -283,17 +283,14 @@ class MeshGen {
     // Evaluate the weight function at the midpoint
     var hbar = ScalarPotentialMidpoint(self.weight).integrand(self.mesh)
 
-    // Calculate preferred lengths
-    var len0 = Field(self.mesh, grade=1)
-
-    fn lnorm(l, n) { // n-norm of a matrix
+    fn lnorm(l, n) { // n-norm of stored Field values
       var sum = 0 
       for (a in l) sum+=a^n
       return sum^(1/n)
     }
 
     var lscale=self.fscale*(lnorm(lengths, self.dim)/lnorm(hbar, self.dim))
-    for (id in 0...self.mesh.count(1)) len0[id]=lscale*hbar[id]
+    var len0 = lscale*hbar
 
     // Impose elasticity
     var lel = OneSidedHookeElasticity(len0)

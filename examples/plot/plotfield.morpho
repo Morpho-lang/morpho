@@ -1,15 +1,13 @@
-// Plot a selection 
+// Plot a functional integrand Field with no copy.
 import plot
 import implicitmesh
 
-/* Create a simple mesh for demonstration purposes */
+/* Closed surface for demonstration */
 var impl = ImplicitMeshBuilder(fn (x,y,z) x^2+(y/2)^2+z^2-1)
 var mesh = impl.build(stepsize=0.2)
 
 // Mean curvature squared is already a vertex Field
 var msq = MeanCurvatureSq().integrand(mesh)
 
-// Visualize the field 
-Show(plotfield(msq, grade=2, style="interpolate", scalebar=ScaleBar(posn=[1.2,0,0])))
-// Visualize with custom limits on the colormap
-Show(plotfield(msq, grade=2, style="interpolate", cmin=0.025, cmax=0.075, scalebar=ScaleBar(posn=[1.2,0,0])))
+Show(plotfield(msq, style="interpolate", scalebar=ScaleBar(posn=[1.2,0,0])))
+Show(plotfield(msq, style="interpolate", cmin=0.025, cmax=0.075, scalebar=ScaleBar(posn=[1.2,0,0])))

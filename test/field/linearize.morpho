@@ -40,3 +40,25 @@ print f2.linearize()
 // expect: [ 0 ]
 // expect: [ 1 ]
 // expect: [ 0 ]
+
+// Holding the view must keep the Field's store alive after the Field is dropped
+var f3 = Field(m)
+for (i in 0...4) f3[i] = i+10
+var c = f3.__linearize()
+f3 = nil
+
+// Create and drop garbage so the collector has unmarked objects to sweep
+var junk = []
+for (i in 1...50) junk.append(Field(m))
+junk = nil
+System.collectGarbage()
+
+print c
+// expect: [ 10 ]
+// expect: [ 11 ]
+// expect: [ 12 ]
+// expect: [ 13 ]
+
+c[0] = 42
+print c[0]
+// expect: 42

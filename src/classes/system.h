@@ -30,6 +30,7 @@
 #define SYSTEM_SETWORKINGFOLDER_METHOD "setworkingfolder"
 
 #define SYSTEM_SUBPROCESS_METHOD      "subprocess"
+#define SYSTEM_COLLECTGARBAGE_METHOD  "collectGarbage"
 
 /* -------------------------------------------------------
  * System error messages

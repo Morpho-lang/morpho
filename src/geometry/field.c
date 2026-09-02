@@ -157,13 +157,14 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, uns
 
         new->pool=NULL;
 
-        /* Initialize the store */
+        /* Initialize the store as a child of the Field */
         object_init(&new->data.obj, OBJECT_MATRIX);
         new->data.ncols=1;
         new->data.nrows=size;
         new->data.nvals=1;
         new->data.nels=new->data.ncols*new->data.nrows*new->data.nvals;
         new->data.elements=new->data.matrixdata;
+        morpho_bindtoparent((object *) &new->data, (object *) new);
 
         if (MORPHO_ISMATRIX(prototype)) {
             objectmatrix *mat = MORPHO_GETMATRIX(prototype);

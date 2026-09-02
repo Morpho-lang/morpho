@@ -123,6 +123,7 @@ void morpho_freevm(vm *v);
 /* Bind new objects to the virtual machine */
 void morpho_bindobjects(vm *v, int nobj, value *obj);
 void morpho_bindrecursive(vm *v, value obj);
+bool morpho_bindtoparent(object *obj, object *parent);
 value morpho_wrapandbind(vm *v, object *obj);
 value morpho_wrapandbindrecursive(vm *v, object *obj);
 
@@ -132,7 +133,8 @@ void morpho_markvalue(void *v, value val);
 void morpho_markvarrayvalue(void *v, varray_value *array);
 void morpho_markdictionary(void *v, dictionary *dict);
 void morpho_searchunmanagedobject(void *v, object *obj);
-bool morpho_ismanagedobject(object *obj); 
+bool morpho_ismanagedobject(object *obj);
+void morpho_collectgarbage(vm *v); 
 
 /* Tell the VM that the size of an object has changed */
 void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize);

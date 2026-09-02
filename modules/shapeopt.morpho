@@ -370,7 +370,7 @@ class ShapeOptimizer {
         for (k in 0...nv) {
           // Find the discrepencies of each force at the vertex
           var vv = Matrix(nc)
-          for (i in 0...nc) vv[i] = -dv[i][0,k] // Note minus sign
+          for (i in 0...nc) vv[i] = -dv[i][k] // Note minus sign
 
           if (vv.norm()>self.ctol) {
             // Identify constraints active on this vertex

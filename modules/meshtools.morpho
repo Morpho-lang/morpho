@@ -8,7 +8,6 @@
 import constants
 import kdtree
 import delaunay
-import functionals
 
 // Error messages  
 var _errMshBldDimIncnstnt = Error("MshBldDimIncnstnt", "Vertex dimension inconsistent with mesh dimension.")
@@ -1403,7 +1402,8 @@ class MeshChecker {
     var dict = {}
 
     for (grade in 1..self.mesh.maxgrade()) {
-      if (self.mesh.count(grade)==0) continue 
+      var nel = self.mesh.count(grade)
+      if (nel==0) continue 
 
       var func = self._functionalForGrade(grade)
       if (!func) continue
@@ -1411,7 +1411,8 @@ class MeshChecker {
       var sizes = func().integrand(self.mesh) 
       var glist = []
 
-      for (size, id in sizes) {
+      for (id in 0...nel) {
+        var size = sizes[grade, id]
         if (size<=self.sizetol) {
           Error("MshZroSz", "Grade ${grade} element ${id} has non-positive size [${size}]").warning() 
           glist.append(id)

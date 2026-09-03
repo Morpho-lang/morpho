@@ -1,0 +1,123 @@
+import meshtools
+
+fn sortedIds(s, g) {
+  var ids = s.idlistforgrade(g)
+  ids.sort()
+  return ids
+}
+
+fn eqsel(a, b) {
+  var maxg = a.mesh().maxgrade()
+  if (b.mesh().maxgrade()!=maxg) return false
+  for (g in 0..maxg) {
+    var ia = sortedIds(a, g)
+    var ib = sortedIds(b, g)
+    if (ia.count()!=ib.count()) return false
+    for (i in 0...ia.count()) {
+      if (ia[i]!=ib[i]) return false
+    }
+  }
+  return true
+}
+
+fn cl(s) { return SelectionBuilder(s).closure().build() }
+fn st(s) { return SelectionBuilder(s).star().build() }
+fn lk(s) { return SelectionBuilder(s).link().build() }
+fn bd(s) { return SelectionBuilder(s).boundary().build() }
+fn inn(s) { return SelectionBuilder(s).interior().build() }
+
+fn checkIdentities(s) {
+  print eqsel(cl(cl(s)), cl(s))
+  print eqsel(st(st(s)), st(s))
+  print eqsel(lk(s), cl(st(s)).difference(st(cl(s))))
+}
+
+// --- Triangle ---
+var mb = MeshBuilder()
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addface([0,1,2])
+var tri = mb.build()
+
+// Empty builder acts on the whole mesh
+print eqsel(SelectionBuilder(tri).boundary().build(),
+            SelectionBuilder(tri).selectAll().boundary().build())
+// expect: true
+print eqsel(SelectionBuilder(tri).interior().build(),
+            SelectionBuilder(tri).selectAll().interior().build())
+// expect: true
+
+// Vertex-only boundary is empty
+var v0 = Selection(tri)
+v0[0, 0] = true
+var vbd = bd(v0)
+print vbd.count(0)
+// expect: 0
+print vbd.count(1)
+// expect: 0
+print vbd.count(2)
+// expect: 0
+
+// Boundary of a single triangle: three edges and their vertices
+var face = Selection(tri)
+face[2, 0] = true
+var fbd = bd(face)
+print fbd.count(0)
+// expect: 3
+print fbd.count(1)
+// expect: 3
+print fbd.count(2)
+// expect: 0
+print sortedIds(fbd, 0)
+// expect: [ 0, 1, 2 ]
+
+checkIdentities(v0)
+// expect: true
+// expect: true
+// expect: true
+
+var edge = Selection(tri)
+edge[1, 0] = true
+checkIdentities(edge)
+// expect: true
+// expect: true
+// expect: true
+
+checkIdentities(face)
+// expect: true
+// expect: true
+// expect: true
+
+// --- Tetrahedron ---
+var tb = MeshBuilder()
+tb.addvertex([0,0,0])
+tb.addvertex([1,0,0])
+tb.addvertex([0,1,0])
+tb.addvertex([0,0,1])
+tb.addvolume([0,1,2,3])
+var tet = tb.build()
+
+print eqsel(SelectionBuilder(tet).boundary().build(),
+            SelectionBuilder(tet).selectAll().boundary().build())
+// expect: true
+print eqsel(SelectionBuilder(tet).interior().build(),
+            SelectionBuilder(tet).selectAll().interior().build())
+// expect: true
+
+var tv = Selection(tet)
+tv[0, 0] = true
+var tvbd = bd(tv)
+print tvbd.count(0)+tvbd.count(1)+tvbd.count(2)+tvbd.count(3)
+// expect: 0
+
+var tvol = Selection(tet)
+tvol[3, 0] = true
+checkIdentities(tv)
+// expect: true
+// expect: true
+// expect: true
+checkIdentities(tvol)
+// expect: true
+// expect: true
+// expect: true

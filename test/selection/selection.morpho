@@ -15,4 +15,4 @@ print s.isselected(0, 2) // expect: true
 
 print s.idlistforgrade(0) // expect: [ 2, 3 ]
 
-print s.isselected(0) // expect Error: 'SlIsSlArg'
+print s.isselected(0) // expect Error: 'MltplDsptchFld'

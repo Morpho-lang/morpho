@@ -1575,37 +1575,6 @@ This error occurs when addsymmetry receives an object that doesn't provide a tra
     var obj = Object()
     m.addsymmetry(obj) // Causes 'MshAddSymMsngTrnsfrm'
 
-## SlNoMsh
-[tagslnomsh]: # (slnomsh)
-
-This error occurs when a Selection operation requires a Mesh object but doesn't receive one:
-
-    var s = Selection("invalid") // Causes 'SlNoMsh'
-
-## SlIsSlArg
-[tagslisslarg]: # (slisslarg)
-
-This error occurs when Selection.isselected receives invalid arguments. It requires a grade and element id:
-
-    var s = Selection(mesh)
-    s.isselected(1) // Causes 'SlIsSlArg' (missing element id)
-
-## SlGrdArg
-[tagslgrdarg]: # (slgrdarg)
-
-This error occurs when a Selection method requires a grade as an argument but doesn't receive one:
-
-    var s = Selection(mesh)
-    s.method() // Causes 'SlGrdArg' if grade required
-
-## SlStArg
-[tagslstarg]: # (slstarg)
-
-This error occurs when Selection set methods receive invalid arguments. They require a selection:
-
-    var s = Selection(mesh)
-    s.union("invalid") // Causes 'SlStArg'
-
 ## SlBnd
 [tagslbnd]: # (slbnd)
 
@@ -1613,6 +1582,15 @@ This error occurs when a mesh has no boundary elements:
 
     var m = Mesh()
     m.boundary() // Causes 'SlBnd' if no boundary exists
+
+## SlMsh
+[tagslmsh]: # (slmsh)
+
+This error occurs when a set operation is applied to Selections that refer to different Meshes:
+
+    var s1 = Selection(mesh1)
+    var s2 = Selection(mesh2)
+    s1.union(s2) // Causes 'SlMsh'
 
 ## FldArgs
 [tagfldargs]: # (fldargs)

@@ -1,4 +1,4 @@
-/** @file selection.c
+/** @file selection.h
  *  @author T J Atherton
  *
  *  @brief Selections
@@ -23,10 +23,6 @@ typedef struct {
     object obj;
     objectmesh *mesh; /** The mesh the selection is referring to */
     
-    enum {
-        SELECT_ALL, SELECT_NONE, SELECT_SOME
-    } mode; /** What is selected? */
-    
     unsigned int ngrades; /** Number of grades */
     dictionary selected[]; /** Selections */
 } objectselection;
@@ -36,9 +32,6 @@ typedef struct {
 
 /** Gets the object as a selection */
 #define MORPHO_GETSELECTION(val)   ((objectselection *) MORPHO_GETOBJECT(val))
-
-/** Creates an empty selection object */
-objectselection *object_newselection(objectmesh *mesh);
 
 /* -------------------------------------------------------
  * Selection class
@@ -51,22 +44,8 @@ objectselection *object_newselection(objectmesh *mesh);
 #define SELECTION_REMOVEGRADEMETHOD "removegrade"
 #define SELECTION_MESHMETHOD    "mesh"
 
-#define SELECTION_COMPLEMENTMETHOD "complement"
-
 #define SELECTION_BOUNDARYOPTION "boundary"
 #define SELECTION_PARTIALSOPTION "partials"
-
-#define SELECTION_NOMESH                     "SlNoMsh"
-#define SELECTION_NOMESH_MSG                 "Selection requires a Mesh object as an argument."
-
-#define SELECTION_ISSLCTDARG                 "SlIsSlArg"
-#define SELECTION_ISSLCTDARG_MSG             "Selection.isselected requires a grade and element id as arguments."
-
-#define SELECTION_GRADEARG                   "SlGrdArg"
-#define SELECTION_GRADEARG_MSG               "Method requires a grade as the argument."
-
-#define SELECTION_STARG                      "SlStArg"
-#define SELECTION_STARG_MSG                  "Selection set methods require a selection as the argument."
 
 #define SELECTION_BND                        "SlBnd"
 #define SELECTION_BND_MSG                    "Mesh has no boundary elements."
@@ -74,7 +53,8 @@ objectselection *object_newselection(objectmesh *mesh);
 #define SELECTION_FLDMSH                     "SlFldMsh"
 #define SELECTION_FLDMSH_MSG                 "Field must refer to the same Mesh as the Selection."
 
-void selection_clear(objectselection *s);
+#define SELECTION_MSH                        "SlMsh"
+#define SELECTION_MSH_MSG                    "Selections must refer to the same Mesh."
 
 bool selection_isselected(objectselection *sel, grade g, elementid id);
 unsigned int selection_count(objectselection *sel, grade g);

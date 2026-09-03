@@ -7,15 +7,12 @@
 #include "build.h"
 #ifdef MORPHO_INCLUDE_GEOMETRY
 
-#include "morpho.h"
-#include "object.h"
-#include "builtin.h"
-#include "classes.h"
-#include "linalg.h"
-#include "sparse.h"
-#include "mesh.h"
-#include "field.h"
 #include "selection.h"
+#include "morpho.h"
+#include "classes.h"
+#include "field.h"
+
+static void selection_clear(objectselection *s);
 
 /* **********************************************************************
  * Selection object definitions
@@ -28,18 +25,23 @@ void objectselection_printfn(object *obj, void *v) {
     morpho_printf(v, "<Selection>");
 }
 
+void objectselection_markfn(object *obj, void *v) {
+    objectselection *s = (objectselection *) obj;
+    morpho_markobject(v, (object *) s->mesh);
+}
+
 void objectselection_freefn(object *obj) {
     objectselection *s = (objectselection *) obj;
     selection_clear(s);
 }
 
 size_t objectselection_sizefn(object *obj) {
-    return sizeof(objectselection)+sizeof(objectsparse *)*((objectselection *) obj)->ngrades;
+    return sizeof(objectselection)+sizeof(dictionary)*((objectselection *) obj)->ngrades;
 }
 
 objecttypedefn objectselectiondefn = {
     .printfn=objectselection_printfn,
-    .markfn=NULL,
+    .markfn=objectselection_markfn,
     .freefn=objectselection_freefn,
     .sizefn=objectselection_sizefn,
     .hashfn=NULL,
@@ -51,14 +53,13 @@ objecttypedefn objectselectiondefn = {
  * ********************************************************************** */
 
 /** Create a new empty selection object */
-objectselection *object_newselection(objectmesh *mesh) {
+static objectselection *object_newselection(objectmesh *mesh) {
     unsigned int ngrades = mesh->dim+1;
     objectselection *new=(objectselection *) object_new(sizeof(objectselection)+sizeof(dictionary)*ngrades, OBJECT_SELECTION);
     
     if (new) {
         new->mesh=mesh;
         new->ngrades=ngrades;
-        new->mode=SELECT_NONE; 
         for (unsigned int i=0; i<ngrades; i++) dictionary_init(&new->selected[i]);
     }
     
@@ -70,7 +71,6 @@ objectselection *selection_clone(objectselection *sel) {
     objectselection *new=object_newselection(sel->mesh);
     
     if (new) {
-        new->mode=sel->mode;
         for (unsigned int i=0; i<sel->ngrades; i++) dictionary_copy(&sel->selected[i], &new->selected[i]);
     }
     
@@ -78,7 +78,7 @@ objectselection *selection_clone(objectselection *sel) {
 }
 
 /** Clears all data structures associated with a selection */
-void selection_clear(objectselection *s) {
+static void selection_clear(objectselection *s) {
     for (grade i=0; i<s->ngrades; i++) {
         dictionary_clear(&s->selected[i]);
     }
@@ -91,10 +91,6 @@ void selection_removegrade(objectselection *sel, grade g) {
 
 /** Selects an element */
 bool selection_selectelement(objectselection *sel, grade g, elementid id) {
-    if (sel->mode==SELECT_ALL) return true; /* No need to store info in the selectall scenario */
-    
-    sel->mode=SELECT_SOME; // Ensure that we change modes
-    
     return dictionary_insert(&sel->selected[g], MORPHO_INTEGER(id), MORPHO_NIL);
 }
 
@@ -128,9 +124,7 @@ bool selection_addgraderaise(objectselection *sel, grade g, bool includepartials
  * @param[in] sel - selection to change
  * @param[in] g - grade to add */
 bool selection_addgradelower(objectselection *sel, grade g) {
-    //dictionary *dest = &sel->selected[g];
-    
-    for (grade i=sel->ngrades; i>g; i--) { // Loop over grades higher than g
+    for (grade i=sel->ngrades-1; i>g; i--) { // Loop over grades higher than g
         objectsparse *conn = mesh_addconnectivityelement(sel->mesh, g, i);
         if (!conn) continue;
         
@@ -198,7 +192,7 @@ void selection_selectwithmatrix(vm *v, objectselection *sel, value fn, objectmat
     
     for (elementid i=0; i<nv; i++) {
         if (matrix_getcolumnptr(matrix, i, &x)==LINALGERR_OK) {
-            for (unsigned int i=0; i<nargs; i++) args[i]=MORPHO_FLOAT(x[i]);
+            for (unsigned int j=0; j<(unsigned int) nargs; j++) args[j]=MORPHO_FLOAT(x[j]);
         }
         
         if (!morpho_call(v, fn, nargs, args, &ret)) break;
@@ -261,35 +255,19 @@ void selection_selectboundary(vm *v, objectselection *sel) {
 
 /** Selects an element */
 void selection_selectwithid(objectselection *sel, grade g, elementid id, bool selected) {
-    if (selected && (sel->mode==SELECT_NONE || sel->mode==SELECT_SOME)) {
-        if (g<sel->ngrades) {
-            dictionary_insert(&sel->selected[g], MORPHO_INTEGER(id), MORPHO_NIL);
-        }
-        
-        sel->mode=SELECT_SOME;
-    } else if (!selected && (sel->mode==SELECT_SOME)) {
-        if (g<sel->ngrades) {
-            dictionary_remove(&sel->selected[g], MORPHO_INTEGER(id));
-        }
-        
-        sel->mode=SELECT_SOME;
+    if (g>=sel->ngrades) return;
+
+    if (selected) {
+        dictionary_insert(&sel->selected[g], MORPHO_INTEGER(id), MORPHO_NIL);
+    } else {
+        dictionary_remove(&sel->selected[g], MORPHO_INTEGER(id));
     }
-    
-    if (sel->mode==SELECT_ALL) {
-        UNREACHABLE("Unimplemented modification to SELECTALL not implemented.");
-    }
-    
 }
 
 /** Tests if an element is selected */
 bool selection_isselected(objectselection *sel, grade g, elementid id) {
-    switch (sel->mode) {
-        case SELECT_NONE: return false;
-        case SELECT_ALL: return true;
-        case SELECT_SOME: {
-            return dictionary_get(&sel->selected[g], MORPHO_INTEGER(id), NULL);
-        }
-    }
+    if (g<0 || (unsigned int) g>=sel->ngrades) return false;
+    return dictionary_get(&sel->selected[g], MORPHO_INTEGER(id), NULL);
 }
 
 /** Number of selected elements of grade g */
@@ -300,13 +278,8 @@ unsigned int selection_count(objectselection *sel, grade g) {
 
 /** Finds the maximum nonempty grade in a selection */
 grade selection_maxgrade(objectselection *sel) {
-    switch (sel->mode) {
-        case SELECT_NONE: return 0;
-        case SELECT_ALL: return mesh_maxgrade(sel->mesh);
-        case SELECT_SOME:
-            for (grade g=sel->ngrades-1; g>0; g--) {
-                if (sel->selected[g].count>0) return g;
-            }
+    for (grade g=sel->ngrades-1; g>0; g--) {
+        if (sel->selected[g].count>0) return g;
     }
     return 0;
 }
@@ -314,25 +287,17 @@ grade selection_maxgrade(objectselection *sel) {
 /** Gets the element ids for a given grade as a list */
 objectlist *selection_idlistforgrade(objectselection *sel, grade g) {
     objectlist *new = object_newlist(0, NULL);
+    if (!new) return NULL;
+    if (g<0 || (unsigned int) g>=sel->ngrades) return new;
+
     dictionary *dict = &sel->selected[g];
-    
-    if (new) switch(sel->mode) {
-        case SELECT_NONE: break;
-        case SELECT_ALL: {
-            UNREACHABLE("ID list for select all not implemented.");
+    list_resize(new, dict->count);
+    for (unsigned int i=0; i<dict->capacity; i++) {
+        if (MORPHO_ISINTEGER(dict->contents[i].key)) {
+            list_append(new, dict->contents[i].key);
         }
-            break;
-        case SELECT_SOME: {
-            list_resize(new, dict->count);
-            for (unsigned int i=0; i<dict->capacity; i++) {
-                if (MORPHO_ISINTEGER(dict->contents[i].key)) {
-                    list_append(new, dict->contents[i].key);
-                }
-            }
-        }
-            break;
     }
-    
+
     return new;
 }
 
@@ -343,50 +308,33 @@ objectlist *selection_idlistforgrade(objectselection *sel, grade g) {
 /* Computes the union of selections a & b */
 objectselection *selection_union(objectselection *a, objectselection *b) {
     objectselection *new = object_newselection(a->mesh);
-    
-    if (a->mode==SELECT_ALL || b->mode==SELECT_ALL) { // No need to copy a select all element
-        new->mode=SELECT_ALL;
-    } else {
-        for (grade g=0; g<a->ngrades && g<b->ngrades; g++) {
-            dictionary_union(&a->selected[g], &b->selected[g], &new->selected[g]);
-            if (new->selected[g].count>0) new->mode=SELECT_SOME;
-        }
+
+    for (grade g=0; g<a->ngrades && g<b->ngrades; g++) {
+        dictionary_union(&a->selected[g], &b->selected[g], &new->selected[g]);
     }
-    
+
     return new;
 }
 
-/* Computes the union of selections a & b */
+/* Computes the intersection of selections a & b */
 objectselection *selection_intersection(objectselection *a, objectselection *b) {
     objectselection *new = object_newselection(a->mesh);
-    
-    if (a->mode==SELECT_ALL && b->mode==SELECT_ALL) { // No need to copy a select all element
-        new->mode=SELECT_ALL;
-    } else if (a->mode!=SELECT_NONE && b->mode!=SELECT_NONE) {
-        for (grade g=0; g<a->ngrades && g<b->ngrades; g++) {
-            dictionary_intersection(&a->selected[g], &b->selected[g], &new->selected[g]);
-            if (new->selected[g].count>0) new->mode=SELECT_SOME;
-        }
+
+    for (grade g=0; g<a->ngrades && g<b->ngrades; g++) {
+        dictionary_intersection(&a->selected[g], &b->selected[g], &new->selected[g]);
     }
-    
+
     return new;
 }
 
-/* Computes the union of selections a & b */
+/* Computes the difference of selections a & b */
 objectselection *selection_difference(objectselection *a, objectselection *b) {
     objectselection *new = object_newselection(a->mesh);
-    
-    if (a->mode==SELECT_ALL) {
-        if (b->mode==SELECT_NONE) {
-            new->mode=SELECT_ALL;
-        } else UNREACHABLE("Selectall difference not implemented.");
-    } else if (a->mode!=SELECT_NONE) {
-        for (grade g=0; g<a->ngrades && g<b->ngrades; g++) {
-            dictionary_difference(&a->selected[g], &b->selected[g], &new->selected[g]);
-            if (new->selected[g].count>0) new->mode=SELECT_SOME;
-        }
+
+    for (grade g=0; g<a->ngrades && g<b->ngrades; g++) {
+        dictionary_difference(&a->selected[g], &b->selected[g], &new->selected[g]);
     }
-    
+
     return new;
 }
 
@@ -397,138 +345,96 @@ objectselection *selection_difference(objectselection *a, objectselection *b) {
 static value selection_boundaryoption;
 static value selection_partialsoption;
 
-/** Constructs a Selection object */
-value selection_constructor(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
-    objectmesh *mesh=NULL;
-    objectselection *new=NULL;
-    value fn=MORPHO_NIL;
-    value fnargs=MORPHO_NIL;
-    value boundary=MORPHO_FALSE;
-    int nfixed=nargs;
-    
-    builtin_options(v, nargs, args, &nfixed, 1, selection_boundaryoption, &boundary);
-    
-    /* Get mesh as first argument */
-    if (nfixed>0) {
-        if (MORPHO_ISMESH(MORPHO_GETARG(args, 0))) mesh=MORPHO_GETMESH(MORPHO_GETARG(args, 0));
-    }
-    
-    /* Selection function as optional second argument */
-    if (nfixed>1) fn = MORPHO_GETARG(args, 1);
-    
-    /* Selection function arguments as optional second argument */
-    if (nfixed>2) fnargs = MORPHO_GETARG(args, 2);
-    
-    if (mesh) {
-        new=object_newselection(mesh);
-    } else {
-        morpho_runtimeerror(v, SELECTION_NOMESH);
-        return out;
-    }
-    
+/* ----------------------
+ * Constructors
+ * ---------------------- */
+
+value selection_constructor__mesh(vm *v, int nargs, value *args) {
+    objectselection *new = object_newselection(MORPHO_GETMESH(MORPHO_GETARG(args, 0)));
     if (new) {
-        if (!MORPHO_ISNIL(fn)) {
-            if (MORPHO_ISNIL(fnargs)) {
-                selection_selectwithfunction(v, new, fn);
-            } else if (MORPHO_ISMATRIX(fnargs)) {
-                selection_selectwithmatrix(v, new, fn, MORPHO_GETMATRIX(fnargs));
-            } else if (MORPHO_ISFIELD(fnargs)) {
-                selection_selectwithfield(v, new, fn, MORPHO_GETFIELD(fnargs));
-            }
-        } else if (MORPHO_ISTRUE(boundary)) {
-            selection_selectboundary(v, new);
-        }
-        
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    
-    return out;
+        value boundary = MORPHO_FALSE;
+        builtin_options(v, nargs, args, NULL, 1, selection_boundaryoption, &boundary);
+        if (MORPHO_ISTRUE(boundary)) selection_selectboundary(v, new);
+    }
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value selection_constructor__mesh_fn(vm *v, int nargs, value *args) {
+    objectselection *new = object_newselection(MORPHO_GETMESH(MORPHO_GETARG(args, 0)));
+    if (new) selection_selectwithfunction(v, new, MORPHO_GETARG(args, 1));
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value selection_constructor__mesh_fn_matrix(vm *v, int nargs, value *args) {
+    objectselection *new = object_newselection(MORPHO_GETMESH(MORPHO_GETARG(args, 0)));
+    if (new) selection_selectwithmatrix(v, new, MORPHO_GETARG(args, 1), MORPHO_GETMATRIX(MORPHO_GETARG(args, 2)));
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+value selection_constructor__mesh_fn_field(vm *v, int nargs, value *args) {
+    objectselection *new = object_newselection(MORPHO_GETMESH(MORPHO_GETARG(args, 0)));
+    if (new) selection_selectwithfield(v, new, MORPHO_GETARG(args, 1), MORPHO_GETFIELD(MORPHO_GETARG(args, 2)));
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/* ----------------------
+ * Methods
+ * ---------------------- */
+
+/** Fallback for Object-overridden methods with a single typed implementation.
+ * A second signature is required so the method is wrapped in a metafunction. */
+value Selection_dispatcherr(vm *v, int nargs, value *args) {
+    morpho_runtimeerror(v, VM_MLTPLDSPTCHFLD);
+    return MORPHO_NIL;
 }
 
 /** Select an element by id */
-value Selection_setindex(vm *v, int nargs, value *args) {
-    objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
-    
-    if (nargs==3 &&
-        MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
-        MORPHO_ISINTEGER(MORPHO_GETARG(args, 1))) {
-    
-        selection_selectwithid(sel, MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)), MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)), MORPHO_ISTRUE(MORPHO_GETARG(args, 2)));
-    } else morpho_runtimeerror(v, SELECTION_ISSLCTDARG);
-    
+value Selection_setindex__int_int_x(vm *v, int nargs, value *args) {
+    selection_selectwithid(MORPHO_GETSELECTION(MORPHO_SELF(args)),
+                           MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                           MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)),
+                           MORPHO_ISTRUE(MORPHO_GETARG(args, 2)));
     return MORPHO_NIL;
 }
 
 /** Tests if something is selected */
-value Selection_isselected(vm *v, int nargs, value *args) {
-    objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
-    value out = MORPHO_FALSE;
-    
-    if (nargs==2 &&
-        MORPHO_ISINTEGER(MORPHO_GETARG(args, 0)) &&
-        MORPHO_ISINTEGER(MORPHO_GETARG(args, 1))) {
-     
-        out = MORPHO_BOOL(selection_isselected(sel, MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)), MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1))));
-    } else morpho_runtimeerror(v, SELECTION_ISSLCTDARG);
-    
-    return out;
+value Selection_isselected__int_int(vm *v, int nargs, value *args) {
+    return MORPHO_BOOL(selection_isselected(MORPHO_GETSELECTION(MORPHO_SELF(args)),
+                                            MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
+                                            MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1))));
 }
 
 /** Get the attached mesh */
 value Selection_mesh(vm *v, int nargs, value *args) {
     objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
-    if (sel->mesh) out = MORPHO_OBJECT(sel->mesh);
-    return out;
+    return (sel->mesh ? MORPHO_OBJECT(sel->mesh) : MORPHO_NIL);
 }
 
 /** Get the id list for a given grade */
-value Selection_idlistforgrade(vm *v, int nargs, value *args) {
-    objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
-    
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        objectlist *lst=selection_idlistforgrade(sel, MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)));
-        if (lst) {
-            out = MORPHO_OBJECT(lst);
-            morpho_bindobjects(v, 1, &out);
-        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    } else morpho_runtimeerror(v, SELECTION_GRADEARG);
-    
-    return out;
+value Selection_idlistforgrade__int(vm *v, int nargs, value *args) {
+    return morpho_wrapandbind(v, (object *) selection_idlistforgrade(MORPHO_GETSELECTION(MORPHO_SELF(args)),
+                                                                    MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0))));
 }
 
 /** Adds a grade to a selection */
-value Selection_addgrade(vm *v, int nargs, value *args) {
+value Selection_addgrade__int(vm *v, int nargs, value *args) {
     objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
     value partials = MORPHO_FALSE;
-    int nfixed;
+    builtin_options(v, nargs, args, NULL, 1, selection_partialsoption, &partials);
 
-    builtin_options(v, nargs, args, &nfixed, 1, selection_partialsoption, &partials);
-    
-    if (nargs>0 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        grade g = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        grade max = selection_maxgrade(sel);
-        if (g>max) {
-            selection_addgraderaise(sel, g, MORPHO_ISTRUE(partials));
-        } else {
-            selection_addgradelower(sel, g);
-        }
-    } else morpho_runtimeerror(v, SELECTION_GRADEARG);
-    
+    grade g = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    if (g>selection_maxgrade(sel)) {
+        selection_addgraderaise(sel, g, MORPHO_ISTRUE(partials));
+    } else {
+        selection_addgradelower(sel, g);
+    }
     return MORPHO_NIL;
 }
 
 /** Removes a grade from a selection */
-value Selection_removegrade(vm *v, int nargs, value *args) {
-    objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
-
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        selection_removegrade(sel, MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)));
-    } else morpho_runtimeerror(v, SELECTION_GRADEARG);
-    
+value Selection_removegrade__int(vm *v, int nargs, value *args) {
+    selection_removegrade(MORPHO_GETSELECTION(MORPHO_SELF(args)),
+                          MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)));
     return MORPHO_NIL;
 }
 
@@ -541,67 +447,57 @@ value Selection_print(vm *v, int nargs, value *args) {
 }
 
 /** Counts number of elements selected in each grade  */
-value Selection_count(vm *v, int nargs, value *args) {
-    objectselection *sel = MORPHO_GETSELECTION(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
-
-    if (nargs==1 && MORPHO_ISINTEGER(MORPHO_GETARG(args, 0))) {
-        grade g = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-        out = MORPHO_INTEGER(selection_count(sel, g));
-    } else morpho_runtimeerror(v, SELECTION_GRADEARG);
-    
-    return out;
+value Selection_count__int(vm *v, int nargs, value *args) {
+    return MORPHO_INTEGER(selection_count(MORPHO_GETSELECTION(MORPHO_SELF(args)),
+                                          MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0))));
 }
 
 /** Clones a selection */
 value Selection_clone(vm *v, int nargs, value *args) {
-    value out=MORPHO_NIL;
-    objectselection *a=MORPHO_GETSELECTION(MORPHO_SELF(args));
-    objectselection *new=selection_clone(a);
-    if (new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    return out;
+    return morpho_wrapandbind(v, (object *) selection_clone(MORPHO_GETSELECTION(MORPHO_SELF(args))));
 }
 
-#define SELECTION_SETOP(op) \
-value Selection_##op(vm *v, int nargs, value *args) { \
-    objectselection *slf = MORPHO_GETSELECTION(MORPHO_SELF(args)); \
-    value out=MORPHO_NIL; \
-    \
-    if (nargs>0 && MORPHO_ISSELECTION(MORPHO_GETARG(args, 0))) { \
-        objectselection *new = selection_##op(slf, MORPHO_GETSELECTION(MORPHO_GETARG(args, 0))); \
-        \
-        if (new) { \
-            out=MORPHO_OBJECT(new); \
-            morpho_bindobjects(v, 1, &out); \
-        } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); \
-    } else morpho_runtimeerror(v, SELECTION_STARG); \
-    \
-    return out; \
+static value selection_setop(vm *v, value *args, objectselection *(*op)(objectselection *, objectselection *)) {
+    objectselection *a = MORPHO_GETSELECTION(MORPHO_SELF(args));
+    objectselection *b = MORPHO_GETSELECTION(MORPHO_GETARG(args, 0));
+    if (a->mesh != b->mesh) {
+        morpho_runtimeerror(v, SELECTION_MSH);
+        return MORPHO_NIL;
+    }
+    return morpho_wrapandbind(v, (object *) op(a, b));
 }
 
-SELECTION_SETOP(union)
-SELECTION_SETOP(intersection)
-SELECTION_SETOP(difference)
+value Selection_union__selection(vm *v, int nargs, value *args) {
+    return selection_setop(v, args, selection_union);
+}
+
+value Selection_intersection__selection(vm *v, int nargs, value *args) {
+    return selection_setop(v, args, selection_intersection);
+}
+
+value Selection_difference__selection(vm *v, int nargs, value *args) {
+    return selection_setop(v, args, selection_difference);
+}
 
 MORPHO_BEGINCLASS(Selection)
-MORPHO_METHOD(SELECTION_ISSELECTEDMETHOD, Selection_isselected, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Selection_isselected, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Selection_setindex, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(SELECTION_IDLISTFORGRADEMETHOD, Selection_idlistforgrade, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(SELECTION_MESHMETHOD, Selection_mesh, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_COUNT_METHOD, Selection_count, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_PRINT_METHOD, Selection_print, MORPHO_FN_IO),
-MORPHO_METHOD(MORPHO_UNION_METHOD, Selection_union, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_INTERSECTION_METHOD, Selection_intersection, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_DIFFERENCE_METHOD, Selection_difference, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_ADD_METHOD, Selection_union, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_SUB_METHOD, Selection_difference, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(SELECTION_ADDGRADEMETHOD, Selection_addgrade, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(SELECTION_REMOVEGRADEMETHOD, Selection_removegrade, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
-MORPHO_METHOD(MORPHO_CLONE_METHOD, Selection_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
+MORPHO_METHOD_SIGNATURE(SELECTION_ISSELECTEDMETHOD, "Bool (Int, Int)", Selection_isselected__int_int, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Bool (Int, Int)", Selection_isselected__int_int, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Nil (...)", Selection_dispatcherr, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Int, _)", Selection_setindex__int_int_x, MORPHO_FN_MUTATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "Nil (...)", Selection_dispatcherr, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(SELECTION_IDLISTFORGRADEMETHOD, "List (Int)", Selection_idlistforgrade__int, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(SELECTION_MESHMETHOD, "Mesh ()", Selection_mesh, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int (Int)", Selection_count__int, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Nil (...)", Selection_dispatcherr, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "()", Selection_print, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(MORPHO_UNION_METHOD, "Selection (Selection)", Selection_union__selection, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_INTERSECTION_METHOD, "Selection (Selection)", Selection_intersection__selection, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_DIFFERENCE_METHOD, "Selection (Selection)", Selection_difference__selection, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ADD_METHOD, "Selection (Selection)", Selection_union__selection, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_SUB_METHOD, "Selection (Selection)", Selection_difference__selection, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(SELECTION_ADDGRADEMETHOD, "(Int)", Selection_addgrade__int, MORPHO_FN_MUTATES|MORPHO_FN_OPTARGS),
+MORPHO_METHOD_SIGNATURE(SELECTION_REMOVEGRADEMETHOD, "(Int)", Selection_removegrade__int, MORPHO_FN_MUTATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Selection ()", Selection_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************
@@ -614,20 +510,20 @@ void selection_initialize(void) {
     selection_boundaryoption=builtin_internsymbolascstring(SELECTION_BOUNDARYOPTION);
     selection_partialsoption=builtin_internsymbolascstring(SELECTION_PARTIALSOPTION);
     
-    builtin_addfunction(SELECTION_CLASSNAME, selection_constructor, MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_REENTRANT|MORPHO_FN_THROWS);
+#define SELECTION_CONS_FLGS (MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
+    morpho_addfunction(SELECTION_CLASSNAME, "Selection (Mesh)", selection_constructor__mesh, SELECTION_CONS_FLGS|MORPHO_FN_OPTARGS, NULL);
+    morpho_addfunction(SELECTION_CLASSNAME, "Selection (Mesh, Callable)", selection_constructor__mesh_fn, SELECTION_CONS_FLGS|MORPHO_FN_REENTRANT, NULL);
+    morpho_addfunction(SELECTION_CLASSNAME, "Selection (Mesh, Callable, Matrix)", selection_constructor__mesh_fn_matrix, SELECTION_CONS_FLGS|MORPHO_FN_REENTRANT, NULL);
+    morpho_addfunction(SELECTION_CLASSNAME, "Selection (Mesh, Callable, Field)", selection_constructor__mesh_fn_field, SELECTION_CONS_FLGS|MORPHO_FN_REENTRANT, NULL);
     
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     value selectionclass=builtin_addclass(SELECTION_CLASSNAME, MORPHO_GETCLASSDEFINITION(Selection), objclass);
     object_setveneerclass(OBJECT_SELECTION, selectionclass);
     
-    morpho_defineerror(SELECTION_NOMESH, ERROR_HALT, SELECTION_NOMESH_MSG);
-    morpho_defineerror(SELECTION_ISSLCTDARG, ERROR_HALT, SELECTION_ISSLCTDARG_MSG);
-    morpho_defineerror(SELECTION_GRADEARG, ERROR_HALT, SELECTION_GRADEARG_MSG);
-    morpho_defineerror(SELECTION_STARG, ERROR_HALT, SELECTION_STARG_MSG);
     morpho_defineerror(SELECTION_BND, ERROR_HALT, SELECTION_BND_MSG);
     morpho_defineerror(SELECTION_FLDMSH, ERROR_HALT, SELECTION_FLDMSH_MSG);
+    morpho_defineerror(SELECTION_MSH, ERROR_HALT, SELECTION_MSH_MSG);
 }
 
 #endif

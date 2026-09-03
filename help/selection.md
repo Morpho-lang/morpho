@@ -29,6 +29,8 @@ Selection objects can be composed using set operations:
 or
     var s = s1.intersection(s2)
 
+The two Selections must refer to the same Mesh.
+
 To add additional grades, use the addgrade method. For example, to add areas:
     s.addgrade(2)
 

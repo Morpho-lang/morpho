@@ -14,6 +14,7 @@ var _errMshBldDimIncnstnt = Error("MshBldDimIncnstnt", "Vertex dimension inconsi
 var _errMshBldDimUnknwn = Error("MshBldDimUnknwn", "Cannot add elements until a vertex has been added or MeshBuilder initialized with a specified dimension.")
 var _errMltVClstrFxd = Error("MltVClstrFxd", "More than one vertex in a selected cluster is fixed.")
 var _errMshMaxVrt = Error("MltMaxVrt", "Maximum number of vertices in Mesh exceeded.")
+var _errSlBldBnd = Error("SlBldBnd", "Mesh has no boundary elements.")
 
 var _MAX_VERTICES = 2147483647
 
@@ -103,6 +104,140 @@ class MeshBuilder {
 
     return m
   }
+}
+
+/* **********************************
+ * SelectionBuilder
+ * ********************************** */
+
+/** Incremental construction of a Selection via topological operations.
+    Missing intermediate grades (e.g. edges on a face mesh) are added to the mesh. */
+class SelectionBuilder {
+  init(Mesh mesh) {
+    self.mesh = mesh
+    self.sel = Selection(mesh)
+  }
+
+  init(Selection sel) {
+    self.mesh = sel.mesh()
+    self.sel = sel.clone()
+  }
+
+  _ensureGrades() {
+    var maxg = self.mesh.maxgrade()
+    if (maxg<1) return
+    for (g in 1..maxg) self.mesh.addgrade(g)
+  }
+
+  _isEmpty() {
+    if (self.sel.count(0)>0) return false
+    return self._topGrade()==0
+  }
+
+  /** Highest selected grade, or 0 if none above vertices. */
+  _topGrade() {
+    var k = 0
+    var maxg = self.mesh.maxgrade()
+    if (maxg<1) return 0
+    for (g in 1..maxg) {
+      if (self.sel.count(g)>0) k = g
+    }
+    return k
+  }
+
+  _selectAllGrade(g) {
+    for (id in 0...self.mesh.count(g)) self.sel[g, id] = true
+  }
+
+  /** Add elements of grade `to` incident to the snapshotted elements of grade `from`. */
+  _mapGrade(ids, from, to) {
+    if (from==to || ids[from].count()==0) return
+    var conn = self.mesh.connectivitymatrix(to, from)
+    if (!conn) return
+    for (id in ids[from]) {
+      for (eid in conn.rowindices(id)) self.sel[to, eid] = true
+    }
+  }
+
+  /** Add faces (`higher=false`) or cofaces (`higher=true`) of the current selection. */
+  _addIncident(higher) {
+    self._ensureGrades()
+    var maxg = self.mesh.maxgrade()
+    var ids = Array(maxg+1)
+    for (g in 0..maxg) ids[g] = self.sel.idlistforgrade(g)
+    for (g in 0..maxg) {
+      for (h in 0..maxg) {
+        if (higher ? h>g : h<g) self._mapGrade(ids, g, h)
+      }
+    }
+    return self
+  }
+
+  closure() { return self._addIncident(false) }
+
+  star() { return self._addIncident(true) }
+
+  /** Cl(St(S)) − St(Cl(S)). */
+  link() {
+    var clst = SelectionBuilder(self.sel).star().closure().build()
+    var stcl = SelectionBuilder(self.sel).closure().star().build()
+    self.sel = clst.difference(stcl)
+    return self
+  }
+
+  /** Closure of (k−1)-faces that belong to exactly one selected k-simplex.
+      An empty selection is treated as the whole mesh. Vertices only yield empty. */
+  boundary() {
+    self._ensureGrades()
+    var maxg = self.mesh.maxgrade()
+    if (maxg<1) _errSlBldBnd.throw()
+    if (self._isEmpty()) self.selectAll()
+
+    var k = self._topGrade()
+    if (k==0) {
+      self.sel = Selection(self.mesh)
+      return self
+    }
+
+    var conn = self.mesh.connectivitymatrix(k-1, k)
+    var nf = self.mesh.count(k-1)
+    var inc[nf]
+    if (conn) {
+      for (id in self.sel.idlistforgrade(k)) {
+        for (f in conn.rowindices(id)) inc[f] += 1
+      }
+    }
+
+    var bd = Selection(self.mesh)
+    for (f in 0...nf) {
+      if (inc[f]==1) bd[k-1, f] = true
+    }
+    self.sel = bd
+    return self.closure()
+  }
+
+  /** K' − bd(K'). An empty selection is treated as the whole mesh. */
+  interior() {
+    if (self._isEmpty()) self.selectAll()
+    self.sel = self.sel.difference(SelectionBuilder(self.sel).boundary().build())
+    return self
+  }
+
+  /** Select every element of every grade. */
+  selectAll() {
+    self._ensureGrades()
+    for (g in 0..self.mesh.maxgrade()) self._selectAllGrade(g)
+    return self
+  }
+
+  /** Select every element of a single grade. */
+  selectAll(Int grade) {
+    if (grade>0) self.mesh.addgrade(grade)
+    self._selectAllGrade(grade)
+    return self
+  }
+
+  build() { return self.sel.clone() }
 }
 
 /* ******************************************

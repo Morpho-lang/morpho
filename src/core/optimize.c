@@ -15,6 +15,16 @@ static objectfunction *_getfunction(value f) {
     return NULL;
 }
 
+/** True if konst is needle, or either is a metafunction containing the other. */
+static bool _constmatches(value konst, value needle) {
+    if (MORPHO_ISSAME(konst, needle)) return true;
+    if (MORPHO_ISMETAFUNCTION(needle) &&
+        metafunction_matchfn(MORPHO_GETMETAFUNCTION(needle), konst)) return true;
+    if (MORPHO_ISMETAFUNCTION(konst) &&
+        metafunction_matchfn(MORPHO_GETMETAFUNCTION(konst), needle)) return true;
+    return false;
+}
+
 /** Checks if a register is read by the instruction. */
 static bool _regread(instruction bc, int r) {
     opcode op=DECODE_OP(bc);
@@ -89,7 +99,7 @@ void optimize_fnloadsconstants(vm *v, value f, int nvals, value *konsts, bool *h
 
         value konst=func->konst.data[k];
         for (int j=0; j<nvals; j++) {
-            if (!hit[j] && MORPHO_ISSAME(konst, konsts[j])) hit[j]=true;
+            if (!hit[j] && _constmatches(konst, konsts[j])) hit[j]=true;
         }
     }
 }

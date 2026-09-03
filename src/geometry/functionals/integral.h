@@ -151,7 +151,7 @@ bool integral_contextactive(vm *v);
 bool integral_checkfastpath(vm *v, unsigned bit, const char *name);
 value integral_init(vm *v, int nargs, value *args);
 bool integral_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, integralref *ref);
-void integral_addspecial(char *name, builtinfunction fn, unsigned bit);
+void integral_addspecial(char *name, builtinfunction fn, unsigned bit, char *signature);
 objectmatrix *integral_ensurematrix(objectmatrix **slot, int nrows, int ncols);
 bool integral_prepareinvjacobian(unsigned int dim, grade g, double **x, objectmatrix *invj);
 bool integral_preparequantities(integralref *iref, int nv, int *vid, quantity *quantities);

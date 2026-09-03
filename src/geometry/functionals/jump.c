@@ -897,7 +897,7 @@ void jump_initialize(void) {
 
     builtin_addclass(JUMP_CLASSNAME, MORPHO_GETCLASSDEFINITION(Jump), objclass);
 
-    integral_addspecial(JUMPDN_FUNCTION, integral_jumpdnfn, INTEGRAL_USES_JUMPDN);
+    integral_addspecial(JUMPDN_FUNCTION, integral_jumpdnfn, INTEGRAL_USES_JUMPDN, "Float (_)");
 
     morpho_defineerror(JUMP_UNIMPL, ERROR_HALT, JUMP_UNIMPL_MSG);
 

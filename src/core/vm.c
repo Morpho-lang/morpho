@@ -319,8 +319,8 @@ void morpho_bindrecursive(vm *v, value obj) {
 }
 
 /** @brief Binds an object as a child of a parent object.
- *  @details Intended for objects that are physically part of another 
- *           so that the parent is not garbage collected while the child is visible.
+ *  @details Ensures that the GC can correctly see the parent object. 
+ *           GC does not attempt to collect child objects. 
  *  @param obj     object to bind as a child (must be unmanaged)
  *  @param parent  parent object whose lifetime owns the child
  *  @returns true on success, false if already bound or arguments are invalid */

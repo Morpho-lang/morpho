@@ -24,16 +24,34 @@
 #include "elasticity.h"
 
 #define INTEGRAL_MAXSPECIALS 8
+#define INTEGRAL_SPECIALFLAGS (MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS)
 static value _specialfns[INTEGRAL_MAXSPECIALS];
 static unsigned _specialbits[INTEGRAL_MAXSPECIALS];
 static unsigned int nspecials=0;
 
-void integral_addspecial(char *name, builtinfunction fn, unsigned bit) {
+/** Register a special for uses analysis, refreshing the function-table entry. */
+static void integral_trackspecial(char *name, unsigned bit) {
+    value selector=builtin_internsymbolascstring(name);
+    value entry=builtin_findfunction(selector);
+
+    for (unsigned int i=0; i<nspecials; i++) {
+        if (_specialbits[i]==bit) {
+            _specialfns[i]=entry;
+            return;
+        }
+    }
+
     if (nspecials<INTEGRAL_MAXSPECIALS) {
-        _specialfns[nspecials]=builtin_addfunction(name, fn, MORPHO_FN_THREADLOCAL | MORPHO_FN_ALLOCATES | MORPHO_FN_THROWS);
+        _specialfns[nspecials]=entry;
         _specialbits[nspecials]=bit;
         nspecials++;
     } else UNREACHABLE("Too many special functions in integral.c");
+}
+
+/** Add (or overload) an integral special with a signature. */
+void integral_addspecial(char *name, builtinfunction fn, unsigned bit, char *signature) {
+    morpho_addfunction(name, signature, fn, INTEGRAL_SPECIALFLAGS, NULL);
+    integral_trackspecial(name, bit);
 }
 
 static unsigned integral_fnuses(vm *v, value integrand) {
@@ -1445,6 +1463,44 @@ done:
     return ok;
 }
 
+/** Specialize a Metafunction kernel from known quadrature argument types.
+ *  argtypes are Matrix for the position, then each Field's prototype type. */
+static bool integral_reducemetafunction(vm *v, value mf, int nfields, value *fields, value *out) {
+    value argtypes[nfields+1];
+    value matrixclass;
+    error err;
+
+    if (!MORPHO_ISMETAFUNCTION(mf)) return false;
+
+    matrixclass=builtin_findclassfromcstring(MATRIX_CLASSNAME);
+    if (MORPHO_ISNIL(matrixclass)) return false;
+    argtypes[0]=matrixclass;
+
+    for (int i=0; i<nfields; i++) {
+        objectfield *fld;
+        value prototype;
+
+        if (!MORPHO_ISFIELD(fields[i])) return false;
+        fld=MORPHO_GETFIELD(fields[i]);
+        prototype=fld->prototype;
+        if (MORPHO_ISNIL(prototype)) {
+            argtypes[i+1]=builtin_findclassfromcstring(FLOAT_CLASSNAME);
+            if (MORPHO_ISNIL(argtypes[i+1])) return false;
+        } else if (!value_type(prototype, &argtypes[i+1])) {
+            return false;
+        }
+    }
+
+    error_init(&err);
+    if (!metafunction_reduce(MORPHO_GETMETAFUNCTION(mf), nfields+1, argtypes, &err, out)) {
+        morpho_error(v, &err);
+        error_clear(&err);
+        return false;
+    }
+    error_clear(&err);
+    return true;
+}
+
 /** Prepare stored Fields' FE spaces once per map. */
 static bool integral_startfn(vm *v, functional_mapinfo *info) {
     integralref *ref = (integralref *) info->ref;
@@ -1535,23 +1591,33 @@ value integral_init(vm *v, int nargs, value *args) {
             objectinstance_setproperty(self, integral_optimizeproperty, optimize);
         } else if (!MORPHO_ISNIL(optimize)) MORPHO_RAISE(v, INTEGRAL_ARGS);
     } else MORPHO_RAISE(v, INTEGRAL_ARGS);
-    
-    if (nfixed>0) {
-        value f = MORPHO_GETARG(args, 0);
-
-        if (morpho_countparameters(f, &nparams)) {
-            objectinstance_setproperty(self, integral_functionproperty, MORPHO_GETARG(args, 0));
-        } else MORPHO_RAISE(v, INTEGRAL_ARGS);
-    }
-
-    if (nparams!=nfixed) MORPHO_RAISE(v, INTEGRAL_ARGS);
 
     if (nfixed>1) {
         /* Remaining arguments should be fields */
         for (unsigned int i=1; i<nfixed; i++) {
             if (!MORPHO_ISFIELD(MORPHO_GETARG(args, i))) MORPHO_RAISE(v, INTEGRAL_ARGS);
         }
+    }
 
+    if (nfixed>0) {
+        value f = MORPHO_GETARG(args, 0);
+        value kernel = f;
+        int nfields = nfixed>1 ? nfixed-1 : 0;
+        value *fields = nfields>0 ? &MORPHO_GETARG(args, 1) : NULL;
+
+        if (MORPHO_ISMETAFUNCTION(f)) {
+            if (!integral_reducemetafunction(v, f, nfields, fields, &kernel)) return MORPHO_NIL;
+            nparams=nfixed;
+        } else if (morpho_countparameters(f, &nparams)) {
+            /* keep kernel = f */
+        } else MORPHO_RAISE(v, INTEGRAL_ARGS);
+
+        objectinstance_setproperty(self, integral_functionproperty, kernel);
+    }
+
+    if (nparams!=nfixed) MORPHO_RAISE(v, INTEGRAL_ARGS);
+
+    if (nfixed>1) {
         objectlist *list = object_newlist(nfixed-1, & MORPHO_GETARG(args, 1));
         if (list) objectinstance_setproperty(self, functional_fieldproperty, MORPHO_OBJECT(list));
         return morpho_wrapandbind(v, (object *) list);
@@ -1617,14 +1683,21 @@ void integral_initialize(void) {
     builtin_addclass(AREAINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(AreaIntegral), objclass);
     builtin_addclass(VOLUMEINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(VolumeIntegral), objclass);
 
-    builtin_addfunction(ELEMENTID_FUNCTION, integral_elementid, MORPHO_FN_THREADLOCAL | MORPHO_FN_THROWS);
-    integral_addspecial(GRAD_FUNCTION, integral_gradfn, INTEGRAL_USES_GRAD);
-    integral_addspecial(HESS_FUNCTION, integral_hessfn, INTEGRAL_USES_HESS);
-    integral_addspecial(TANGENT_FUNCTION, integral_tangent, INTEGRAL_USES_TANGENT);
-    integral_addspecial(NORMAL_FUNCTION, integral_normal, INTEGRAL_USES_NORMAL);
-    integral_addspecial(JACOBIAN_FUNCTION, integral_jacobian, INTEGRAL_USES_JACOBIAN);
-    integral_addspecial(INVJACOBIAN_FUNCTION, integral_invjacobian, INTEGRAL_USES_INVJ);
-    integral_addspecial(CGTENSOR_FUNCTION, integral_cgfn, INTEGRAL_USES_CG);
+    morpho_addfunction(ELEMENTID_FUNCTION, "Int ()", integral_elementid, MORPHO_FN_THREADLOCAL | MORPHO_FN_THROWS, NULL);
+
+    integral_addspecial(GRAD_FUNCTION, integral_gradfn, INTEGRAL_USES_GRAD, "Matrix (Float)");
+    integral_addspecial(GRAD_FUNCTION, integral_gradfn, INTEGRAL_USES_GRAD, "List (Matrix)");
+    integral_addspecial(GRAD_FUNCTION, integral_gradfn, INTEGRAL_USES_GRAD, "(Field)");
+
+    integral_addspecial(HESS_FUNCTION, integral_hessfn, INTEGRAL_USES_HESS, "Matrix (Float)");
+    integral_addspecial(HESS_FUNCTION, integral_hessfn, INTEGRAL_USES_HESS, "List (Matrix)");
+    integral_addspecial(HESS_FUNCTION, integral_hessfn, INTEGRAL_USES_HESS, "(Field)");
+
+    integral_addspecial(TANGENT_FUNCTION, integral_tangent, INTEGRAL_USES_TANGENT, "Matrix ()");
+    integral_addspecial(NORMAL_FUNCTION, integral_normal, INTEGRAL_USES_NORMAL, "Matrix ()");
+    integral_addspecial(JACOBIAN_FUNCTION, integral_jacobian, INTEGRAL_USES_JACOBIAN, "Matrix ()");
+    integral_addspecial(INVJACOBIAN_FUNCTION, integral_invjacobian, INTEGRAL_USES_INVJ, "Matrix ()");
+    integral_addspecial(CGTENSOR_FUNCTION, integral_cgfn, INTEGRAL_USES_CG, "Matrix ()");
 
     morpho_defineerror(INTEGRAL_ARGS, ERROR_HALT, INTEGRAL_ARGS_MSG);
     morpho_defineerror(INTEGRAL_FLD, ERROR_HALT, INTEGRAL_FLD_MSG);

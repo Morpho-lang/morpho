@@ -211,10 +211,12 @@ bool functional_endmap(vm *v, functional_mapinfo *info) {
     return (*info->end) (v, info);
 }
 
-/** Run start, then a map callback, then end. End is called whenever start succeeded. */
+/** Run start, then a map callback, then end.
+ * End always runs after a successful or failed start attempt so owned resources
+ * allocated at bind time (e.g. reduced metafunction kernels) are released. */
 bool functional_runmap(vm *v, functional_mapinfo *info, functional_mapcallback *mapfn, value *out) {
-    if (!functional_startmap(v, info)) return false;
-    bool ok = (*mapfn) (v, info, out);
+    bool ok = functional_startmap(v, info);
+    if (ok) ok = (*mapfn) (v, info, out);
     if (!functional_endmap(v, info)) ok = false;
     return ok;
 }

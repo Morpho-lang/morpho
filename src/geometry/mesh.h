@@ -100,29 +100,11 @@ DECLARE_VARRAY(elementid, elementid);
 #define MESH_FILENOTFOUND                    "MshFlNtFnd"
 #define MESH_FILENOTFOUND_MSG                "Mesh file '%s' not found."
 
-#define MESH_STVRTPSNARGS                    "MshStVrtPsnArgs"
-#define MESH_STVRTPSNARGS_MSG                "Method 'setvertexposition' expects a vertex id and a position matrix as arguments."
-
-#define MESH_VRTPSNARGS                      "MshVrtPsnArgs"
-#define MESH_VRTPSNARGS_MSG                  "Method 'vertexposition' expects a vertex id as the argument."
-
-#define MESH_CNNMTXARGS                      "MshCnnMtxArgs"
-#define MESH_CNNMTXARGS_MSG                  "Method 'connectivitymatrix' expects integer arguments."
-
-#define MESH_ADDGRDARGS                      "MshAddGrdArgs"
-#define MESH_ADDGRDARGS_MSG                  "Method 'addgrade' expects either an integer grade and, optionally, a sparse connectivity matrix."
-
 #define MESH_ADDGRDOOB                       "MshAddGrdOutOfBnds"
 #define MESH_ADDGRDOOB_MSG                   "Cannot add elements of grade %d to mesh with max grade %d"
 
 #define MESH_INVLDID                         "MshInvldId"
 #define MESH_INVLDID_MSG                     "Invalid element id."
-
-#define MESH_ADDSYMARGS                      "MshAddSymArgs"
-#define MESH_ADDSYMARGS_MSG                  "Method 'addsymmetry' expects an object that provides a method 'transform' and an optional selection."
-
-#define MESH_BARYARGS                        "MshBaryArgs"
-#define MESH_BARYARGS_MSG                    "Method 'barycentric' expects a grade, an element id and a position matrix."
 
 #define MESH_BARYDIM                         "MshBaryDim"
 #define MESH_BARYDIM_MSG                     "Position matrix dimensions inconsistent with mesh."
@@ -132,12 +114,6 @@ DECLARE_VARRAY(elementid, elementid);
 
 #define MESH_ADDSYMMSNGTRNSFRM               "MshAddSymMsngTrnsfrm"
 #define MESH_ADDSYMMSNGTRNSFRM_MSG           "Method 'addsymmetry' expects an object that provides a method 'transform'."
-
-#define MESH_ADDSYMNOMTCH                    "MshAddSymNoMtch"
-#define MESH_ADDSYMNOMTCH_MSG                "Addsymmetry found no matching vertices."
-
-#define MESH_CONSTRUCTORARGS                  "MshArgs"
-#define MESH_CONSTRUCTORARGS_MSG              "Mesh expects either a single file name or no argurments"
 
 /* Tolerances */
 

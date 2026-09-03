@@ -1468,13 +1468,6 @@ This error occurs when a mesh file cannot be found:
 
     var m = Mesh("nonexistent.mesh") // Causes 'MshFlNtFnd'
 
-## MshArgs
-[tagmshargs]: # (mshargs)
-
-This error occurs when Mesh receives invalid arguments. It expects either a single file name or no arguments:
-
-    var m = Mesh(123) // Causes 'MshArgs'
-
 ## MshVrtMtrxDim
 [tagmshvrtmtrxdim]: # (mshvrtmtrxdim)
 
@@ -1510,22 +1503,6 @@ This error occurs when a vertex id is not an integer when loading a mesh file.
 
 This error occurs when a vertex is not found when loading a mesh file.
 
-## MshStVrtPsnArgs
-[tagmshstvrtpsnargs]: # (mshstvrtpsnargs)
-
-This error occurs when setvertexposition receives invalid arguments. It expects a vertex id and a position matrix:
-
-    var m = Mesh()
-    m.setvertexposition("invalid") // Causes 'MshStVrtPsnArgs'
-
-## MshVrtPsnArgs
-[tagmshvrtpsnargs]: # (mshvrtpsnargs)
-
-This error occurs when vertexposition receives invalid arguments. It expects a vertex id:
-
-    var m = Mesh()
-    m.vertexposition() // Causes 'MshVrtPsnArgs'
-
 ## MshInvldId
 [tagmshinvldid]: # (mshinvldid)
 
@@ -1534,22 +1511,6 @@ This error occurs when an invalid element id is used:
     var m = Mesh()
     m.element(-1) // Causes 'MshInvldId'
 
-## MshCnnMtxArgs
-[tagmshcnnmtxargs]: # (mshcnnmtxargs)
-
-This error occurs when connectivitymatrix receives invalid arguments. It expects integer arguments:
-
-    var m = Mesh()
-    m.connectivitymatrix("invalid") // Causes 'MshCnnMtxArgs'
-
-## MshAddGrdArgs
-[tagmshaddgrdargs]: # (mshaddgrdargs)
-
-This error occurs when addgrade receives invalid arguments. It expects either an integer grade and optionally a sparse connectivity matrix:
-
-    var m = Mesh()
-    m.addgrade("invalid") // Causes 'MshAddGrdArgs'
-
 ## MshAddGrdOutOfBnds
 [tagmshaddgrdoutofbnds]: # (mshaddgrdoutofbnds)
 
@@ -1557,14 +1518,6 @@ This error occurs when attempting to add elements of a grade that exceeds the me
 
     var m = Mesh()
     m.addgrade(10) // Causes 'MshAddGrdOutOfBnds' if max grade is lower
-
-## MshAddSymArgs
-[tagmshaddsymargs]: # (mshaddsymargs)
-
-This error occurs when addsymmetry receives invalid arguments. It expects an object that provides a transform method and optionally a selection:
-
-    var m = Mesh()
-    m.addsymmetry("invalid") // Causes 'MshAddSymArgs'
 
 ## MshAddSymMsngTrnsfrm
 [tagmshaddsymmsngtrnsfrm]: # (mshaddsymmsngtrnsfrm)

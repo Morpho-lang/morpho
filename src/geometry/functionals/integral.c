@@ -1611,8 +1611,7 @@ void integral_initialize(void) {
     integral_methodproperty=builtin_internsymbolascstring(INTEGRAL_METHOD_PROPERTY);
     integral_optimizeproperty=builtin_internsymbolascstring(INTEGRAL_OPTIMIZE_PROPERTY);
 
-    objectstring objclassname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objclassname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
 
     builtin_addclass(LINEINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(LineIntegral), objclass);
     builtin_addclass(AREAINTEGRAL_CLASSNAME, MORPHO_GETCLASSDEFINITION(AreaIntegral), objclass);

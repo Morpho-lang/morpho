@@ -384,8 +384,7 @@ void nematic_initialize(void) {
     nematic_kbendproperty=builtin_internsymbolascstring(NEMATIC_KBEND_PROPERTY);
     nematic_pitchproperty=builtin_internsymbolascstring(NEMATIC_PITCH_PROPERTY);
 
-    objectstring objclassname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objclassname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
 
     builtin_addclass(NEMATIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(Nematic), objclass);
     builtin_addclass(NEMATICELECTRIC_CLASSNAME, MORPHO_GETCLASSDEFINITION(NematicElectric), objclass);

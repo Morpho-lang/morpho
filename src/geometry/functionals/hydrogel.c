@@ -217,8 +217,7 @@ void hydrogel_initialize(void) {
     hydrogel_phi0property=builtin_internsymbolascstring(HYDROGEL_PHI0_PROPERTY);
     hydrogel_referenceproperty=builtin_internsymbolascstring(HYDROGEL_REFERENCE_PROPERTY);
 
-    objectstring objclassname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objclassname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
 
     builtin_addclass(HYDROGEL_CLASSNAME, MORPHO_GETCLASSDEFINITION(Hydrogel), objclass);
 

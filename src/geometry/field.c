@@ -1060,7 +1060,7 @@ static value _evalelement(vm *v, objectfield *field, elementid el, bool (*readfn
     if (readfn(lambdaarg, nlambda, lambda) &&
         field_evalelement(field, el, lambda, &out) &&
         MORPHO_ISOBJECT(out)) {
-        morpho_bindobjects(v, 1, &out);
+        return morpho_wrapandbind(v, MORPHO_GETOBJECT(out));
     }
 
     return out;
@@ -1202,8 +1202,7 @@ void field_initialize(void) {
     morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, Sparse)", field_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
     morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, Callable)", field_constructor__mesh_fn, FIELD_CONS_FLGS|MORPHO_FN_REENTRANT, NULL);
     
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     
     value fieldclass=builtin_addclass(FIELD_CLASSNAME, MORPHO_GETCLASSDEFINITION(Field), objclass);
     object_setveneerclass(OBJECT_FIELD, fieldclass);

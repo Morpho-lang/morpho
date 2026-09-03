@@ -396,8 +396,7 @@ void fespace_initialize(void) {
 
     morpho_addfunction(FINITEELEMENTSPACE_CLASSNAME, "FiniteElementSpace (String)", fespace_constructor, MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_OPTARGS, NULL);
 
-    objectstring objname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
 
     value fespaceclass=builtin_addclass(FINITEELEMENTSPACE_CLASSNAME, MORPHO_GETCLASSDEFINITION(FiniteElementSpace), objclass);
     object_setveneerclass(OBJECT_FESPACE, fespaceclass);

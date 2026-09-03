@@ -65,10 +65,9 @@ static bool linearelasticity_buildcache(vm *v, objectmesh *refmesh, grade g, val
     int gdim=nv0-1;
     int stride=gdim*gdim+1;
 
-    objectmatrix *cache=matrix_new(stride, nel, false);
-    if (!cache) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
-    value cacheval=MORPHO_OBJECT(cache);
-    morpho_bindobjects(v, 1, &cacheval);
+    value cacheval=morpho_wrapandbind(v, (object *) matrix_new(stride, nel, false));
+    if (MORPHO_ISNIL(cacheval)) return false;
+    objectmatrix *cache=MORPHO_GETMATRIX(cacheval);
 
     for (elementid id=0; id<nel; id++) {
         int nv=0, *vid=NULL;
@@ -234,8 +233,7 @@ void elasticity_initialize(void) {
     linearelasticity_poissonproperty=builtin_internsymbolascstring(LINEARELASTICITY_POISSON_PROPERTY);
     linearelasticity_cacheproperty=builtin_internsymbolascstring(LINEARELASTICITY_CACHE_PROPERTY);
 
-    objectstring objclassname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objclassname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
 
     builtin_addclass(LINEARELASTICITY_CLASSNAME, MORPHO_GETCLASSDEFINITION(LinearElasticity), objclass);
 }

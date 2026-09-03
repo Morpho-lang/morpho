@@ -893,8 +893,7 @@ FUNCTIONAL_MD_FIELDGRADIENT_METHODS_FLAGS(Jump, INTEGRAL_MAPFLAGS)
 MORPHO_ENDCLASS
 
 void jump_initialize(void) {
-    objectstring objclassname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objclassname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
 
     builtin_addclass(JUMP_CLASSNAME, MORPHO_GETCLASSDEFINITION(Jump), objclass);
 

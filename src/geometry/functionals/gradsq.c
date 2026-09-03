@@ -221,8 +221,7 @@ FUNCTIONAL_MD_FIELDGRADIENT_METHODS(GradSq)
 MORPHO_ENDCLASS
 
 void gradsq_initialize(void) {
-    objectstring objclassname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objclassname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
 
     builtin_addclass(GRADSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(GradSq), objclass);
 }

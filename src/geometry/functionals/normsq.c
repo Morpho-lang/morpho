@@ -150,8 +150,7 @@ FUNCTIONAL_MD_FIELDGRADIENT_METHODS(NormSq)
 MORPHO_ENDCLASS
 
 void normsq_initialize(void) {
-    objectstring objclassname = MORPHO_STATICSTRING(OBJECT_CLASSNAME);
-    value objclass = builtin_findclass(MORPHO_OBJECT(&objclassname));
+    value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
 
     builtin_addclass(NORMSQ_CLASSNAME, MORPHO_GETCLASSDEFINITION(NormSq), objclass);
 }

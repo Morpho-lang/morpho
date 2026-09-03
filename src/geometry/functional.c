@@ -179,13 +179,13 @@ bool functional_countelements(objectmesh *mesh, grade g, int *n, objectsparse **
     if (s) *s=NULL;
     *n=0;
     if (g==MESH_GRADE_VERTEX) {
-        *n=mesh->vert->ncols;
+        *n=mesh_nvertices(mesh);
         return true;
     }
     objectsparse *conn=mesh_getconnectivityelement(mesh, 0, g);
     if (!conn) return false;
     if (s) *s=conn;
-    *n=conn->ccs.ncols;
+    *n=mesh_nelements(conn);
     return true;
 }
 
@@ -491,13 +491,7 @@ int functional_preparetasks(vm *v, functional_mapinfo *info, int ntask, function
     functional_binbounds(cmax, ntask, bins);
     
     /* Ensure all mesh topology matrices have CCS */
-    int maxgrade=mesh_maxgrade(info->mesh);
-    for (int i=0; i<=maxgrade; i++) {
-        for (int j=0; j<=maxgrade; j++) {
-            objectsparse *s = mesh_getconnectivityelement(info->mesh, i, j);
-            if (s) sparse_checkformat(s, SPARSE_CCS, true, false);
-        }
-    }
+    mesh_freezeconnectivity(info->mesh);
     
     /* Find any image elements so they can be skipped */
     functional_symmetryimagelist(info->mesh, info->g, true, imageids);

@@ -88,14 +88,12 @@ class MeshBuilder {
   }
 
   build() {
-    var m = Mesh();
-
     var nv = self.vertices.count()
 
     var vert = Matrix(self.dimension, nv)
     for (x, i in self.vertices) vert.setcolumn(i, x)
 
-    m.setvertexmatrix(vert)
+    var m = Mesh(vert)
 
     for (el, i in self.elements) {
         var s = self.makeconnectivity(el)
@@ -729,15 +727,13 @@ fn refinemesh(m) {
   var nl = edges.dimensions()[1]
   var nf = faces.dimensions()[1]
 
-  var new = Mesh()
-
   // Each refined edge contributes a new vertex
   var newvertices = Matrix(dim, nv+nl)
   for (i in 0...nv) newvertices.setcolumn(i, vertices.column(i))
   for (i in 0...nl) {
     newvertices.setcolumn(nv+i, _midpoint(vertices, edges, i))
   }
-  new.setvertexmatrix(newvertices)
+  var new = Mesh(newvertices)
 
   // Each edge becomes two edges
   var newedges = Sparse(nv+nl, nl) // Size is automatically updated

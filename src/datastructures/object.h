@@ -25,6 +25,7 @@ typedef int objecttype;
 struct sobject {
     objecttype type;            // Type
     enum {                      // Memory management status for the object:
+        OBJECT_INVALIDSTATUS,   // - 0 so zeroed or dangling memory is never treated as live
         OBJECT_ISUNMANAGED,     // - UNMANAGED means the object is manually alloc'd/dealloc'd
         OBJECT_ISBUILTIN,       // - BUILTIN means the object was created by the builtin environment
         OBJECT_ISPROGRAM,       // - PROGRAM means the object is bound to the program

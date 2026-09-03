@@ -10,6 +10,12 @@ To create a mesh, you can import it from a file:
 
     var m = Mesh("sphere.mesh")
 
+create an empty mesh (`Mesh()` is 3D; pass an integer for another dimension), or from a vertex matrix (columns are vertices):
+
+    var m = Mesh()
+    var m = Mesh(2)
+    var m = Mesh(vertices)
+
 or use one of the functions available in `meshtools` or `implicitmesh` packages.
 
 Each type of element is referred to as belonging to a different `grade`. Point-like elements (vertices) are *grade 0*; line-like elements (edges) are *grade 1*; area-like elements (facets; triangles) are *grade 2* etc.
@@ -36,7 +42,7 @@ Returns the matrix of vertex positions used by the mesh. Each column corresponds
 ## Setvertexmatrix
 [tagsetvertexmatrix]: # (setvertexmatrix)
 
-Replaces the matrix of vertex positions used by the mesh. The new matrix must have the same dimensions as the existing vertex matrix:
+Replaces the vertex positions used by the mesh. The mesh keeps its own copy of the coordinates. The new matrix must have as many rows as the mesh dimension; if the mesh already has vertices, the column count must match as well:
 
     m.setvertexmatrix(newverts)
 

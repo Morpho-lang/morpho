@@ -61,12 +61,13 @@ void object_free(object *obj) {
     if (obj) fprintf(stderr, "Free object %p of type %d.\n", (void *) obj, obj->type);
 #endif
     if (object_getdefn(obj)->freefn) object_getdefn(obj)->freefn(obj);
+    obj->status=OBJECT_INVALIDSTATUS;
     MORPHO_FREE(obj);
 }
 
 /** Free an object if it is unmanaged */
 void object_freeifunmanaged(object *obj) {
-    if (obj->status==OBJECT_ISUNMANAGED) object_free(obj);
+    if (obj && obj->status==OBJECT_ISUNMANAGED) object_free(obj);
 }
 
 /** Calls an object's print function */

@@ -124,6 +124,7 @@ void morpho_freevm(vm *v);
 void morpho_bindobjects(vm *v, int nobj, value *obj);
 void morpho_bindrecursive(vm *v, value obj);
 bool morpho_bindtoparent(object *obj, object *parent);
+bool morpho_ischildobject(object *obj);
 value morpho_wrapandbind(vm *v, object *obj);
 value morpho_wrapandbindrecursive(vm *v, object *obj);
 

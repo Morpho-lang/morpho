@@ -319,9 +319,8 @@ void morpho_bindrecursive(vm *v, value obj) {
 }
 
 /** @brief Binds an object as a child of a parent object.
- *  @details The child is not independently garbage collected and is not inserted
- *           into the VM object list. If the GC encounters the child, the parent
- *           is marked instead. The child's `next` pointer stores the parent.
+ *  @details Intended for objects that are physically part of another 
+ *           so that the parent is not garbage collected while the child is visible.
  *  @param obj     object to bind as a child (must be unmanaged)
  *  @param parent  parent object whose lifetime owns the child
  *  @returns true on success, false if already bound or arguments are invalid */
@@ -332,6 +331,11 @@ bool morpho_bindtoparent(object *obj, object *parent) {
     obj->status=OBJECT_ISCHILD;
     obj->next=parent;
     return true;
+}
+
+/** @brief Tests whether an object is bound as a child of a parent object. */
+bool morpho_ischildobject(object *obj) {
+    return obj && obj->status==OBJECT_ISCHILD;
 }
 
 /** @brief   Convenience function to wrap a single object into a value and bind to the VM
@@ -366,7 +370,7 @@ value morpho_wrapandbindrecursive(vm *v, object *obj) {
  *  @param obj  the object to check
  *  @returns true if it is managed, false otherwise */
 bool morpho_ismanagedobject(object *obj) {
-    return MORPHO_ISGARBAGECOLLECTED(MORPHO_OBJECT(obj));
+    return obj && MORPHO_ISGARBAGECOLLECTED(MORPHO_OBJECT(obj));
 }
 
 /* **********************************************************************

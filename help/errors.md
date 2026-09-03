@@ -1503,6 +1503,13 @@ This error occurs when a vertex id is not an integer when loading a mesh file.
 
 This error occurs when a vertex is not found when loading a mesh file.
 
+## MshInvldDim
+[tagmshinvlddim]: # (mshinvlddim)
+
+This error occurs when `Mesh` is constructed with a negative dimension:
+
+    var m = Mesh(-1) // Causes 'MshInvldDim'
+
 ## MshInvldId
 [tagmshinvldid]: # (mshinvldid)
 

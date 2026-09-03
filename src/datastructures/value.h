@@ -230,6 +230,9 @@ bool morpho_valuetoint(value v, int *out);
 /** Convert a value to a float */
 bool morpho_valuetofloat(value v, double *out);
 
+/** Convert a list of values to floats */
+bool morpho_valuestofloat(unsigned int n, value *v, double *out);
+
 /** Macro to detect if a value is a number */
 #define MORPHO_ISNUMBER(v) (morpho_isnumber(v))
 

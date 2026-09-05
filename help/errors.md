@@ -1584,6 +1584,13 @@ This error occurs when an assignment value has an incompatible shape with field 
     var f = Field(mesh)
     f[0, 0, 0] = Matrix([[1,2,3,4]]) // Causes 'FldIncmptblVal' if shape doesn't match
 
+## FldKind
+[tagfldkind]: # (fldkind)
+
+This error occurs when a named Field constructor is given a function whose first return value is not of the advertised kind. `Field(mesh, fn)` infers the kind from that value; `ScalarField`, `MatrixField`, and `ComplexMatrixField` require a matching kind:
+
+    MatrixField(mesh, fn (x) 3.0) // Causes 'FldKind'
+
 ## FldOp
 [tagfldop]: # (fldop)
 

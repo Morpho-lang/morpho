@@ -34,8 +34,7 @@ print abs(lne.total(m) - 0.25) < 1e-8
 print (lne.gradient(m)-numericalgradient(lne, m)).norm() < 1e-6
 // expect: true
 
-print lne.fieldgradient(nn)
-// expect: <Field>
+print lne.fieldgradient(nn).linearize()
 // expect: [ 0.235702 ]
 // expect: [ 0 ]
 // expect: [ 0 ]
@@ -46,8 +45,7 @@ print lne.fieldgradient(nn)
 // expect: [ 0 ]
 // expect: [ 0 ]
 
-print lne.fieldgradient(phi)
-// expect: <Field>
+print lne.fieldgradient(phi).linearize()
 // expect: [ -1 ]
 // expect: [ 0.5 ]
 // expect: [ 0.5 ]

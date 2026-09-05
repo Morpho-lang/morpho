@@ -694,9 +694,17 @@ bool functional_mapintegrand(vm *v, functional_mapinfo *info, value *out) {
         object_free((object *) new);
         new=NULL;
     }
-    
-    *out = morpho_wrapandbindrecursive(v, (object *) new);
+
+    /* Release workers first so their errors are copied onto this VM. */
     functional_cleanuptasks(v, ntask, task, &imageids);
+
+    if (!success) {
+        *out = MORPHO_NIL;
+        if (!morpho_checkerror(morpho_geterror(v))) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
+        return false;
+    }
+
+    *out = morpho_wrapandbindrecursive(v, (object *) new);
     return success;
 }
 
@@ -1373,6 +1381,7 @@ bool functional_preparefieldlist(vm *v, value *fields, int nfields, grade g) {
 
         objectfield *field = MORPHO_GETFIELD(fields[i]);
         if (!MORPHO_ISFESPACE(field->fnspc)) MORPHO_FAIL(v, FUNC_NOFESPACE);
+        if (!field_ensurepool(field)) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
         if (!functional_preparefespacefield(v, field, g)) return false;
     }
 
@@ -1381,6 +1390,7 @@ bool functional_preparefieldlist(vm *v, value *fields, int nfields, grade g) {
 
 bool fieldref_startfn(vm *v, functional_mapinfo *info) {
     fieldref *ref = (fieldref *) info->ref;
+    if (!field_ensurepool(ref->field)) MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
     return functional_preparefespacefield(v, ref->field, info->g);
 }
 

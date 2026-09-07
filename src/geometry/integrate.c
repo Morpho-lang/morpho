@@ -14,8 +14,6 @@
 #include "morpho.h"
 #include "classes.h"
 
-#include "linalg.h"
-
 extern quadraturerule *quadrules[];
 extern quadraturerule *defaultquadrule[];
 extern subdivisionrule *subdivisionrules[];
@@ -142,34 +140,16 @@ static void integrator_clearquantities(integrator *integrate) {
     integrate->qvalcapacity=0;
 }
 
-/** Process the list of quantities given. Matrix qval clones persist across elements. */
+/** Process the list of quantities given. prepare may allocate; eval must not. */
 static bool integrator_initializequantities(integrator *integrate, int nq, quantity *quantity) {
     integrate->nquantity=nq;
     integrate->quantity=quantity;
     if (nq==0) return true;
     if (!integrator_ensurequantities(integrate, nq)) return false;
-    
+
     for (int i=0; i<nq; i++) {
-        if (!quantity[i].vals) return false;
-        value q = quantity[i].vals[0]; // Take the first element from each quantity list as paradigmatic
-        if (MORPHO_ISFLOAT(q)) {
-            quantity[i].ndof=1;
-            if (MORPHO_ISOBJECT(integrate->qval[i])) morpho_freeobject(integrate->qval[i]);
-            integrate->qval[i]=q;
-        } else if (MORPHO_ISMATRIX(q)) { 
-            objectmatrix *m = MORPHO_GETMATRIX(q);
-            quantity[i].ndof=(int) matrix_countdof(m);
-            
-            if (MORPHO_ISMATRIX(integrate->qval[i])) { // Try to reuse existing matrix if of the same size
-                objectmatrix *old=MORPHO_GETMATRIX(integrate->qval[i]);
-                if (old->nrows==m->nrows && old->ncols==m->ncols && old->nvals==m->nvals) continue;
-                morpho_freeobject(integrate->qval[i]);
-            } else if (MORPHO_ISOBJECT(integrate->qval[i])) morpho_freeobject(integrate->qval[i]);
-            
-            objectmatrix *new = matrix_clone(m);
-            if (!new) return false;
-            integrate->qval[i]=MORPHO_OBJECT(new);
-        } else return false;
+        if (!quantity[i].prepare) return false;
+        if (!quantity[i].prepare(&quantity[i], &integrate->qval[i])) return false;
     }
     return true;
 }
@@ -565,41 +545,14 @@ static inline void integrator_interpolatefromx(integrator *integrate, double *la
     }
 }
 
-/** Sums a weighted list of quantities */
-bool integrator_sumquantityweighted(int n, double *wts, value *q, value *out) {
-    bool success=false;
-    if (MORPHO_ISFLOAT(q[0])) {
-        double s = 0.0; // Fast inlined dot product loop
-        for (int j=0; j<n; j++) s += wts[j]*MORPHO_GETFLOATVALUE(q[j]);
-        *out=MORPHO_FLOAT(s);
-        success=true;
-    } else if (MORPHO_ISMATRIX(q[0])) {
-        objectmatrix *sum = MORPHO_GETMATRIX(*out);
-        int ndof = (int) sum->nels; // Fast inlined axpy loop
-        double *dest = sum->elements;
-        for (int k=0; k<ndof; k++) dest[k] = 0.0;
-        for (int j=0; j<n; j++) {
-            double w = wts[j];
-            double *e = MORPHO_GETMATRIX(q[j])->elements;
-            for (int k=0; k<ndof; k++) dest[k] += w*e[k];
-        }
-        success=true;
-    }
-    return success;
-}
-
-/** Interpolates quantities. CG1 (`nnodes==nbary`) uses barycentric weights directly. */
-static inline void integrator_interpolatequantities(integrator *integrate, double *bary) {
+/** Interpolates quantities by calling each quantity's eval at barycentric coordinates. */
+static inline bool integrator_interpolatequantities(integrator *integrate, double *bary) {
     for (int i=0; i<integrate->nquantity; i++) {
-        int nnodes = integrate->quantity[i].nnodes;
-        double *wts=bary;
-        double wtbuf[nnodes];
-        if (integrate->quantity[i].ifn && nnodes!=integrate->nbary) {
-            (integrate->quantity[i].ifn) (bary, wtbuf);
-            wts=wtbuf;
-        }
-        integrator_sumquantityweighted(nnodes, wts, integrate->quantity[i].vals, &integrate->qval[i]);
+        quantity *q=&integrate->quantity[i];
+        if (!q->eval) return false;
+        if (!q->eval(q, bary, &integrate->qval[i])) return false;
     }
+    return true;
 }
 
 /* --------------------------------
@@ -723,7 +676,8 @@ static inline bool integrator_evalfn(integrator *integrate, quadraturerule *rule
             integrator_transformtorefelement(integrate, rmat, &rule->nodes[nbary*i], nodebuf);
             integrator_interpolatecoordinates(integrate, node, vmat, x);
         }
-        if (integrate->nquantity) integrator_interpolatequantities(integrate, node);
+        if (integrate->nquantity &&
+            !integrator_interpolatequantities(integrate, node)) return false;
         
         // Evaluate function
         if (!(*integrate->integrand)(integrate->dim, node, x, integrate->nquantity, integrate->qval, integrate->ref, nout, &f[i*nout])) return false;

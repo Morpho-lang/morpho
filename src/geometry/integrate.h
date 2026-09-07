@@ -12,7 +12,7 @@
 
 #include "morpho.h"
 #include "dict.h"
-#include "fespace.h"
+#include "mesh.h"
 
 #define INTEGRATE_RULELABEL "rule"
 #define INTEGRATE_DEGREELABEL "degree"
@@ -113,14 +113,18 @@ DECLARE_VARRAY(quadratureworkitem, quadratureworkitem)
  * Quantities
  * ---------------------------------- */
 
-typedef struct {
-    int nnodes;  /** Number of quantity values per element */
-    int capacity; /** Allocated length of vals / findx */
-    value *vals; /** List of quantity values */
-    fieldindx *findx; /** DOF indices parallel to vals (filled by preparequantities) */
-    interpolationfn ifn; /** Interpolation function */
-    int ndof; /** Number of degrees of freedom (this will be filled out by the integrator) */
-} quantity;
+typedef struct quantity_s quantity;
+
+/** prepare must place either an immediate value or an unmanaged, independently
+    freeable object in *out. The integrator owns that qval until integrator_clearquantities(). */
+typedef bool (*quantitypreparefn)(quantity *q, value *out);
+typedef bool (*quantityevalfn)(quantity *q, double *lambda, value *out);
+
+struct quantity_s {
+    quantitypreparefn prepare;
+    quantityevalfn eval;
+    void *ref;
+};
 
 /* ----------------------------------
  * Integrator type definition
@@ -217,9 +221,6 @@ bool integrator_configure(integrator *integrate, error *err, bool adapt, int gra
 bool integrator_configurewithdictionary(integrator *integrate, error *err, grade g, objectdictionary *dict);
 bool integrator_integrate(integrator *integrate, integrandfunction *integrand, int dim, double **x, unsigned int nquantity, quantity *quantity, void *ref, unsigned int nout, double *out);
 void integrator_clear(integrator *integrate);
-
-/** Weighted sum of quantity values (floats or Matrices) at interpolation nodes. */
-bool integrator_sumquantityweighted(int n, double *wts, value *q, value *out);
 
 /* Expert staged replacement for integrator_integrate:
    1) Call integrator_try to evaluate the integrand on the base element.

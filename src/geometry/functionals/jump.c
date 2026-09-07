@@ -482,18 +482,8 @@ static bool jump_parentlambda(unsigned int dim, grade g, double **x, double *pos
     return true;
 }
 
-static bool jump_interpolatequantity(quantity *q, grade g, double *lambda, value *out) {
-    int nnodes=q->nnodes;
-    double wts[nnodes];
-
-    if (q->ifn) {
-        (q->ifn) (lambda, wts);
-    } else {
-        if (nnodes!=1) return false;
-        wts[0]=1.0;
-    }
-
-    return integrator_sumquantityweighted(nnodes, wts, q->vals, out);
+static bool jump_interpolatequantity(quantity *q, double *lambda, value *out) {
+    return integral_quantityinterpolate(q, lambda, out);
 }
 
 static bool jump_preparepointdata(objectjumpinterfaceref *iref, double *posn, value *qinterp) {
@@ -509,7 +499,8 @@ static bool jump_preparepointdata(objectjumpinterfaceref *iref, double *posn, va
     iref->iface.qinterpolated=qinterp;
 
     for (int i=0; i<ref->integral.nfields; i++) {
-        if (!jump_interpolatequantity(&iref->plus.quantities[i], ref->parentgrade, iref->plus.lambda, &qinterp[i])) return false;
+        qinterp[i]=MORPHO_NIL;
+        if (!jump_interpolatequantity(&iref->plus.quantities[i], iref->plus.lambda, &qinterp[i])) return false;
     }
 
     return true;
@@ -571,8 +562,8 @@ static bool jump_evaluatesidegradient(objectjumpinterfaceref *iref, int ifld, bo
     functional_matmul(nnodes, g, dim, gdata, side->invj->elements, fdata);
 
     for (int i=0; i<dim; i++) {
-        value sum=MORPHO_FLOAT(0.0);
-        if (!integrator_sumquantityweighted(nnodes, fmat.elements+i*nnodes, side->quantities[ifld].vals, &sum)) return false;
+        value sum=MORPHO_NIL;
+        if (!integral_quantitysumweighted(&side->quantities[ifld], fmat.elements+i*nnodes, &sum)) return false;
         if (!morpho_valuetofloat(sum, &grad[i])) return false;
     }
 

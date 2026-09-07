@@ -1,0 +1,14 @@
+// CG1 ComplexMatrixField as an Integral quantity
+
+import constants
+import meshtools
+
+var m = AreaMesh(fn (x, y) [x, y, 0], 0..1:0.5, 0..1:0.5)
+var l = FiniteElementSpace("CG1", grade=2)
+var f = Field(m, fn (x, y, z) ComplexMatrix([x, y*im]), finiteelementspace=l)
+
+print abs(AreaIntegral(fn (x, q) q[0].real() + q[1].imag(), f).total(m) - 1) < 1e-8
+// expect: true
+
+print abs(AreaIntegral(fn (x, q) q[0].abs()^2 + q[1].abs()^2, f).total(m) - 2/3) < 1e-8
+// expect: true

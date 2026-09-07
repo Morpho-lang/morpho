@@ -71,15 +71,18 @@ objectfield *object_newfield(objectmesh *mesh, value prototype, value fnspc, uns
 /** Doubles per field element. Runs before the Field exists. */
 typedef unsigned int (*field_doffn_t) (value prototype);
 
-/** Wrap a dof slice as a Morpho value.
+/** Wrap a dof slice as a Morpho value; may allocate if pool is NULL.
     @param in    packed doubles (a field element or a scratch buffer of the same kind)
     @param pool  pooled object for this index (CHILD of the Field), or NULL to allocate. */
 typedef bool (*field_materializefn_t) (objectfield *f, double *in, void *pool, value *out);
 
+/** Copy packed doubles into an already-existing compatible Morpho value. Never allocates. */
+typedef bool (*field_updatefn_t) (objectfield *f, const double *in, value *out);
+
 /** Write a Morpho value into a dof slice. */
 typedef bool (*field_dematerializefn_t) (objectfield *f, value in, double *out);
 
-/** Finish one pool slot as a view onto el. NULL means headers only. */
+/** Finish one pool slot as a view onto Field storage. NULL means headers only. */
 typedef void (*field_poolinitfn_t) (objectfield *f, void *slot, double *el);
 
 /** Object type of pool slots; needed because OBJECT_* ids are assigned at startup. */
@@ -88,6 +91,7 @@ typedef objecttype (*field_pooltypefn_t) (value prototype);
 struct sfieldinterfacedefn {
     field_doffn_t doffn;
     field_materializefn_t materialize;
+    field_updatefn_t update;
     field_dematerializefn_t dematerialize;
     field_poolinitfn_t poolinit;     /** NULL: headers only */
     size_t poolsize;                 /** 0 if this kind needs no pool */
@@ -169,6 +173,7 @@ bool field_getelementwithindex(objectfield *field, int indx, value *out);
 bool field_getindex(objectfield *field, grade grade, elementid el, int indx, int *out);
 bool field_getelementaslist(objectfield *field, grade grade, elementid el, int indx, unsigned int *nentries, double **out);
 bool field_evalelement(objectfield *field, elementid el, double *lambda, value *out);
+bool field_interpolatepacked(objectfield *f, int nnodes, const int *indices, const double *weights, double *out);
 
 bool field_setelement(objectfield *field, grade grade, elementid el, int indx, value val);
 bool field_setelementwithindex(objectfield *field, int ix, value val);

@@ -96,6 +96,117 @@ objectintegralelementref *integral_getelementref(vm *v) {
     return NULL;
 }
 
+/* --------------------------------
+ * Field quantity adapter
+ * -------------------------------- */
+
+typedef struct {
+    objectfield *field;
+    int nnodes;
+    interpolationfn ifn;
+    fieldindx *findx;
+    int *indices;
+    double *scratch;
+    unsigned int psize;
+    int capacity;
+} integralfieldquantity;
+
+static inline integralfieldquantity *integral_qctx(quantity *q) {
+    return (q && q->ref) ? (integralfieldquantity *) q->ref : NULL;
+}
+
+static bool integral_ensurescratch(integralfieldquantity *fq) {
+    objectfield *f=fq->field;
+    if (!f || f->psize==0) return false;
+    if (fq->scratch && fq->psize==f->psize) return true;
+    MORPHO_FREE(fq->scratch);
+    fq->scratch=MORPHO_MALLOC(sizeof(double)*f->psize);
+    fq->psize=f->psize;
+    return fq->scratch!=NULL;
+}
+
+/** Reuse *out if it is already a compatible Morpho value; otherwise materialize one.
+    update fails only for a missing/incompatible *out, not as an I/O error. */
+static bool integral_quantitypreparevalue(integralfieldquantity *fq, value *out) {
+    objectfield *f=fq->field;
+    if (!f || !f->iface || !f->iface->update || !f->iface->materialize || !out) return false;
+    if (!integral_ensurescratch(fq)) return false;
+
+    memset(fq->scratch, 0, sizeof(double)*f->psize);
+    if (f->iface->update(f, fq->scratch, out)) return true;
+
+    if (MORPHO_ISOBJECT(*out)) {
+        morpho_freeobject(*out);
+        *out=MORPHO_NIL;
+    }
+    return f->iface->materialize(f, fq->scratch, NULL, out);
+}
+
+/** Packed weighted sum of Field DOFs into an already-prepared Morpho value. */
+static bool integral_sumquantityweighted(integralfieldquantity *fq, const double *weights, value *out) {
+    objectfield *f=fq->field;
+    if (!f || !f->iface || !f->iface->update || !fq->indices || !fq->scratch || !weights || !out) return false;
+    if (!field_interpolatepacked(f, fq->nnodes, fq->indices, weights, fq->scratch)) return false;
+    return f->iface->update(f, fq->scratch, out);
+}
+
+bool integral_quantitysumweighted(quantity *q, const double *wts, value *out) {
+    integralfieldquantity *fq=integral_qctx(q);
+    if (!fq) return false;
+    return integral_sumquantityweighted(fq, wts, out);
+}
+
+bool integral_quantityinterpolate(quantity *q, double *lambda, value *out) {
+    integralfieldquantity *fq=integral_qctx(q);
+    if (!fq || !lambda || !out) return false;
+    int nnodes=fq->nnodes;
+    double wts[nnodes];
+    if (fq->ifn) {
+        fq->ifn(lambda, wts);
+    } else {
+        if (nnodes!=1) return false;
+        wts[0]=1.0;
+    }
+    return integral_sumquantityweighted(fq, wts, out);
+}
+
+static bool integral_quantityprepare(quantity *q, value *out) {
+    integralfieldquantity *fq=integral_qctx(q);
+    if (!fq) return false;
+    return integral_quantitypreparevalue(fq, out);
+}
+
+static bool integral_quantityeval(quantity *q, double *lambda, value *out) {
+    integralfieldquantity *fq=integral_qctx(q);
+    if (!fq || !lambda || !out) return false;
+
+    double *wts=lambda;
+    double wtbuf[fq->nnodes];
+    if (fq->ifn) {
+        fq->ifn(lambda, wtbuf);
+        wts=wtbuf;
+    }
+    return integral_sumquantityweighted(fq, wts, out);
+}
+
+static bool _integral_ensurefieldquantity(quantity *q, objectfield *f) {
+    if (!q || !f) return false;
+    integralfieldquantity *fq=integral_qctx(q);
+    if (!fq) {
+        fq=MORPHO_MALLOC(sizeof(integralfieldquantity));
+        if (!fq) return false;
+        memset(fq, 0, sizeof(integralfieldquantity));
+        q->ref=fq;
+    }
+    q->prepare=integral_quantityprepare;
+    q->eval=integral_quantityeval;
+    fq->field=f;
+    fq->psize=f->psize;
+    return integral_ensurescratch(fq);
+}
+
+void integral_clearquantities(int nq, quantity *quantities);
+
 /** Checks whether an existing matrix is the correct size and allocates if not. */
 objectmatrix *integral_ensurematrix(objectmatrix **slot, int nrows, int ncols) {
     if (!*slot || (*slot)->nrows!=nrows || (*slot)->ncols!=ncols) {
@@ -161,10 +272,7 @@ void integral_clearelref(objectintegralelementref *elref) {
     if (elref->flags & ELREF_HASINTEG) integrator_clear(&elref->integ);
     
     if (elref->quantities) {
-        for (int i=0; i<elref->nfields; i++) {
-            if (elref->quantities[i].vals) MORPHO_FREE(elref->quantities[i].vals);
-            if (elref->quantities[i].findx) MORPHO_FREE(elref->quantities[i].findx);
-        }
+        integral_clearquantities(elref->nfields, elref->quantities);
         MORPHO_FREE(elref->quantities);
         elref->quantities=NULL;
     }
@@ -370,6 +478,8 @@ bool integral_gradsuminit(int i, value prototype, value dest, value *sum) {
             matrix_zero(MORPHO_GETMATRIX(lst->val.data[i]));
             *sum = lst->val.data[i];
         }
+    } else {
+        *sum = MORPHO_NIL;
     }
     return true;
 }
@@ -396,6 +506,8 @@ bool integral_hesssuminit(int c, value prototype, value dest, value *sum) {
             matrix_zero(MORPHO_GETMATRIX(lst->val.data[c]));
             *sum = lst->val.data[c];
         }
+    } else {
+        *sum = MORPHO_NIL;
     }
     return true;
 }
@@ -466,7 +578,7 @@ bool integral_evaluategradient(vm *v, value q, value *out) {
         value sum;
         
         if (integral_gradsuminit(i, fld->prototype, elref->qgrad[ifld], &sum) &&
-            integrator_sumquantityweighted(nnodes, fmat.elements+i*nnodes, elref->quantities[ifld].vals, &sum)) {
+            integral_quantitysumweighted(&elref->quantities[ifld], fmat.elements+i*nnodes, &sum)) {
             integral_gradsumcopy(i, sum, elref->qgrad[ifld]);
         } else MORPHO_FAIL(v, INTEGRAL_DFFEVL);
     }
@@ -542,7 +654,7 @@ bool integral_evaluatehessian(vm *v, value q, value *out) {
                 value sum;
                 
                 if (integral_hesssuminit(c, fld->prototype, elref->qhess[ifld], &sum) &&
-                    integrator_sumquantityweighted(nnodes, fdata+c*nnodes, elref->quantities[ifld].vals, &sum)) {
+                    integral_quantitysumweighted(&elref->quantities[ifld], fdata+c*nnodes, &sum)) {
                     integral_hesssumcopy(i, j, sum, elref->qhess[ifld]);
                 } else MORPHO_FAIL(v, INTEGRAL_DFFEVL);
             }
@@ -787,16 +899,16 @@ static void integral_freegradhess(int nfields, value *qgrad, value *qhess) {
     }
 }
 
-/** Ensure quantity.vals and findx can hold at least n entries. */
-static bool _integral_ensurequantityvals(quantity *q, int n) {
-    if (q->capacity>=n) return true;
-    value *vals=MORPHO_REALLOC(q->vals, sizeof(value)*n);
-    if (!vals) return false;
-    fieldindx *findx=MORPHO_REALLOC(q->findx, sizeof(fieldindx)*n);
-    if (!findx) { q->vals=vals; return false; } /* vals kept; capacity unchanged */
-    q->vals=vals;
-    q->findx=findx;
-    q->capacity=n;
+/** Ensure nodal buffers can hold at least n entries. */
+static bool _integral_ensurequantityvals(integralfieldquantity *fq, int n) {
+    if (fq->capacity>=n) return true;
+    fieldindx *findx=MORPHO_REALLOC(fq->findx, sizeof(fieldindx)*n);
+    if (!findx) return false;
+    int *indices=MORPHO_REALLOC(fq->indices, sizeof(int)*n);
+    if (!indices) { fq->findx=findx; return false; }
+    fq->findx=findx;
+    fq->indices=indices;
+    fq->capacity=n;
     return true;
 }
 
@@ -804,31 +916,31 @@ static bool _integral_ensurequantityvals(quantity *q, int n) {
 bool integral_preparequantities(integralref *iref, int nv, int *vid, quantity *quantities) {
     for (int k=0; k<iref->nfields; k++) {
         objectfield *f=MORPHO_GETFIELD(iref->fields[k]);
-        
+        if (!_integral_ensurefieldquantity(&quantities[k], f)) return false;
+        integralfieldquantity *fq=integral_qctx(&quantities[k]);
+
         if (MORPHO_ISFESPACE(f->fnspc)) {
             fespace *disc=MORPHO_GETFESPACE(f->fnspc)->fespace;
             if (nv-1<disc->grade) {
                 if (!fespace_lower(disc, nv-1, &disc)) return false;
             }
-            
-            quantities[k].nnodes=disc->nnodes;
-            quantities[k].ifn=disc->ifn;
-            if (!_integral_ensurequantityvals(&quantities[k], disc->nnodes)) return false;
-            if (!fespace_doftofieldindx(f, disc, nv, vid, quantities[k].findx)) return false;
-            
+
+            fq->nnodes=disc->nnodes;
+            fq->ifn=disc->ifn;
+            if (!_integral_ensurequantityvals(fq, disc->nnodes)) return false;
+            if (!fespace_doftofieldindx(f, disc, nv, vid, fq->findx)) return false;
+
             for (int i=0; i<disc->nnodes; i++) {
-                int dof;
-                fieldindx *fx=&quantities[k].findx[i];
-                if (!field_getindex(f, fx->g, fx->id, fx->indx, &dof)) return false;
-                if (!field_getelementwithindex(f, dof, &quantities[k].vals[i])) return false;
+                fieldindx *fx=&fq->findx[i];
+                if (!field_getindex(f, fx->g, fx->id, fx->indx, &fq->indices[i])) return false;
             }
         } else {
-            quantities[k].nnodes=nv;
-            quantities[k].ifn=NULL;
-            if (!_integral_ensurequantityvals(&quantities[k], nv)) return false;
+            fq->nnodes=nv;
+            fq->ifn=NULL;
+            if (!_integral_ensurequantityvals(fq, nv)) return false;
             for (unsigned int i=0; i<nv; i++) {
-                quantities[k].findx[i]=(fieldindx){ .g=MESH_GRADE_VERTEX, .id=vid[i], .indx=0 };
-                if (!field_getelement(f, MESH_GRADE_VERTEX, vid[i], 0, &quantities[k].vals[i])) return false;
+                fq->findx[i]=(fieldindx){ .g=MESH_GRADE_VERTEX, .id=vid[i], .indx=0 };
+                if (!field_getindex(f, MESH_GRADE_VERTEX, vid[i], 0, &fq->indices[i])) return false;
             }
         }
     }
@@ -838,10 +950,17 @@ bool integral_preparequantities(integralref *iref, int nv, int *vid, quantity *q
 /** Clears a list of quantities */
 void integral_clearquantities(int nq, quantity *quantities) {
     for (int k=0; k<nq; k++) {
-        if (quantities[k].vals) MORPHO_FREE(quantities[k].vals);
-        if (quantities[k].findx) MORPHO_FREE(quantities[k].findx);
+        integralfieldquantity *fq=integral_qctx(&quantities[k]);
+        if (fq) {
+            if (fq->findx) MORPHO_FREE(fq->findx);
+            if (fq->indices) MORPHO_FREE(fq->indices);
+            if (fq->scratch) MORPHO_FREE(fq->scratch);
+            MORPHO_FREE(fq);
+        }
+        quantities[k].prepare=NULL;
+        quantities[k].eval=NULL;
+        quantities[k].ref=NULL;
     }
-    memset(quantities, 0, sizeof(quantity)*nq);
 }
 
 bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int nquantity, value *quantity, void *ref, unsigned int nout, double *fout) {
@@ -1184,7 +1303,8 @@ static bool integral_fq_vector_integrand(unsigned int dim, double *lambda, doubl
     double Na[nnodes], dfdq[ncomp];
 
     if (!elref || (unsigned)(nnodes*ncomp)!=nout) return false;
-    if (elref->quantities && elref->quantities[ifield].ifn) (elref->quantities[ifield].ifn)(lambda, Na);
+    integralfieldquantity *qctx=elref->quantities ? integral_qctx(&elref->quantities[ifield]) : NULL;
+    if (qctx && qctx->ifn) qctx->ifn(lambda, Na);
     else for (int a=0; a<nnodes; a++) Na[a]=lambda[a];
     elref->lambda=lambda; elref->posn=x; elref->qinterpolated=quantity;
 
@@ -1242,7 +1362,13 @@ static bool integral_fieldgradient_fq_element(vm *v, objectmesh *mesh, elementid
         return false;
     }
 
-    int nnodes=quantities[ifield].nnodes;
+    int nnodes=0;
+    integralfieldquantity *qctx=integral_qctx(&quantities[ifield]);
+    if (!qctx) {
+        integral_detachquantities(elref, iref->nfields, quantities, localq);
+        return false;
+    }
+    nnodes=qctx->nnodes;
     unsigned int nout=(unsigned)(nnodes*ncomp);
     double local[nout];
     integral_fq_local s={ .mref=mref, .elref=elref, .nnodes=nnodes };
@@ -1274,7 +1400,7 @@ static bool integral_fieldgradient_fq_element(vm *v, objectmesh *mesh, elementid
     }
 
     for (int a=0; ok && a<nnodes; a++) {
-        fieldindx *fx=&quantities[ifield].findx[a];
+        fieldindx *fx=&qctx->findx[a];
         unsigned int nentries=0; double *gentry=NULL;
         ok=field_getelementaslist(grad, fx->g, fx->id, fx->indx, &nentries, &gentry) &&
            ncomp<=(int) nentries;

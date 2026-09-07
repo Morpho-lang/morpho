@@ -17,6 +17,7 @@
 #include "geometry.h"
 #include "fespace.h"
 #include "platform.h"
+#include <string.h>
 
 value field_gradeoption;
 value field_functionspaceoption;
@@ -74,6 +75,11 @@ static bool field_addpool(objectfield *f);
 
 /* **********************************************************************
  * Element interface
+ *
+ * materialize    packed -> Morpho value; may allocate if pool==NULL
+ * update         packed -> existing compatible Morpho value; never allocates
+ * dematerialize  Morpho value -> packed
+ * poolinit       initialize a Field-owned pool slot as a view of Field storage
  * ********************************************************************** */
 
 /* -------------------------------------------------------
@@ -89,6 +95,13 @@ static bool _scalar_materialize(objectfield *f, double *in, void *pool, value *o
     return true;
 }
 
+static bool _scalar_update(objectfield *f, const double *in, value *out) {
+    if (!f || !in || !out) return false;
+    if (MORPHO_ISOBJECT(*out)) return false;
+    *out=MORPHO_FLOAT(in[0]);
+    return true;
+}
+
 static bool _scalar_dematerialize(objectfield *f, value in, double *out) {
     if (!f || f->psize<1 || !out) return false;
     if (MORPHO_ISNIL(in)) { out[0]=0.0; return true; }
@@ -97,7 +110,7 @@ static bool _scalar_dematerialize(objectfield *f, value in, double *out) {
 
 static fieldinterfacedefn scalardefn = {
     .doffn=_scalar_dof,
-    .materialize=_scalar_materialize, .dematerialize=_scalar_dematerialize,
+    .materialize=_scalar_materialize, .update=_scalar_update, .dematerialize=_scalar_dematerialize,
     .poolinit=NULL, .poolsize=0, .pooltypefn=NULL
 };
 
@@ -116,6 +129,12 @@ static bool _complex_materialize(objectfield *f, double *in, void *pool, value *
     objectcomplex *c=object_newcomplex(in[0], in[1]);
     if (!c) return false;
     *out=MORPHO_OBJECT(c);
+    return true;
+}
+
+static bool _complex_update(objectfield *f, const double *in, value *out) {
+    if (!f || !in || !out || !MORPHO_ISCOMPLEX(*out)) return false;
+    MORPHO_GETDOUBLECOMPLEX(*out)=MCBuild(in[0], in[1]);
     return true;
 }
 
@@ -148,7 +167,7 @@ static objecttype _complex_pooltype(value prototype) {
 
 static fieldinterfacedefn complexdefn = {
     .doffn=_complex_dof,
-    .materialize=_complex_materialize, .dematerialize=_complex_dematerialize,
+    .materialize=_complex_materialize, .update=_complex_update, .dematerialize=_complex_dematerialize,
     .poolinit=_complex_poolinit, .poolsize=sizeof(objectcomplex), .pooltypefn=_complex_pooltype
 };
 
@@ -171,6 +190,15 @@ static bool _matrix_materialize(objectfield *f, double *in, void *pool, value *o
     if (!m) return false;
     memcpy(m->elements, in, sizeof(double)*f->psize);
     *out=MORPHO_OBJECT(m);
+    return true;
+}
+
+static bool _matrix_update(objectfield *f, const double *in, value *out) {
+    if (!f || !in || !out || !matrix_isamatrix(*out)) return false;
+    objectmatrix *m=MORPHO_GETMATRIX(*out);
+    objectmatrix *p=MORPHO_GETMATRIX(f->prototype);
+    if (m->nrows!=p->nrows || m->ncols!=p->ncols || m->nvals!=p->nvals || m->nels!=f->psize) return false;
+    memcpy(m->elements, in, sizeof(double)*f->psize);
     return true;
 }
 
@@ -198,7 +226,7 @@ static objecttype _matrix_pooltype(value prototype) {
 
 static fieldinterfacedefn matrixdefn = {
     .doffn=_matrix_dof,
-    .materialize=_matrix_materialize, .dematerialize=_matrix_dematerialize,
+    .materialize=_matrix_materialize, .update=_matrix_update, .dematerialize=_matrix_dematerialize,
     .poolinit=_matrix_poolinit, .poolsize=sizeof(objectmatrix), .pooltypefn=_matrix_pooltype
 };
 
@@ -609,6 +637,26 @@ static bool field_getelementdofs(objectfield *field, fespace *disc, elementid el
     return fespace_doftofieldindx(field, disc, nv, vids, findx);
 }
 
+/** Packed weighted sum of Field store slices.
+ * @param[in] f - field to interpolate
+ * @param[in] nnodes - number of interpolation nodes
+ * @param[in] indices - packed Field indices, one per node
+ * @param[in] weights - interpolation weights, one per node
+ * @param[out] out - psize doubles; out[k] += w[j] * data.elements[indices[j]*psize + k]
+ * @return true on success */
+bool field_interpolatepacked(objectfield *f, int nnodes, const int *indices, const double *weights, double *out) {
+    if (!f || !f->data.elements || !indices || !weights || !out) return false;
+
+    unsigned int psize=f->psize;
+    memset(out, 0, sizeof(double)*psize);
+    for (int j=0; j<nnodes; j++) {
+        const double *src=f->data.elements + indices[j]*psize;
+        double w=weights[j];
+        for (unsigned int k=0; k<psize; k++) out[k]+=w*src[k];
+    }
+    return true;
+}
+
 bool field_evalelement(objectfield *field, elementid el, double *lambda, value *out) {
     if (!field || !lambda || !out) return false;
     if (!MORPHO_ISFESPACE(field->fnspc)) return false;
@@ -618,18 +666,16 @@ bool field_evalelement(objectfield *field, elementid el, double *lambda, value *
     fieldindx findx[disc->nnodes];
     if (!field_getelementdofs(field, disc, el, findx)) return false;
 
+    int indices[disc->nnodes];
+    for (int i=0; i<disc->nnodes; i++) {
+        if (!field_getindex(field, findx[i].g, findx[i].id, findx[i].indx, &indices[i])) return false;
+    }
+
     double wts[disc->nnodes];
     disc->ifn(lambda, wts);
 
-    unsigned int ndof=field->psize;
-    double accum[ndof];
-    memset(accum, 0, sizeof(double)*ndof);
-    for (int i=0; i<disc->nnodes; i++) {
-        unsigned int nentries;
-        double *entries;
-        if (!field_getelementaslist(field, findx[i].g, findx[i].id, findx[i].indx, &nentries, &entries)) return false;
-        for (unsigned int j=0; j<nentries; j++) accum[j] += wts[i]*entries[j];
-    }
+    double accum[field->psize];
+    if (!field_interpolatepacked(field, disc->nnodes, indices, wts, accum)) return false;
     return field->iface->materialize(field, accum, NULL, out);
 }
 

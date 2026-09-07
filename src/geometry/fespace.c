@@ -153,8 +153,8 @@ bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids
         eldefninstruction op=FETCH(instr);
         switch(op) {
             case ELEMENT_LINE_OPCODE: // Find an element defined by n vertices
-            case ELEMENT_AREA_OPCODE: // TODO: Need to cope with (mis) orientation of these subelements
-            case ELEMENT_VOLUME_OPCODE: // P0 ignores orientation
+            case ELEMENT_AREA_OPCODE: // Face/volume orientation is unused: current spaces have at most one DOF there
+            case ELEMENT_VOLUME_OPCODE:
             {
                 sid = FETCH(instr);
                 for (int i=0; i<=op; i++) svids[i] = vids[FETCH(instr)];

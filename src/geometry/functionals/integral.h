@@ -155,7 +155,6 @@ void integral_addspecial(char *name, builtinfunction fn, unsigned bit, char *sig
 objectmatrix *integral_ensurematrix(objectmatrix **slot, int nrows, int ncols);
 bool integral_prepareinvjacobian(unsigned int dim, grade g, double **x, objectmatrix *invj);
 bool integral_preparequantities(integralref *iref, int nv, int *vid, quantity *quantities);
-bool integral_quantityinterpolate(quantity *q, double *lambda, value *out);
 bool integral_quantitysumweighted(quantity *q, const double *wts, value *out);
 
 #define INTEGRAL_MAPFLAGS  (MORPHO_FN_REENTRANT|FUNCTIONAL_MD_MAPFLAGS)

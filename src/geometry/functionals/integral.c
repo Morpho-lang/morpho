@@ -156,20 +156,6 @@ bool integral_quantitysumweighted(quantity *q, const double *wts, value *out) {
     return integral_sumquantityweighted(fq, wts, out);
 }
 
-bool integral_quantityinterpolate(quantity *q, double *lambda, value *out) {
-    integralfieldquantity *fq=integral_qctx(q);
-    if (!fq || !lambda || !out) return false;
-    int nnodes=fq->nnodes;
-    double wts[nnodes];
-    if (fq->ifn) {
-        fq->ifn(lambda, wts);
-    } else {
-        if (nnodes!=1) return false;
-        wts[0]=1.0;
-    }
-    return integral_sumquantityweighted(fq, wts, out);
-}
-
 static bool integral_quantityprepare(quantity *q, value *out) {
     integralfieldquantity *fq=integral_qctx(q);
     if (!fq) return false;
@@ -201,7 +187,6 @@ static bool _integral_ensurefieldquantity(quantity *q, objectfield *f) {
     q->prepare=integral_quantityprepare;
     q->eval=integral_quantityeval;
     fq->field=f;
-    fq->psize=f->psize;
     return integral_ensurescratch(fq);
 }
 

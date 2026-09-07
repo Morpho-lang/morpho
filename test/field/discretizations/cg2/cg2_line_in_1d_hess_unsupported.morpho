@@ -1,0 +1,14 @@
+// CG2 in 1D does not advertise a Hessian callback
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0, 0, 0])
+mb.addvertex([1, 0, 0])
+mb.addedge([0, 1])
+var m = mb.build()
+
+var fe = FiniteElementSpace("CG2", grade=1)
+var f = Field(m, fn (x, y, z) x^2, finiteelementspace=fe)
+
+print LineIntegral(fn (x, q) hess(q).norm(), f).total(m)
+// expect error 'IntgrlDffEvl'

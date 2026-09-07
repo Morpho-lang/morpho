@@ -700,7 +700,7 @@ void cg2_3dinterpolate(double *lambda, double *wts) {
     wts[9]=4*lambda[2]*lambda[3];
 }
 
-void cg2_3dgrad(double *lambda, double *grad) { // TODO: FIX
+void cg2_3dgrad(double *lambda, double *grad) {
     // Gij = d Xi[i] / d lambda[j]
     // Note this is in column-major order!
     double g[] =

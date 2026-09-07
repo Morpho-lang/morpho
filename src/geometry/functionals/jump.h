@@ -39,6 +39,8 @@ typedef struct {
     vm *v;
     objectintegralelementref plus;
     objectintegralelementref minus;
+    value *qinterp;
+    int qinterpcapacity;
 } objectjumpinterfaceref;
 
 extern objecttype objectjumpinterfacereftype;

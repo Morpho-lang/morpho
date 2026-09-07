@@ -636,7 +636,7 @@ int mesh_findneighbors(objectmesh *mesh, grade g, elementid id, grade target, va
 
             // Is this vertex a target vertex of any image vertices
             int nrids=0, rids[MAX_NEIGHBORS];
-            if (sparseccs_getcolindicesforrow(&sym->ccs, id, MAX_NEIGHBORS, &nrids, rids)) {
+            if (sparseccs_getcolindicesforrow(&sym->ccs, vids[k], MAX_NEIGHBORS, &nrids, rids)) {
                 for (unsigned int r=0; r<nrids; r++) {
                     _appendincidentids(conn, rids[r], g==target, id, neighbors);
                 }

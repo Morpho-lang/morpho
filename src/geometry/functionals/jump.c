@@ -396,6 +396,28 @@ static bool jump_fielddependencies(functional_mapinfo *info, elementid id, varra
     return true;
 }
 
+static bool jump_ensureqinterp(objectjumpinterfaceref *iref, int nfields) {
+    if (nfields<=0) return true;
+    if (iref->qinterpcapacity>=nfields) return true;
+
+    value *nw=MORPHO_REALLOC(iref->qinterp, sizeof(value)*nfields);
+    if (!nw) return false;
+    for (int i=iref->qinterpcapacity; i<nfields; i++) nw[i]=MORPHO_NIL;
+    iref->qinterp=nw;
+    iref->qinterpcapacity=nfields;
+    return true;
+}
+
+static void jump_clearqinterp(objectjumpinterfaceref *iref) {
+    if (!iref->qinterp) return;
+    for (int i=0; i<iref->qinterpcapacity; i++) {
+        if (MORPHO_ISOBJECT(iref->qinterp[i])) morpho_freeobject(iref->qinterp[i]);
+    }
+    MORPHO_FREE(iref->qinterp);
+    iref->qinterp=NULL;
+    iref->qinterpcapacity=0;
+}
+
 static bool jump_ensuresidequantities(objectintegralelementref *side, int nfields) {
     if (nfields<=0) return true;
     if (side->quantities) return true;
@@ -425,6 +447,7 @@ static void jump_clearinterfaceref(objectjumpinterfaceref *iref, bool persistent
     if (persistent) return;
     if (iref->plus.lambda) { MORPHO_FREE(iref->plus.lambda); iref->plus.lambda=NULL; }
     if (iref->minus.lambda) { MORPHO_FREE(iref->minus.lambda); iref->minus.lambda=NULL; }
+    jump_clearqinterp(iref);
     integral_clearelref(&iref->iface);
     integral_clearelref(&iref->plus);
     integral_clearelref(&iref->minus);
@@ -482,11 +505,7 @@ static bool jump_parentlambda(unsigned int dim, grade g, double **x, double *pos
     return true;
 }
 
-static bool jump_interpolatequantity(quantity *q, double *lambda, value *out) {
-    return integral_quantityinterpolate(q, lambda, out);
-}
-
-static bool jump_preparepointdata(objectjumpinterfaceref *iref, double *posn, value *qinterp) {
+static bool jump_preparepointdata(objectjumpinterfaceref *iref, double *posn) {
     jumpref *ref=iref->jref;
     double *xplus[iref->plus.nv], *xminus[iref->minus.nv];
 
@@ -496,11 +515,12 @@ static bool jump_preparepointdata(objectjumpinterfaceref *iref, double *posn, va
         !jump_parentlambda(iref->iface.mesh->dim, ref->parentgrade, xminus, posn, iref->minus.lambda)) return false;
 
     iref->iface.posn=posn;
-    iref->iface.qinterpolated=qinterp;
+    iref->iface.qinterpolated=iref->qinterp;
 
     for (int i=0; i<ref->integral.nfields; i++) {
-        qinterp[i]=MORPHO_NIL;
-        if (!jump_interpolatequantity(&iref->plus.quantities[i], iref->plus.lambda, &qinterp[i])) return false;
+        quantity *q=&iref->plus.quantities[i];
+        if (!q->eval) return false;
+        if (!q->eval(q, iref->plus.lambda, &iref->qinterp[i])) return false;
     }
 
     return true;
@@ -508,13 +528,13 @@ static bool jump_preparepointdata(objectjumpinterfaceref *iref, double *posn, va
 
 static bool jump_callintegrand(objectjumpinterfaceref *iref, double *posn, double *out) {
     jumpref *ref=iref->jref;
-    value qinterp[ref->integral.nfields+1], args[ref->integral.nfields+1], outval=MORPHO_NIL;
+    value args[ref->integral.nfields+1], outval=MORPHO_NIL;
     objectmatrix mposn = MORPHO_STATICMATRIX(posn, iref->iface.mesh->dim, 1);
 
-    if (!jump_preparepointdata(iref, posn, qinterp)) return false;
+    if (!jump_preparepointdata(iref, posn)) return false;
 
     args[0]=MORPHO_OBJECT(&mposn);
-    for (int i=0; i<ref->integral.nfields; i++) args[i+1]=qinterp[i];
+    for (int i=0; i<ref->integral.nfields; i++) args[i+1]=iref->qinterp[i];
 
     if (!morpho_call(iref->v, ref->integral.integrand, ref->integral.nfields+1, args, &outval)) return false;
     return morpho_valuetofloat(outval, out);
@@ -679,6 +699,17 @@ static bool jump_prepareinterfaceref(vm *v, objectmesh *mesh, jumpref *ref, elem
             !integral_preparequantities(&ref->integral, minusnv, minusvid, iref->minus.quantities)) {
             jump_clearinterfaceref(iref, persistent);
             return false;
+        }
+        if (!jump_ensureqinterp(iref, ref->integral.nfields)) {
+            jump_clearinterfaceref(iref, persistent);
+            MORPHO_FAIL(v, ERROR_ALLOCATIONFAILED);
+        }
+        for (int i=0; i<ref->integral.nfields; i++) {
+            quantity *q=&iref->plus.quantities[i];
+            if (!q->prepare || !q->prepare(q, &iref->qinterp[i])) {
+                jump_clearinterfaceref(iref, persistent);
+                return false;
+            }
         }
     }
 

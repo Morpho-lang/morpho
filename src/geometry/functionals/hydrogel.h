@@ -31,8 +31,8 @@
 #define HYDROGEL_FLDGRD                "HydrglFldGrd"
 #define HYDROGEL_FLDGRD_MSG            "Hydrogel has been given phi0 as a Field that lacks scalar elements in grade %u."
 
-#define HYDROGEL_ZEEROREFELEMENT       "HydrglZrRfVl"
-#define HYDROGEL_ZEEROREFELEMENT_MSG   "Reference element %u has tiny volume V=%g, V0=%g\n"
+#define HYDROGEL_ZEROREFELEMENT        "HydrglZrRfVl"
+#define HYDROGEL_ZEROREFELEMENT_MSG    "Reference element %u has tiny volume V=%g, V0=%g\n"
 
 #define HYDROGEL_BNDS                  "HydrglBnds"
 #define HYDROGEL_BNDS_MSG              "Phi outside bounds at element %u V=%g, V0=%g, phi=%g, 1-phi=%g\n"

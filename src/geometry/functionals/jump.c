@@ -219,7 +219,7 @@ objecttypedefn objectjumpinterfacerefdefn = {
 };
 
 objecttype objectjumpinterfacereftype;
-int jumpinterfacehandle;
+static int jumpinterfacehandle;
 
 objectjumpinterfaceref *jump_getinterfaceref(vm *v) {
     value iref=MORPHO_NIL;

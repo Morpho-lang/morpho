@@ -125,7 +125,7 @@ static bool normsq_mapfieldgradient(vm *v, functional_mapinfo *info, value *out)
 
 value NormSq_init__field(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
-    _gradsq_initfield(self, MORPHO_GETARG(args, 0));
+    gradsq_initfield(self, MORPHO_GETARG(args, 0));
     functional_setgrade(self, MESH_GRADE_VERTEX);
     return MORPHO_NIL;
 }

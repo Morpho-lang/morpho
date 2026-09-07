@@ -64,7 +64,7 @@ bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, 
  * Length
  * ---------------------------------------------- */
 
-/** Calculate area */
+/** Calculate length */
 bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     if (nv!=2) { *out=0; return true; }
     double *x[nv], s0[mesh->dim];
@@ -287,7 +287,7 @@ MORPHO_ENDCLASS
  * Volume
  * ---------------------------------------------- */
 
-/** Calculate enclosed volume */
+/** Calculate volume */
 bool volume_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim], cx[mesh->dim];
     for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);

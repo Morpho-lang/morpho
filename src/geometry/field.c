@@ -230,6 +230,7 @@ static fieldinterfacedefn matrixdefn = {
     .poolinit=_matrix_poolinit, .poolsize=sizeof(objectmatrix), .pooltypefn=_matrix_pooltype
 };
 
+/** Element interface for a prototype value, or NULL if the prototype is unsupported */
 fieldinterfacedefn *field_getinterface(value prototype) {
     if (MORPHO_ISNIL(prototype) || MORPHO_ISNUMBER(prototype)) return &scalardefn;
     if (MORPHO_ISCOMPLEX(prototype)) return &complexdefn;
@@ -263,6 +264,7 @@ static objectfield *_field_requirekind(vm *v, objectfield *f, objecttype expecte
     return NULL;
 }
 
+/** Tests whether a value is any Field kind */
 bool field_isafield(value val) {
     if (!MORPHO_ISOBJECT(val)) return false;
     objecttype t=MORPHO_GETOBJECT(val)->type;
@@ -1404,7 +1406,7 @@ value Field_linearize(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) matrix_clone(&f->data));
 }
 
-/** Directly the matrix that stores the Field
+/** Returns the packed matrix that stores the Field, without cloning.
  @warning only use when you know what you're doing.  */
 value Field_unsafelinearize(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
@@ -1519,7 +1521,7 @@ MORPHO_ENDCLASS
 
 /* **********************************************************************
  * Initialization
- * ********************************************************************* */
+ * ********************************************************************** */
 
 static void field_finalize(void) {
     MorphoMutex_clear(&field_poolmutex);
@@ -1538,32 +1540,32 @@ void field_initialize(void) {
     field_gradeoption=builtin_internsymbolascstring(FIELD_GRADEOPTION);
     field_functionspaceoption=builtin_internsymbolascstring(FIELD_FESPACEOPTION);
     
-#define FIELD_CONS_FLGS (MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_OPTARGS)
+#define FIELD_CONS_FLAGS (MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS|MORPHO_FN_OPTARGS)
     /* Field() is a factory: it never allocates OBJECT_FIELD, only a leaf kind. */
-    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh)", field_constructor__mesh, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, Int)", field_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, Float)", field_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, Complex)", field_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, Matrix)", field_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, ComplexMatrix)", field_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, Callable)", field_constructor__mesh_fn, FIELD_CONS_FLGS|MORPHO_FN_REENTRANT, NULL);
+    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh)", field_constructor__mesh, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, Int)", field_constructor__mesh_proto, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, Float)", field_constructor__mesh_proto, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, Complex)", field_constructor__mesh_proto, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, Matrix)", field_constructor__mesh_proto, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, ComplexMatrix)", field_constructor__mesh_proto, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(FIELD_CLASSNAME, "Field (Mesh, Callable)", field_constructor__mesh_fn, FIELD_CONS_FLAGS|MORPHO_FN_REENTRANT, NULL);
 
-    morpho_addfunction(SCALARFIELD_CLASSNAME, "ScalarField (Mesh)", scalarfield_constructor__mesh, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(SCALARFIELD_CLASSNAME, "ScalarField (Mesh, Int)", scalarfield_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(SCALARFIELD_CLASSNAME, "ScalarField (Mesh, Float)", scalarfield_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(SCALARFIELD_CLASSNAME, "ScalarField (Mesh, Callable)", scalarfield_constructor__mesh_fn, FIELD_CONS_FLGS|MORPHO_FN_REENTRANT, NULL);
+    morpho_addfunction(SCALARFIELD_CLASSNAME, "ScalarField (Mesh)", scalarfield_constructor__mesh, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(SCALARFIELD_CLASSNAME, "ScalarField (Mesh, Int)", scalarfield_constructor__mesh_proto, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(SCALARFIELD_CLASSNAME, "ScalarField (Mesh, Float)", scalarfield_constructor__mesh_proto, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(SCALARFIELD_CLASSNAME, "ScalarField (Mesh, Callable)", scalarfield_constructor__mesh_fn, FIELD_CONS_FLAGS|MORPHO_FN_REENTRANT, NULL);
 
-    morpho_addfunction(MATRIXFIELD_CLASSNAME, "MatrixField (Mesh, Matrix)", matrixfield_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(MATRIXFIELD_CLASSNAME, "MatrixField (Mesh, Callable)", matrixfield_constructor__mesh_fn, FIELD_CONS_FLGS|MORPHO_FN_REENTRANT, NULL);
+    morpho_addfunction(MATRIXFIELD_CLASSNAME, "MatrixField (Mesh, Matrix)", matrixfield_constructor__mesh_proto, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(MATRIXFIELD_CLASSNAME, "MatrixField (Mesh, Callable)", matrixfield_constructor__mesh_fn, FIELD_CONS_FLAGS|MORPHO_FN_REENTRANT, NULL);
 
-    morpho_addfunction(COMPLEXFIELD_CLASSNAME, "ComplexField (Mesh)", complexfield_constructor__mesh, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(COMPLEXFIELD_CLASSNAME, "ComplexField (Mesh, Complex)", complexfield_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(COMPLEXFIELD_CLASSNAME, "ComplexField (Mesh, Int)", complexfield_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(COMPLEXFIELD_CLASSNAME, "ComplexField (Mesh, Float)", complexfield_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(COMPLEXFIELD_CLASSNAME, "ComplexField (Mesh, Callable)", complexfield_constructor__mesh_fn, FIELD_CONS_FLGS|MORPHO_FN_REENTRANT, NULL);
+    morpho_addfunction(COMPLEXFIELD_CLASSNAME, "ComplexField (Mesh)", complexfield_constructor__mesh, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(COMPLEXFIELD_CLASSNAME, "ComplexField (Mesh, Complex)", complexfield_constructor__mesh_proto, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(COMPLEXFIELD_CLASSNAME, "ComplexField (Mesh, Int)", complexfield_constructor__mesh_proto, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(COMPLEXFIELD_CLASSNAME, "ComplexField (Mesh, Float)", complexfield_constructor__mesh_proto, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(COMPLEXFIELD_CLASSNAME, "ComplexField (Mesh, Callable)", complexfield_constructor__mesh_fn, FIELD_CONS_FLAGS|MORPHO_FN_REENTRANT, NULL);
 
-    morpho_addfunction(COMPLEXMATRIXFIELD_CLASSNAME, "ComplexMatrixField (Mesh, ComplexMatrix)", complexmatrixfield_constructor__mesh_proto, FIELD_CONS_FLGS, NULL);
-    morpho_addfunction(COMPLEXMATRIXFIELD_CLASSNAME, "ComplexMatrixField (Mesh, Callable)", complexmatrixfield_constructor__mesh_fn, FIELD_CONS_FLGS|MORPHO_FN_REENTRANT, NULL);
+    morpho_addfunction(COMPLEXMATRIXFIELD_CLASSNAME, "ComplexMatrixField (Mesh, ComplexMatrix)", complexmatrixfield_constructor__mesh_proto, FIELD_CONS_FLAGS, NULL);
+    morpho_addfunction(COMPLEXMATRIXFIELD_CLASSNAME, "ComplexMatrixField (Mesh, Callable)", complexmatrixfield_constructor__mesh_fn, FIELD_CONS_FLAGS|MORPHO_FN_REENTRANT, NULL);
     
     value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
     

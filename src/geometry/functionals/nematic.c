@@ -225,7 +225,7 @@ value Nematic_init__field(vm *v, int nargs, value *args) {
     objectinstance_setproperty(self, nematic_ktwistproperty, ktwist);
     objectinstance_setproperty(self, nematic_kbendproperty, kbend);
     objectinstance_setproperty(self, nematic_pitchproperty, pitch);
-    _gradsq_initfield(self, MORPHO_GETARG(args, 0));
+    gradsq_initfield(self, MORPHO_GETARG(args, 0));
     return MORPHO_NIL;
 }
 

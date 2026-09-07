@@ -85,7 +85,7 @@ bool hydrogel_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
     if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
 
     if (V0<1e-8) {
-        morpho_runtimewarning(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
+        morpho_runtimewarning(v, HYDROGEL_ZEROREFELEMENT, id, V, V0);
     }
 
     if (fabs(V)<MORPHO_EPS) {
@@ -130,7 +130,7 @@ bool hydrogel_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
     if (!functional_elementsize(v, mesh, info->grade, id, nv, vid, &V)) return false;
 
     if (V0<1e-8) {
-        morpho_runtimewarning(v, HYDROGEL_ZEEROREFELEMENT, id, V, V0);
+        morpho_runtimewarning(v, HYDROGEL_ZEROREFELEMENT, id, V, V0);
     }
 
     if (fabs(V)<MORPHO_EPS) return true;
@@ -222,7 +222,7 @@ void hydrogel_initialize(void) {
     builtin_addclass(HYDROGEL_CLASSNAME, MORPHO_GETCLASSDEFINITION(Hydrogel), objclass);
 
     morpho_defineerror(HYDROGEL_FLDGRD, ERROR_HALT, HYDROGEL_FLDGRD_MSG);
-    morpho_defineerror(HYDROGEL_ZEEROREFELEMENT, ERROR_WARNING, HYDROGEL_ZEEROREFELEMENT_MSG);
+    morpho_defineerror(HYDROGEL_ZEROREFELEMENT, ERROR_WARNING, HYDROGEL_ZEROREFELEMENT_MSG);
     morpho_defineerror(HYDROGEL_BNDS, ERROR_WARNING, HYDROGEL_BNDS_MSG);
 }
 

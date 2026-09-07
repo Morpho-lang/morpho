@@ -4,8 +4,8 @@
  *  @brief Numerical integration
 */
 
-#ifndef integration_h
-#define integration_h
+#ifndef integrate_h
+#define integrate_h
 
 #include "build.h"
 #ifdef MORPHO_INCLUDE_GEOMETRY
@@ -243,5 +243,5 @@ void integrate_initialize(void);
 
 #endif
 
-#endif /* integration_h */
+#endif /* integrate_h */
 

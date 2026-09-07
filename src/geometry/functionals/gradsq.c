@@ -25,10 +25,10 @@
  * Nematic / NematicElectric; NormSq is vertex |q|^2. High-order |grad q|^2 is
  * Integral + grad(). */
 
-bool gradsq_computeperpendicular(unsigned int n, double *s1, double *s2, double *out) {
+static bool gradsq_computeperpendicular(unsigned int n, double *s1, double *s2, double *out) {
     double s1s2, s2s2, sout;
 
-    /* Compute s1 - (s1.s2) s2 / (s2.2) */
+    /* Compute s1 - (s1.s2) s2 / (s2.s2) */
     s1s2 = functional_vecdot(n, s1, s2);
     s2s2 = functional_vecdot(n, s2, s2);
     if (fabs(s2s2)<MORPHO_EPS) return false; // Check for side of zero weight
@@ -51,7 +51,8 @@ bool gradsq_computeperpendicular(unsigned int n, double *s1, double *s2, double 
  @param[in] nv - number of vertices
  @param[in] vid - vertex ids
  @param[out] out - should be field->psize * mesh->dim units of storage */
-bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *vid, double *out) {    double *f[nv]; // Field value lists
+bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *vid, double *out) {
+    double *f[nv]; // Field value lists
     double *x[nv]; // Vertex coordinates
     unsigned int nentries=0;
 
@@ -152,7 +153,7 @@ bool gradsq_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectse
     return success;
 }
 
-/** Clones the nematic reference with a given substitute field */
+/** Clones a fieldref with a given substitute field */
 void *gradsq_cloneref(void *ref, objectfield *field, objectfield *sub) {
     fieldref *nref = (fieldref *) ref;
     fieldref *clone = MORPHO_MALLOC(sizeof(fieldref));
@@ -187,19 +188,20 @@ bool gradsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     return true;
 }
 
-void _gradsq_initfield(objectinstance *self, value fieldval) {
+/** Set the Field property and default grade from a Field argument */
+void gradsq_initfield(objectinstance *self, value fieldval) {
     objectinstance_setproperty(self, functional_fieldproperty, fieldval);
     functional_setgrade(self, mesh_maxgrade(MORPHO_GETFIELD(fieldval)->mesh));
 }
 
 value GradSq_init__field(vm *v, int nargs, value *args) {
-    _gradsq_initfield(MORPHO_GETINSTANCE(MORPHO_SELF(args)), MORPHO_GETARG(args, 0));
+    gradsq_initfield(MORPHO_GETINSTANCE(MORPHO_SELF(args)), MORPHO_GETARG(args, 0));
     return MORPHO_NIL;
 }
 
 value GradSq_init__field_int(vm *v, int nargs, value *args) {
     objectinstance *self = MORPHO_GETINSTANCE(MORPHO_SELF(args));
-    _gradsq_initfield(self, MORPHO_GETARG(args, 0));
+    gradsq_initfield(self, MORPHO_GETARG(args, 0));
     functional_setgrade(self, MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1)));
     return MORPHO_NIL;
 }

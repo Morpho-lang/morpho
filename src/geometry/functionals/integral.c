@@ -82,10 +82,7 @@ objecttypedefn objectintegralelementrefdefn = {
 };
 
 objecttype objectintegralelementreftype;
-
-
-
-int elementhandle;
+static int elementhandle;
 
 /** Get the current element ref from thread-local storage in the VM */
 objectintegralelementref *integral_getelementref(vm *v) {
@@ -190,7 +187,7 @@ static bool _integral_ensurefieldquantity(quantity *q, objectfield *f) {
     return integral_ensurescratch(fq);
 }
 
-void integral_clearquantities(int nq, quantity *quantities);
+static void integral_clearquantities(int nq, quantity *quantities);
 
 /** Checks whether an existing matrix is the correct size and allocates if not. */
 objectmatrix *integral_ensurematrix(objectmatrix **slot, int nrows, int ncols) {
@@ -676,7 +673,7 @@ static bool integral_evaluatecg(vm *v) {
     
     double gramrefel[gdim*gdim], gramdefel[gdim*gdim], qel[gdim*gdim], rel[gdim*gdim];
     objectmatrix gramref = MORPHO_STATICMATRIX(gramrefel, gdim, gdim); // Gram matrices
-    objectmatrix gramdef = MORPHO_STATICMATRIX(gramdefel, gdim, gdim); //
+    objectmatrix gramdef = MORPHO_STATICMATRIX(gramdefel, gdim, gdim);
     objectmatrix r = MORPHO_STATICMATRIX(rel, gdim, gdim); // Intermediate calculations
     
     linearelasticity_calculategram(elref->iref->mref->vert, elref->mesh->dim, elref->nv, elref->vid, &gramref);
@@ -714,12 +711,12 @@ static value integral_cgfn(vm *v, int nargs, value *args) {
  * and inverse jacobians.
  */
 
-void _fetchvertices(objectintegralelementref *elref, objectmesh *mesh, int nv, elementid *vid, double **x) {
+static void _integral_fetchvertices(objectintegralelementref *elref, objectmesh *mesh, int nv, elementid *vid, double **x) {
     // Fetch reference vertices
     for (int j=0; j<nv; j++) matrix_getcolumnptr(elref->iref->mref->vert, vid[j], &x[j]);
 }
 
-void _edgevectors(grade g, int dim, double **x, double *out) {
+static void _integral_edgevectors(grade g, int dim, double **x, double *out) {
     for (int i=0; i<g; i++) functional_vecsub(dim, x[i+1], x[0], out + i*dim);
 }
 
@@ -736,21 +733,21 @@ static bool integral_evaluatejacobian(vm *v) {
     
     // Now compute them
     grade g = elref->g;             // Grade of the element
-    int nv = elref->nv;             //
+    int nv = elref->nv;
     
     double **X = elref->vertexposn; // Vertex positions of the target element
     double *x[nv];                  // Vertex positions of the reference element
     
     objectmesh *mref = elref->iref->mref; // Reference mesh
-    if (mref) _fetchvertices(elref, mref, nv, elref->vid, x);
+    if (mref) _integral_fetchvertices(elref, mref, nv, elref->vid, x);
     
     // Construct matrix of edge vectors for target and reference elements
     double starget[dim*dim], sinv[dim*dim];
     objectmatrix Sinv = MORPHO_STATICMATRIX(sinv, dim, dim);
     
-    _edgevectors(g, dim, X, starget);
+    _integral_edgevectors(g, dim, X, starget);
     if (mref) {
-        _edgevectors(g, dim, x, sinv);
+        _integral_edgevectors(g, dim, x, sinv);
         if (!functional_matinv(dim, sinv)) return false;
     } else {
         matrix_identity(&Sinv); // If no reference, the reference is the unit triangle
@@ -933,7 +930,7 @@ bool integral_preparequantities(integralref *iref, int nv, int *vid, quantity *q
 }
 
 /** Clears a list of quantities */
-void integral_clearquantities(int nq, quantity *quantities) {
+static void integral_clearquantities(int nq, quantity *quantities) {
     for (int k=0; k<nq; k++) {
         integralfieldquantity *fq=integral_qctx(&quantities[k]);
         if (fq) {

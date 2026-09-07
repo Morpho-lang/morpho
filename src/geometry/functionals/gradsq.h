@@ -21,7 +21,7 @@
 bool gradsq_evaluategradient(objectmesh *mesh, objectfield *field, int nv, int *vid, double *out);
 bool gradsq_evaluategradient3d(objectmesh *mesh, objectfield *field, int nv, int *vid, double *out);
 bool gradsq_prepareref(objectinstance *self, objectmesh *mesh, grade g, objectselection *sel, fieldref *ref);
-void _gradsq_initfield(objectinstance *self, value fieldval);
+void gradsq_initfield(objectinstance *self, value fieldval);
 
 void gradsq_initialize(void);
 

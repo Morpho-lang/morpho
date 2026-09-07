@@ -15,7 +15,7 @@
 
 objecttype objectfespacetype;
 
-/** Field object definitions */
+/** fespace object definitions */
 void objectfespace_printfn(object *obj, void *v) {
     objectfespace *disc=(objectfespace *) obj;
     morpho_printf(v, "<FunctionSpace %s>", FESPACE_NAME(disc->fespace));
@@ -29,7 +29,9 @@ objecttypedefn objectfespacedefn = {
     .printfn=objectfespace_printfn,
     .markfn=NULL,
     .freefn=NULL,
-    .sizefn=objectfespace_sizefn
+    .sizefn=objectfespace_sizefn,
+    .hashfn=NULL,
+    .cmpfn=NULL
 };
 
 /** Creates a new fespace object

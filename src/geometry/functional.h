@@ -10,7 +10,6 @@
 #include "build.h"
 #ifdef MORPHO_INCLUDE_GEOMETRY
 
-#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include "morpho.h"

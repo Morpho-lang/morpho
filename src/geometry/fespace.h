@@ -10,7 +10,7 @@
 #include "build.h"
 #ifdef MORPHO_INCLUDE_GEOMETRY
 
-#include "geometry.h"
+#include "field.h"
 #include "elements.h"
 
 /* -------------------------------------------------------

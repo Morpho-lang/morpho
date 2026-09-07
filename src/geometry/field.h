@@ -14,7 +14,6 @@
 #include "objectpool.h"
 #include "mesh.h"
 #include "linalg.h"
-#include <stdio.h>
 
 /* -------------------------------------------------------
  * Field objects
@@ -37,7 +36,7 @@ typedef struct sfieldinterfacedefn fieldinterfacedefn;
     of each slice, individually accessible through an object pool. */
 typedef struct {
     object obj;
-    objectmesh *mesh; /** The mesh the selection is referring to */
+    objectmesh *mesh; /** The mesh the field is attached to */
     
     unsigned int ngrades; /** Number of grades */
     unsigned int *dof; /** number of degrees of freedom per entry in each grade */
@@ -98,6 +97,7 @@ struct sfieldinterfacedefn {
     field_pooltypefn_t pooltypefn;   /** NULL if this kind needs no pool */
 };
 
+/** Element interface for a prototype value, or NULL if the prototype is unsupported */
 fieldinterfacedefn *field_getinterface(value prototype);
 
 /* -------------------------------------------------------
@@ -105,9 +105,9 @@ fieldinterfacedefn *field_getinterface(value prototype);
  * ------------------------------------------------------- */
 
 typedef struct {
-    grade g;      // The grade
-    elementid id; // The element
-    int indx;     // Quantity index
+    grade g;      /** Grade */
+    elementid id; /** Element */
+    int indx;     /** Quantity index */
 } fieldindx;
 
 /* -------------------------------------------------------

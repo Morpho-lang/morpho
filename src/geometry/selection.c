@@ -67,7 +67,7 @@ static objectselection *object_newselection(objectmesh *mesh) {
 }
 
 /** Clones a selection */
-objectselection *selection_clone(objectselection *sel) {
+static objectselection *selection_clone(objectselection *sel) {
     objectselection *new=object_newselection(sel->mesh);
     
     if (new) {

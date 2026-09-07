@@ -110,9 +110,7 @@ static unsigned int _complex_dof(value prototype) { (void) prototype; return 2; 
 static bool _complex_materialize(objectfield *f, double *in, void *pool, value *out) {
     if (!f || f->psize<2 || !in || !out) return false;
     if (pool) {
-        objectcomplex *c=(objectcomplex *) pool;
-        c->Z=MCBuild(in[0], in[1]);
-        *out=MORPHO_OBJECT(c);
+        *out=MORPHO_OBJECT(pool);
         return true;
     }
     objectcomplex *c=object_newcomplex(in[0], in[1]);
@@ -124,7 +122,7 @@ static bool _complex_materialize(objectfield *f, double *in, void *pool, value *
 static bool _complex_dematerialize(objectfield *f, value in, double *out) {
     if (!f || f->psize<2 || !out) return false;
     if (MORPHO_ISCOMPLEX(in)) {
-        MorphoComplex z=MORPHO_GETCOMPLEX(in)->Z;
+        MorphoComplex z=MORPHO_GETDOUBLECOMPLEX(in);
         out[0]=creal(z);
         out[1]=cimag(z);
         return true;
@@ -137,6 +135,12 @@ static bool _complex_dematerialize(objectfield *f, value in, double *out) {
     return false;
 }
 
+static void _complex_poolinit(objectfield *f, void *slot, double *el) {
+    (void) f;
+    objectcomplex *c=(objectcomplex *) slot;
+    c->val=(MorphoComplex *) el;
+}
+
 static objecttype _complex_pooltype(value prototype) {
     (void) prototype;
     return OBJECT_COMPLEX;
@@ -145,7 +149,7 @@ static objecttype _complex_pooltype(value prototype) {
 static fieldinterfacedefn complexdefn = {
     .doffn=_complex_dof,
     .materialize=_complex_materialize, .dematerialize=_complex_dematerialize,
-    .poolinit=NULL, .poolsize=sizeof(objectcomplex), .pooltypefn=_complex_pooltype
+    .poolinit=_complex_poolinit, .poolsize=sizeof(objectcomplex), .pooltypefn=_complex_pooltype
 };
 
 /* -------------------------------------------------------
@@ -1095,7 +1099,7 @@ static value _field_addcomplex(vm *v, objectfield *a, MorphoComplex z) {
 }
 
 value Field_add__complex(vm *v, int nargs, value *args) {
-    return _field_addcomplex(v, MORPHO_GETFIELD(MORPHO_SELF(args)), MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0))->Z);
+    return _field_addcomplex(v, MORPHO_GETFIELD(MORPHO_SELF(args)), MORPHO_GETDOUBLECOMPLEX(MORPHO_GETARG(args, 0)));
 }
 
 /** Right add of nil or a number */
@@ -1174,7 +1178,7 @@ static value _field_mulcomplex(vm *v, objectfield *a, MorphoComplex z) {
 }
 
 value Field_mul__complex(vm *v, int nargs, value *args) {
-    return _field_mulcomplex(v, MORPHO_GETFIELD(MORPHO_SELF(args)), MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0))->Z);
+    return _field_mulcomplex(v, MORPHO_GETFIELD(MORPHO_SELF(args)), MORPHO_GETDOUBLECOMPLEX(MORPHO_GETARG(args, 0)));
 }
 
 /** Field divide by a scalar */

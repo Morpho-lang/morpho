@@ -1094,17 +1094,9 @@ This error occurs when a sparse matrix operation fails.
 ## CmplxCns
 [tagcmplxcns]: # (cmplxcns)
 
-This error occurs when the Complex constructor is called with invalid arguments. It should be called with two floats:
+This error occurs when the Complex constructor is called with invalid arguments. It should be called with two numbers:
 
     var c = Complex(1) // Causes 'CmplxCns'
-
-## CmplxInvldArg
-[tagcmplxinvldarg]: # (cmplxinvldarg)
-
-This error occurs when complex arithmetic methods receive invalid arguments:
-
-    var c = Complex(1, 2)
-    c + "string" // Causes 'CmplxInvldArg'
 
 ## CmpxArg
 [tagcmpxarg]: # (cmpxarg)

@@ -9,6 +9,15 @@ var f = Field(m, 1+2im)
 print f[0]
 // expect: 1 + 2im
 
+// ComplexField elements are views onto the store, like MatrixField
+var zview = f[0]
+f[0] = 9+im
+print zview
+// expect: 9 + 1im
+f[0] = 1+2im
+print f[0]
+// expect: 1 + 2im
+
 print f.clss()
 // expect: @ComplexField
 

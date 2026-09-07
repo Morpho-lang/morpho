@@ -1,0 +1,3 @@
+var c = Complex(1, 2)
+c + "string"
+// expect error 'InvldOp'

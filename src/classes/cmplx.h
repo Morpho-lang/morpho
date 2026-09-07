@@ -8,7 +8,6 @@
 #define cmplx_h
 
 #include <stdio.h>
-#include <complex.h>
 #include "classes.h"
 #include "platform.h"
 
@@ -21,11 +20,14 @@ extern objecttype objectcomplextype;
 
 typedef struct {
     object obj;
-    MorphoComplex Z;
+    MorphoComplex *val; /** Points to the complex number; external storage if a view */
+    MorphoComplex Z[];  /** Allocate sizeof(MorphoComplex) additional bytes for the complex number */
 } objectcomplex;
 
-/** Creates a static complex number */
-#define MORPHO_STATICCOMPLEX(real,imag)      { .obj.type=OBJECT_COMPLEX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, .Z=MCBuild(real,imag)}
+/** Creates a static complex number. */
+#define MORPHO_STATICCOMPLEX(real,imag) \
+    { .obj.type=OBJECT_COMPLEX, .obj.status=OBJECT_ISUNMANAGED, .obj.next=NULL, \
+      .val=(MorphoComplex[]){ MCBuild(real,imag) } }
 
 /** Tests whether an object is a complex */
 #define MORPHO_ISCOMPLEX(val) object_istype(val, OBJECT_COMPLEX)
@@ -34,7 +36,7 @@ typedef struct {
 #define MORPHO_GETCOMPLEX(val)   ((objectcomplex *) MORPHO_GETOBJECT(val))
 
 /** Gets the object as a C-style MorphoComplex */
-#define MORPHO_GETDOUBLECOMPLEX(val)   ((MorphoComplex) ((objectcomplex *) MORPHO_GETOBJECT(val))->Z)
+#define MORPHO_GETDOUBLECOMPLEX(v)   (*(MORPHO_GETCOMPLEX(v)->val))
 
 /** Creates a complex object */
 objectcomplex *object_newcomplex(double real, double imag);
@@ -72,11 +74,8 @@ bool complex_isequaltonumber(objectcomplex *a, value b);
 #define COMPLEX_CONSTRUCTOR                "CmplxCns"
 #define COMPLEX_CONSTRUCTOR_MSG            "Complex() constructor should be called with two floats"
 
-#define COMPLEX_ARITHARGS                  "CmplxInvldArg"
-#define COMPLEX_ARITHARGS_MSG              "Complex arithmetic methods expect a complex or number as their argument."
-
 #define COMPLEX_INVLDNARG                  "CmpxArg"
-#define COMPLEX_INVLDNARG_MSG              "Complex Operation did not exect those arguments."
+#define COMPLEX_INVLDNARG_MSG              "Complex operation did not expect those arguments."
 
 /* -------------------------------------------------------
  * Complex interface
@@ -99,7 +98,6 @@ void complex_print(vm *v, objectcomplex *m);
 
 value complex_builtinexp(vm *v, objectcomplex *c);
 value complex_builtinfabs(vm *v, objectcomplex *c);
-value complex_builtinexp(vm *v, objectcomplex *c);
 value complex_builtinlog(vm *v, objectcomplex *c);
 value complex_builtinlog10(vm *v, objectcomplex *c);
 
@@ -129,7 +127,7 @@ value complex_builtinatan2(vm *v, value c1, value c2);
 value Complex_getreal(vm *v, int nargs, value *args);
 value Complex_getimag(vm *v, int nargs, value *args);
 value Complex_angle(vm *v, int nargs, value *args);
-value Complex_conj(vm *v, int nargs, value *args);
+value Complex_conjugate(vm *v, int nargs, value *args);
 
 void complex_initialize(void);
 

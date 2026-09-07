@@ -926,18 +926,24 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 #define OPERROR(op){vm_throwOpError(v,pc-v->instructions,VM_INVLDOP,op,left,right); goto vm_error; }
 #define ERRORCHK() if (v->err.cat!=ERROR_NONE) goto vm_error;
     
-/** Macro to redirect an opcode to a method call on an object */
+/** Macro to redirect an opcode to a method call on an object.
+ * A missing left-hand overload (MltplDsptchFld) is not a hard error: it means
+ * the method does not apply, so we try the right-hand selector. */
 #define OPREDIRECT(leftselector, rightselector, regout) \
     if (MORPHO_ISOBJECT(left)) { \
         if (vm_invoke(v, left, leftselector, 1, &right, &reg[regout])) { \
             ERRORCHK(); \
             if (!MORPHO_ISNIL(reg[a])) DISPATCH(); \
+        } else if (morpho_matcherror(&v->err, VM_MLTPLDSPTCHFLD)) { \
+            error_clear(&v->err); \
         } \
     } \
     if (MORPHO_ISOBJECT(right)) { \
         if (vm_invoke(v, right, rightselector, 1, &left, &reg[regout])) { \
             ERRORCHK(); \
             DISPATCH(); \
+        } else if (morpho_matcherror(&v->err, VM_MLTPLDSPTCHFLD)) { \
+            error_clear(&v->err); \
         } \
     }
     

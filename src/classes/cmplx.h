@@ -71,9 +71,6 @@ bool complex_isequaltonumber(objectcomplex *a, value b);
  * Complex error messages
  * ------------------------------------------------------- */
 
-#define COMPLEX_CONSTRUCTOR                "CmplxCns"
-#define COMPLEX_CONSTRUCTOR_MSG            "Complex() constructor should be called with two floats"
-
 #define COMPLEX_INVLDNARG                  "CmpxArg"
 #define COMPLEX_INVLDNARG_MSG              "Complex operation did not expect those arguments."
 

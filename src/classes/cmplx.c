@@ -302,11 +302,6 @@ value complex_constructor(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) object_newcomplex(real, imag));
 }
 
-value complex_constructor__err(vm *v, int nargs, value *args) {
-    morpho_runtimeerror(v, COMPLEX_CONSTRUCTOR);
-    return MORPHO_NIL;
-}
-
 /** Gets the real part of a complex number */
 value Complex_getreal(vm *v, int nargs, value *args) {
     objectcomplex *c=MORPHO_GETCOMPLEX(MORPHO_SELF(args));
@@ -577,12 +572,11 @@ void complex_initialize(void) {
     objectcomplextype=object_addtype(&objectcomplexdefn);
     
     // Complex constructor function
-#define COMPLEX_CONS_FLGS (MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
+#define COMPLEX_CONS_FLGS (MORPHO_FN_CONSTRUCTOR|MORPHO_FN_ALLOCATES)
     morpho_addfunction(COMPLEX_CLASSNAME, "Complex (Int, Int)", complex_constructor, COMPLEX_CONS_FLGS, NULL);
     morpho_addfunction(COMPLEX_CLASSNAME, "Complex (Int, Float)", complex_constructor, COMPLEX_CONS_FLGS, NULL);
     morpho_addfunction(COMPLEX_CLASSNAME, "Complex (Float, Int)", complex_constructor, COMPLEX_CONS_FLGS, NULL);
     morpho_addfunction(COMPLEX_CLASSNAME, "Complex (Float, Float)", complex_constructor, COMPLEX_CONS_FLGS, NULL);
-    morpho_addfunction(COMPLEX_CLASSNAME, "Complex (...)", complex_constructor__err, MORPHO_FN_CONSTRUCTOR|MORPHO_FN_THROWS, NULL);
 #undef COMPLEX_CONS_FLGS
     
     value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);
@@ -592,6 +586,5 @@ void complex_initialize(void) {
     object_setveneerclass(OBJECT_COMPLEX, complexclass);
 
     // Complex error messages
-    morpho_defineerror(COMPLEX_CONSTRUCTOR, ERROR_HALT, COMPLEX_CONSTRUCTOR_MSG);
     morpho_defineerror(COMPLEX_INVLDNARG, ERROR_HALT, COMPLEX_INVLDNARG_MSG);
 }

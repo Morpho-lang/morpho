@@ -1091,13 +1091,6 @@ This error occurs when sparse format conversion fails.
 
 This error occurs when a sparse matrix operation fails.
 
-## CmplxCns
-[tagcmplxcns]: # (cmplxcns)
-
-This error occurs when the Complex constructor is called with invalid arguments. It should be called with two numbers:
-
-    var c = Complex(1) // Causes 'CmplxCns'
-
 ## CmpxArg
 [tagcmpxarg]: # (cmpxarg)
 

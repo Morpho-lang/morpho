@@ -253,7 +253,16 @@ bool builtin_addfunctiontodict(dictionary *dict, value name, value fn, bool forc
     objectclass *klass = builtin_getparentclass(fn);
 
     if (dictionary_get(dict, selector, &prev) && klass != builtin_getparentclass(prev)) { // Override superclass methods for now
-        entry=fn;
+        if (forcewrap) { // If forcewrap is on create a mf, otherwise just use regular fn
+            if (!metafunction_wrap(name, fn, &entry)) return false;
+        } else {
+            entry=fn;
+        }
+
+        if (MORPHO_ISMETAFUNCTION(entry)) {
+            metafunction_setclass(MORPHO_GETMETAFUNCTION(entry), klass);
+            builtin_bindobject(MORPHO_GETOBJECT(entry));
+        }
         success=dictionary_insert(dict, selector, entry);
     } else {
         if (MORPHO_ISNIL(prev) && forcewrap) {

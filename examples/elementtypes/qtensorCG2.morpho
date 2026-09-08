@@ -30,7 +30,7 @@ class QTensor {
 
   initialField() { 
     self.q_tensor = Field(self.mesh, 
-                          fn(x,y,z) Matrix([0.01*random(1), 0.01*random(1)]),
+                          fn(x,y,z) Matrix([0.01*random(), 0.01*random()]),
                           finiteelementspace=FiniteElementSpace("CG2", grade=2)
                           )
   }

@@ -445,6 +445,8 @@ void mfresolutionset_filterbyspecificity(mfresolutionset *set, int nargs, value 
     mfresolutionset_collapse(set);
 }
 
+void metafunction_writeerrorhint(error *err, objectmetafunction *fn, int nargs, value *args);
+
 /** @brief Find a resolution, if any exists, for given arguments by direct comparison.
  @details Slow direct comparison acts as a source of truth for metafunction compiler.
  @param[in] fn - the metafunction to resolve
@@ -470,7 +472,7 @@ static bool metafunction_resolveslow(objectmetafunction *fn, int nargs, value *a
     mfresolutionset_filterbyspecificity(&set, nargs, args);
     
     switch (set.count) {
-        case 0: if (err) error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;
+        case 0: if (err) { error_writewithid(err, VM_MLTPLDSPTCHFLD); metafunction_writeerrorhint(err, fn, nargs, args); } return false;
         case 1: if (out) *out = set.data[0].fn; return true;
         default: if (err) error_writewithid(err, METAFUNCTION_CMPLAMBGS); return false;
     }
@@ -1348,6 +1350,49 @@ void metafunction_disassemble(objectmetafunction *fn) {
     }
 }
 
+bool metafunction_formatarglist(int nargs, value *args, varray_char *buffer) {
+    value argtype;
+    objectstring *s;
+    for (int i=0; i<nargs; ++i) {
+        if (MORPHO_ISCLASS(args[i])) argtype = args[i];
+        else value_type(args[i], &argtype);
+        
+        s = MORPHO_GETSTRING(MORPHO_GETCLASS(argtype)->name);
+        varray_charadd(buffer, s->string, (int) s->length);
+        if (i<nargs-1) varray_charadd(buffer, ", ", 2);
+    }
+    return true;
+}
+
+void metafunction_writeerrorhint(error *err, objectmetafunction *fn, int nargs, value *args) {
+    objectstring *name = MORPHO_GETSTRING(fn->name);
+    
+    // Translate the list of available functions into a string
+    varray_char siglist;
+    varray_charinit(&siglist);
+    signature *sig;
+    for (int i = 0; i < fn->fns.count; ++i) {
+        sig = metafunction_getsignature(fn->fns.data[i]);
+        varray_charadd(&siglist, "   ", 3);
+        varray_charadd(&siglist, name->string, (int) name->length);
+        signature_printbuffer(sig, &siglist, false);
+        varray_charwrite(&siglist, '\n');
+    }
+    // Replace final newline with null char
+    siglist.data[siglist.count-1]='\0';
+
+    varray_char inputsig;
+    varray_charinit(&inputsig);
+    metafunction_formatarglist(nargs, args, &inputsig);
+    varray_charwrite(&inputsig, '\0');
+
+    error_addhintmsg(err, "The function \'%s\' is not defined for the signature \'(%s)\'. The defined signatures are:\n%s", 
+                    name->string, inputsig.data, siglist.data);
+
+    varray_charclear(&siglist);
+    varray_charclear(&inputsig);
+}
+
 /* --------------------------
  * Fast resolver VM
  * -------------------------- */
@@ -1368,8 +1413,11 @@ static bool metafunction_runresolver(objectmetafunction *fn, int nargs, value *a
                 *out=fn->fns.data[instructions[++pc]];
                 return true;
             }
-            case MFOP_FAIL:
-                error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;
+            case MFOP_FAIL: {
+                error_writewithid(err, VM_MLTPLDSPTCHFLD); 
+                metafunction_writeerrorhint(err, fn, nargs, args);
+                return false;
+            }
             case MFOP_GETUID: {
                 int arg = instructions[++pc];
                 value type;
@@ -1378,7 +1426,9 @@ static bool metafunction_runresolver(objectmetafunction *fn, int nargs, value *a
                     reg = MORPHO_GETCLASS(type)->uid;
                     break;
                 }
-                error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;
+                error_writewithid(err, VM_MLTPLDSPTCHFLD); 
+                metafunction_writeerrorhint(err, fn, nargs, args);
+                return false;
             }
             case MFOP_SPARSE: {
                 int ncases=instructions[pc+1];
@@ -1423,7 +1473,9 @@ bool metafunction_reduce(objectmetafunction *fn, int nargs, value *args, error *
     mfresolutionset_filterbyspecificity(&set, nargs, args);
 
     if (set.count<=0) { // No resolutions left
-        error_writewithid(err, VM_MLTPLDSPTCHFLD); return false;
+        error_writewithid(err, VM_MLTPLDSPTCHFLD); 
+        metafunction_writeerrorhint(err, fn, nargs, args);
+        return false;
     } else if (set.count==1 &&
                mfresolution_isterminal(set.data[0].sig, nargs, args)) { // Resolution is completely specified
         *out = set.data[0].fn; return true;

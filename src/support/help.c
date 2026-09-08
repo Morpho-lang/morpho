@@ -1173,6 +1173,7 @@ bool help_parse(md_file *file, int file_index) {
         if (file->filename) fprintf(stderr, " in %s", file->filename);
         fprintf(stderr, "\n");
     }
+    error_clear(&err);
     return ok;
 }
 

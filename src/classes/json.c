@@ -578,6 +578,7 @@ value JSON_parse(vm *v, int nargs, value *args) {
         morpho_runtimeerror(v, err.id);
     }
     varray_valueclear(&objects);
+    error_clear(&err);
     
     return out;
 }

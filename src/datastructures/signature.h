@@ -34,5 +34,6 @@ void signature_set(signature *s, int nparam, value *types);
 bool signature_parse(const char *sig, signature *out);
 
 void signature_print(signature *s);
+void signature_printbuffer(signature *s, varray_char *buffer, bool incl_ret);
 
 #endif

@@ -60,16 +60,16 @@ SI units. Names are written out so they do not collide with typical short variab
 
 * `SpeedOfLight` — c, m s^-1.
 * `Planck` — h, J s.
-* `Hbar` — hbar = h/(2*Pi), J s.
+* `Hbar` — hbar = h/(2\*Pi), J s.
 * `ElementaryCharge` — e, C.
 * `ElectronVolt` — 1 eV in joules (same value as `ElementaryCharge`).
 * `Boltzmann` — k, J K^-1.
-* `Avogadro` — N_A, mol^-1.
-* `GasConstant` — R = N_A k, J mol^-1 K^-1.
-* `StandardGravity` — g_n, m s^-2.
-* `Epsilon0` — epsilon_0, F m^-1.
-* `Mu0` — mu_0 = 1/(epsilon_0 c^2), N A^-2.
+* `Avogadro` — N\_A, mol^-1.
+* `GasConstant` — R = N\_A k, J mol^-1 K^-1.
+* `StandardGravity` — g\_n, m s^-2.
+* `Epsilon0` — epsilon\_0, F m^-1.
+* `Mu0` — mu\_0 = 1/(epsilon\_0 c^2), N A^-2.
 * `GravitationalConstant` — G, m^3 kg^-1 s^-2.
-* `ElectronMass` — m_e, kg.
-* `ProtonMass` — m_p, kg.
+* `ElectronMass` — m\_e, kg.
+* `ProtonMass` — m\_p, kg.
 * `AtomicMass` — dalton u, kg.

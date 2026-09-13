@@ -12,9 +12,9 @@ var _ClrTblInitErr = Error("ClrTblInit", "ColorTable expects a Matrix with 3 or 
 var _ClrAbstractErr = Error("ClrAbstract", "Coloring must implement rgb().")
 var _ClrGradInitErr = Error("ClrGradInit", "GradientMap expects two Colors, or a List/Tuple of Colors or (t, Color) stops. For the old default polynomial, use TundraMap().")
 var _ClrChbyshvOrdrErr = Error("ClrChbyshvOrdr", "Order of Chebyshev approximation inconsistent.")
-// [Compatibility shim]
-var _ClrRgbRange = Error("ClrRgbRange",
-  "Color components are conventionally in [0, 1]; values > 1 look blown out. Use Color(r/255, g/255, b/255) for 0–255 lists.")
+
+// [Compatibility shim] Warn on out-of-bounds Color constructors
+var _ClrRgbRange = Error("ClrRgbRange", "Color components must be in [0, 1]. Use Color(r/255, g/255, b/255) for 0–255 lists.")
 var _warnedRgbRange = false
 
 var White, Black

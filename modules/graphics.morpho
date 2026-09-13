@@ -1,39 +1,68 @@
-/* Graphics 
- *
- * History: 
- * 1/7/25 Redirect error output to /dev/null to suppress errors on macOS
- * 1/2/26 Windows compatibility
- */
+/* ***************************************************************
+ * Graphics
+ * ========
+ * Abstract graphics containers
+ **************************************************************** */
+
+/* ----------------------------------------------------------------
+ * The graphics module provides: 
+ * - GraphicsPrimitives : displayable items, e.g. Sphere, Cylinder
+ * - Light : Point Lights
+ * - GraphicsEntry : An entry in the displaylist with pose info
+ * - Graphics : A static container representing a scene
+ * - Scene : Live container that can broadcast changes
+ * - various utility functions
+ * ---------------------------------------------------------------- */
 
 import constants
-import meshtools
 import color
+import broadcast
 
-var _eps = 1e-15
-var _fntntfnd = Error("FntNtFnd", "Font not found.")
-var _txtdrnvrtprll = Error("TxtDrnVrtPrll", "Direction and vertical must not be parallel or zero.")
+// Constants
+var _LIGHT_MAX = 4 // Viewer applications must support at least this
+var _epsNorm = 1e-15   // Used to detect zero norm of a vector
+var _epsDraw = 1e-8  // Cutoff 
 
-/* **************************************
- * Utility functions
- **************************************** */
+// Error messages
+var _GfxTxtDrnVrtPrllErr = Error("GfxTxtDrnVrtPrll", "Text direction and vertical are either zero length or parallel.")
 
-/** Constructs a rotation matrix
-  @param[in] theta - rotation angle
-  @param[in] axis - axis to rotate about
-  @returns the rotation matrix  */
+var _GfxEntryClrErr = Error("GfxEntryClr", "GraphicsEntry.color must be a uniform Coloring.")
+var _GfxClrTblLenErr = Error("GfxClrTblLen", "ColorTable must provide one color per vertex.")
+var _GfxPolyErr = Error("GfxPoly", "Polygon must be convex and planar n-gon (n>=3).")
+var _GfxLightNameErr = Error("GfxLightName", "Graphics.light name must be \"neutral\", \"threepoint\", \"auto\", or \"off\".")
+var _GfxLightPosErr = Error("GfxLightPos", "Each lamp must be a 3-vector (Matrix, [x,y,z], or (x,y,z)).")
+var _GfxLightNErr = Error("GfxLightN", "Graphics supports up to 4 world-space point lights.")
+var _GfxLightValErr = Error("GfxLightVal", "Graphics.light must be nil, a named rig, a Light, a 3-vector, or a list of those.")
+var _GfxLightColorErr = Error("GfxLightColor", "Light.color must be a Color.")
+var _GfxLineConnErr = Error("GfxLineConn", "LineSet connectivity must contain pairs of valid vertex indices.")
+
+// [Compatibility shim] Warn about use of filter/transmit 
+var _GfxLegacyTranspErr = Error("GfxLegacyTransp", "Use of filter and transmit is deprecated. These are now mapped to a Color with alpha. Convert code to use Color(..., a) or Coloring.opacity(a).")
+var _warnedLegacyTransp = false
+
+/* ----------------------------------------------------------------
+ * 3D geometry utility functions
+ * ---------------------------------------------------------------- */
+
+/** 3-vector cross product. `a` and `b` need `[0],[1],[2]` (Matrix, List, or Tuple). */
+fn cross3D(a, b) {
+  return Matrix([ a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0] ])
+}
+
+// Constructs a rotation matrix with angle theta about axis
 fn _rotation(theta, axis) {
   var x = axis[0], y=axis[1], z=axis[2]
   var ctheta = cos(theta), stheta = sin(theta), cc=1-ctheta
 
   return Matrix(
-  [[x*x*cc+ctheta,   x*y*cc-z*stheta, x*z*cc+y*stheta],
-   [x*y*cc+z*stheta, y*y*cc+ctheta,   y*z*cc-x*stheta],
-   [z*x*cc-y*stheta, y*z*cc+x*stheta, z*z*cc+ctheta ]]
-  )
+    ( ( x*x*cc+ctheta,   x*y*cc-z*stheta, x*z*cc+y*stheta ),
+      ( x*y*cc+z*stheta, y*y*cc+ctheta,   y*z*cc-x*stheta ),
+      ( z*x*cc-y*stheta, y*z*cc+x*stheta, z*z*cc+ctheta   ) )
+   )
 }
 
 /** Generates a vector normal to a given vector but of arbitrary orientation */
-fn _normalvector(vec) {
+fn _normalVector(vec) {
   var order = [abs(vec[0]), abs(vec[1]), abs(vec[2])].order()
   var out=vec.clone()
   out[order[0]]=0
@@ -42,13 +71,8 @@ fn _normalvector(vec) {
   return out
 }
 
-/* 3d cross product */
-fn _cross3d(a, b) {
-  return Matrix([ a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0] ])
-}
-
-/* Gram-Schmitt orthonormalization */
-fn _orthogonalize(m) { 
+/** Orthonormalize a set of vectors using Gram-Schmidt */
+fn _orthonormalize(m) { 
   var ncols=m.dimensions()[1]
   for (i in 0...ncols) {
     var x = m.column(i)
@@ -57,82 +81,344 @@ fn _orthogonalize(m) {
       x -= x.inner(y)*y
     }
     var nrm = x.norm() 
-    if (nrm<_eps) _txtdrnvrtprll.throw() 
+    if (nrm<_epsNorm) return false
     x/=nrm
     m.setcolumn(i, x)
   }
+  return true 
 }
 
-/* **************************************
- * Graphics primitives
- **************************************** */
+/** Helper to coerce a List or Matrix to a position 3-vector. */
+fn _asPosition(Matrix p) { return p }
+fn _asPosition(List p) { return Matrix(p) }
+fn _asPosition(Tuple p) { return Matrix(p) }
+fn _asPosition(p) { return isnil(p) ? Matrix([0, 0, 0]) : Matrix(p) } 
 
-/** TriangleComplexes are a basic graphical unit that draw a set of triangles
-   from a given set of vertices. */
-class TriangleComplex {
-  init(position, normals, colors, connectivity, filter=nil, transmit=nil) {
-    self.position=position /* Vertex position matrix */
-    self.normals=normals /* Matrix of normal vectors */
-    self.colors=colors /* Color */
-    self.connectivity=connectivity /* Connectivity matrix; columns are triangles */
-    
-    /* Optional arguments to be used by povray*/
-    self.filter = filter 
-    self.transmit = transmit
+/** Helper to normalize inputs to a dim x n vertex matrix. */
+fn _asVertexMatrix(Matrix pts) { return pts }
+fn _asVertexMatrix(List pts) { return Matrix(pts).transpose() }
+fn _asVertexMatrix(pts) { return Matrix(pts).transpose() }
+fn asVertexMatrix(pts) { return _asVertexMatrix(pts) }
+
+/* ----------------------------------------------------------------
+ * [Compatibility shim] Convert legacy transparency model to alpha
+ * ---------------------------------------------------------------- */
+
+// Warn on use of legacy interface 
+fn _warnLegacyTransp() {
+  if (_warnedLegacyTransp) return
+  _warnedLegacyTransp = true
+  _GfxLegacyTranspErr.warning()
+}
+
+// Convert filter/transmit to alpha = 1 − clamp(filter + transmit, 0, 1)
+fn _legacyAlpha(filter, transmit) {
+  var s = (isnil(filter) ? 0 : filter) + (isnil(transmit) ? 0 : transmit)
+  if (s <= 0) return 1
+  if (s >= 1) return 0
+  return 1 - s
+}
+
+// Construct a transparent form of various Coloring objects
+fn _opacity(ColorTable color, a) { return color.opacity(a) }
+fn _opacity(Color color, a) { return color.opacity(a) }
+fn _opacity(Coloring color, a) { return Opacity(color, a) }
+fn _opacity(color, a) { return _opacity(asColoring(color), a) }
+
+// Make a color transparent using filter/transmit
+fn withLegacyTransp(color, filter, transmit) {
+  if (isnil(filter) && isnil(transmit)) return color
+  _warnLegacyTransp()
+  var a = _legacyAlpha(filter, transmit)
+  if (isnil(color)) return Gray(0.5).opacity(a)
+  return _opacity(color, a)
+}
+
+/* ----------------------------------------------------------------
+ * GraphicsPrimitive
+ * 
+ * Base class for displayable items. 
+ * Supports a uniform color. Converts filter/transmit to alpha.
+ * ---------------------------------------------------------------- */
+
+class GraphicsPrimitive {
+  init(color=nil, filter=nil, transmit=nil) {
+    var c = withLegacyTransp(color, filter, transmit)
+    self.color = isnil(c) ? Gray(0.5) : asColoring(c)
   }
 
+  // Check that a color setting has the correct number of vertices
+  _checkColorCount(col, nv) { }
+  _checkColorCount(ColorTable col, nv) {
+    if (col.count() != nv) _GfxClrTblLenErr.throw()
+  }
 }
 
-/** Draws a cylinder
-  @param[in] start - start point
-  @param[in] end - end point
-  @param[in] aspectratio - aspect ratio
-  @param[in] n - number of faces to use
-  @param[in] color - Color of the sphere */
-class Cylinder {
-  init(start, end, aspectratio=0.1, n=10, color=nil, filter=nil, transmit=nil) {
-    self.start = Matrix(start)
-    self.end = Matrix(end)
+/* ----------------------------------------------------------------
+ * PointCloud
+ * 
+ * Collection of points, may be individually colored 
+ * ---------------------------------------------------------------- */
+
+class PointCloud is GraphicsPrimitive {
+  init(position, color=nil) {
+    super.init(color=color)
+    self.position = _asVertexMatrix(position)
+    _checkColorCount(self.color, self.position.dimensions()[1])
+  }
+}
+
+/* ----------------------------------------------------------------
+ * LineSet
+ *
+ * Represents a collection of line segments.
+ *
+ * Constructors:
+ *   LineSet(position, color=nil, closed=false)
+ *       Polyline through successive vertices.
+ *
+ *   LineSet(position, connectivity, color=nil)
+ *       Explicit connectivity, supplied as a List/Tuple of pairs,
+ *       or Sparse matrix
+ * ---------------------------------------------------------------- */
+
+class LineSet is GraphicsPrimitive {
+  _appendSegment(out, seg, nv) { // Validate a segment and append to a list
+    if (seg.count() != 2) _GfxLineConnErr.throw()
+    var a = seg[0], b = seg[1]
+    if (a < 0 || a >= nv || b < 0 || b >= nv) _GfxLineConnErr.throw()
+    out.append(a)
+    out.append(b)
+  }
+
+  _asSegmentIndices(List conn, nv) { // Convert a List of pairs
+    var out = []
+    for (seg in conn) _appendSegment(out, seg, nv)
+    return out
+  }
+
+  _asSegmentIndices(Tuple conn, nv) { // Convert a Tuple of pairs
+    var out = []
+    for (seg in conn) _appendSegment(out, seg, nv)
+    return out
+  }
+
+  _asSegmentIndices(Sparse conn, nv) { // Convert Sparse connectivity matrix with each column defining one segment
+    var out = []
+    var nf = conn.dimensions()[1]
+    for (i in 0...nf) _appendSegment(out, conn.rowindices(i), nv)
+    return out
+  }
+
+  _polylineIndices(nv, closed) { // Construct connectivity for a successive polyline
+    var out = []
+    var nseg = closed ? nv : nv-1
+
+    if (nseg < 1) return out
+
+    for (i in 0...nseg) {
+      out.append(i)
+      out.append(mod(i+1, nv))
+    }
+
+    return out
+  }
+
+  _initGeometry(position, connectivity, closed=false) {
+    self.position = _asVertexMatrix(position)
+    var nv = self.position.dimensions()[1]
+
+    self.connectivity = isnil(connectivity)
+        ? _polylineIndices(nv, closed)
+        : _asSegmentIndices(connectivity, nv)
+
+    _checkColorCount(self.color, nv)
+  }
+
+  init(position, color=nil, closed=false) { // Polyline
+    super.init(color=color)
+    self._initGeometry(position, nil, closed=closed)
+  }
+
+  init(position, connectivity, color=nil) { // Explicit segments
+    super.init(color=color)
+    self._initGeometry(position, connectivity)
+  }
+}
+
+/* ----------------------------------------------------------------
+ * TriangleComplex
+ * 
+ * Simplicial complex:
+ *   TriangleComplex(position, normals, color, connectivity)
+ *   - position : Vertex positions in columns of a Matrix 
+ *   - normals : Normal vectors in columns of a Matrix
+ *   - color : either a solid color or a ColorTable 
+ *   - connectivity : Connectivity matrix; columns correspond to faces
+ * ---------------------------------------------------------------- */
+
+class TriangleComplex is GraphicsPrimitive {
+  init(position, normals, color, connectivity, filter=nil, transmit=nil) {
+    super.init(color=color, filter=filter, transmit=transmit) // [Compatibility shim]
+    self.position = position 
+    self.normals = normals 
+    self.connectivity = connectivity 
+    _checkColorCount(self.color, self.position.dimensions()[1])
+  }
+
+  // Helper to extract face i from the corresponding column of a connectivity matrix
+  _faceIds(Sparse conn, Int i) { return conn.rowindices(i) }
+  _faceIds(Matrix conn, Int i) {
+    var ids = [], nv = conn.dimensions()[0]
+    for (j in 0...nv) if (conn[j, i] != 0) ids.append(j)
+    return ids
+  }
+
+  // Obtain vertex ids for face i 
+  faceIndices(Int i) { return _faceIds(self.connectivity, i) }
+}
+
+/* ----------------------------------------------------------------
+ * Text 
+ * 
+ * Represents text to be displayed. 
+ * Constructors:
+ *   Text(string, posn)
+ *   Text("Hello world", [0,0,0], dirn=[1,0,0], vertical=[0,0,1])
+ *   - string : string to display 
+ *   - posn : Starting point of text baseline
+ *   - dirn : direction of baseline (default [1,0,0])
+ *   - vertical : vertical direction of text (default perp to dirn, in the xz plane)
+ *   - size, font : control the font
+ * ---------------------------------------------------------------- */
+
+class Text is GraphicsPrimitive {
+  init(string, posn, dirn=nil, vertical=nil, size=10, font=nil, color=nil, filter=nil, transmit=nil) {
+    super.init(color=color, filter=filter, transmit=transmit) // [Compatibility shim]
+    self.posn = _asPosition(posn)
+    self.dirn = isnil(dirn) ? Matrix([1, 0, 0]) : _asPosition(dirn)
+    self.vertical = isnil(vertical) ? self._defaultVertical() : _asPosition(vertical)
+    if (!_orientationOk()) _GfxTxtDrnVrtPrllErr.throw()
+    self.string = string
+    self.font = font
+    self.size = size
+  }
+
+  // Default vertical is perpendicular to dirn but parallel to the xz plane. 
+  _defaultVertical() {
+    var v = cross3D(self.dirn, Matrix([0, 1, 0]))
+    if (v.norm() < _epsNorm) return Matrix([1, 0, 0]) // If dirn is along y, use +x.
+    return v
+  }
+
+  _orientationOk() {
+    if (self.dirn.norm() < _epsNorm || self.vertical.norm() < _epsNorm) return false
+    return cross3D(self.vertical, self.dirn).norm() >= _epsNorm
+  }
+
+  transformationMatrix() { // dirn, vertical and posn
+    var m = Matrix(4,4)
+    for (i in 0..3) m[i,i]=1
+    for (i in 0..2) {
+      m[i,0] = self.dirn[i]
+      m[i,1] = self.vertical[i]
+    }
+    var zp = cross3D(m.column(1), m.column(0))
+    for (i in 0..2) m[i,2] = zp[i]
+    if (!_orthonormalize(m)) _GfxTxtDrnVrtPrllErr.throw()
+
+    var p = self.posn
+    if (!(p[0] == 0 && p[1] == 0 && p[2] == 0)) {
+      for (i in 0..2) m[i,3] = p[i]
+    }
+
+    return m.transpose()
+  }
+}
+
+/* ----------------------------------------------------------------
+ * TriangleConvertibleMixin 
+ * 
+ * Mixin to denote primitives that can be reduced to a 
+ * TriangleComplex via the protocol:
+ * 
+ *    toTriangleComplex() -> TriangleComplex
+ * ---------------------------------------------------------------- */
+
+var _GfxTriCnvMxnErr = Error("_GfxTriCnvMxn", "GraphicsPrimitive must implement toTriangleComplex().")
+
+class TriangleConvertibleMixin {
+  toTriangleComplex() { _GfxTriCnvMxnErr.throw() }
+  
+    // Construct triangle i with vertex ids (a,b,c) in a connectivity matrix
+  _tri(conn, i, a, b, c) {
+    conn[a, i] = 1; conn[b, i] = 1; conn[c, i] = 1
+    conn.setrowindices(i, (a, b, c))
+  }
+}
+
+/* ----------------------------------------------------------------
+ * Cylinder 
+ * 
+ * Represents a cylinder as a surface rotated about a line:
+ *   Cylinder(start, end, aspectratio=0.1, n=10, color=Red)
+ *   - start, end : define the axis
+ *   - aspectratio : optional aspect ratio of the cylinder (r/|start - end|)
+ *   - radius : optionally specify a radius (overrides aspect ratio)
+ *   - n : optional number of segments drawn
+ *   - color : optional color
+ * ---------------------------------------------------------------- */
+
+class Cylinder is GraphicsPrimitive with TriangleConvertibleMixin {
+  init(start, end, aspectratio=0.1, radius=nil, n=10, color=nil, filter=nil, transmit=nil) {
+    super.init(color=color, filter=filter, transmit=transmit) // [Compatibility shim]
+    self.start = _asPosition(start)
+    self.end = _asPosition(end)
     self.aspectratio = aspectratio
+    self.radius = radius 
     self.n = n
-    self.color = color
-
-    /* Optional arguments to be used by povray*/
-    self.filter = filter 
-    self.transmit = transmit
   }
 
-  totrianglecomplex() {
-    var aspectratio = self.aspectratio
-    var n = self.n
+  _radius(length) { // Use provided radius or aspectratio x length
+    return self.radius ? self.radius : length*self.aspectratio
+  }
 
-    var col = self.color
-    if (isnil(col)) col = [0.5,0.5,0.5]
+  // Geometric parameters for the cylinder
+  _lineFrame(unit) {
+    if (unit) return self._unitFrame()
+    var x1 = self.start, x2 = self.end, dx = x2 - x1, length = dx.norm()
+    if (length < _epsDraw) return nil
+    var ndx = dx/length, px = _normalVector(dx), pxnorm = px.norm()
+    if (pxnorm < _epsNorm) return nil
+    return (x1, x2, dx, length, ndx, self._radius(length)*px/pxnorm)
+  }
 
-    var np=2*n+2 // 2 points at the end plus 2*n point
-    var nt=4*n
-    var dim=self.start.count()
-    var vertices=Matrix(dim, np);
-    var normals=Matrix(dim, np);
+  // Geometric parameters for the unit cylinder (from the origin to z=1 with unit radius)
+  _unitFrame() { 
+    return (Matrix([0, 0, 0]), Matrix([0, 0, 1]), Matrix([0, 0, 1]),
+              1, Matrix([0, 0, 1]), Matrix([1, 0, 0]))
+  }
 
-    var x1=self.start, x2=self.end
-    var dx=x2-x1 // Vector from x1 to x2
-    var length = dx.norm()
-    if (abs(length)<1e-8) return nil
-    var ndx=dx/length
+  // Construct an explicit TriangleComplex representing the Cylinder.
+  // If unit is true, the cylinder is unit length and unit radius.
+  toTriangleComplex(unit=false) {
+    var n = self.n, col = self.color
+    var np = 2*n+2, nt = 4*n, dim = 3
+    var frame = _lineFrame(unit)
+    if (isnil(frame)) return nil
+    var x1 = frame[0], x2 = frame[1], dx = frame[2], length = frame[3]
+    var ndx = frame[4], px = frame[5]
+    if (!unit) dim = x1.count()
+    var vertices = Matrix(dim, np), normals = Matrix(dim, np)
 
-    var px=_normalvector(dx)
-    var pxnorm=px.norm()
-    if (abs(pxnorm)<1e-15) return
-    px=0.5*length*aspectratio*px/pxnorm
+    // Cap centers + outward unit normals. Ring verts are shared with the sidewall
 
-    // Head and base of the arrow
-    vertices.setcolumn(0, x1)
-    vertices.setcolumn(np-1, x2)
-    normals.setcolumn(0, -1*dx)
-    normals.setcolumn(np-1, dx)
+    vertices.setcolumn(0, x1)    // Cap center at x1
+    vertices.setcolumn(np-1, x2) // Cap center at x2 
+    normals.setcolumn(0, -ndx)
+    normals.setcolumn(np-1, ndx)
 
-    /* The cylinder is structured like so:
+    /* Vertices are ordered like this:
 
            [n+1...2n]
                       \
@@ -140,172 +426,57 @@ class Cylinder {
            |            |
            0            1 2n+1
            <---- dx ----> */
-    for (i in 1..n) {
-        var theta = 2*Pi*(i-1)/n
-        var qx = _rotation(theta, ndx)*px
-        var nn=qx/qx.norm()
+    // Ring vertices are shared with the sidewall and therefore carry radial normals.
+    if (unit) {
+      for (i in 1..n) {
+        var theta = 2*Pi*(i-1)/n, qx = Matrix([cos(theta), sin(theta), 0])
         var pt = qx+x1
-        // Find vertex ring A by rotating px about ndx, to obtain qx, and then adding x1
         vertices.setcolumn(i, pt)
-        // Vertex ring B is obtained by simply translating the first circle by dx*(1-ar)
         vertices.setcolumn(n+i, pt+dx)
-
-        // Normals
+        normals.setcolumn(i, qx)
+        normals.setcolumn(n+i, qx)
+      }
+    } else {
+      for (i in 1..n) {
+        var theta = 2*Pi*(i-1)/n, qx = _rotation(theta, ndx)*px, nn = qx/qx.norm()
+        var pt = qx+x1
+        vertices.setcolumn(i, pt)
+        vertices.setcolumn(n+i, pt+dx)
         normals.setcolumn(i, nn)
         normals.setcolumn(n+i, nn)
-    }
-
-    var conn=Sparse(np,nt)
-    for (i in 0...n) {
-      // Layer 0-A
-      conn[0,i]=1
-      conn[i+1,i]=1
-      if (i<n-1) conn[i+2,i]=1 else conn[1,i]=1
-
-      // C-1
-      conn[np-1,n+i]=1
-      conn[n+i+1,n+i]=1
-      if (i<n-1) conn[n+i+2,n+i]=1 else conn[n+1,n+i]=1
-
-      // Layer A-B
-      conn[i+1,2*n+i]=1
-      conn[n+i+1,2*n+i]=1
-      if (i<n-1) conn[i+2,2*n+i]=1 else conn[1,2*n+i]=1
-
-      if (i<n-1) conn[i+2,3*n+i]=1 else conn[1,3*n+i]=1
-      if (i<n-1) conn[n+i+2,3*n+i]=1 else conn[n+1,3*n+i]=1
-      conn[n+i+1,3*n+i]=1
-    }
-
-      return TriangleComplex(vertices, normals, col, conn)
-  }
-
-}
-
-var _sphere = [ PolyhedronMesh(
-  [[-0.982247, 0.0, 0.187592], [0.982247,
-    0.0, -0.187592], [-0.303531, -0.934172, 0.187592], [-0.303531,
-    0.934172, 0.187592], [0.794654, -0.57735, 0.187592], [0.794654,
-    0.57735, 0.187592], [-0.187592, -0.57735, 0.794654], [-0.187592,
-    0.57735, 0.794654], [-0.491123, -0.356822, -0.794654], [-0.491123,
-    0.356822, -0.794654], [0.491123, -0.356822, 0.794654], [0.491123,
-    0.356822, 0.794654], [0.607062,
-    0.0, -0.794654], [-0.794654, -0.57735, -0.187592], [-0.794654,
-    0.57735, -0.187592], [-0.607062, 0.0,
-    0.794654], [0.187592, -0.57735, -0.794654], [0.187592,
-    0.57735, -0.794654], [0.303531, -0.934172, -0.187592], [0.303531,
-    0.934172, -0.187592]]
-  ,
-  [[14, 9, 8, 13, 0], [1, 5, 11, 10, 4], [4, 10, 6, 2, 18], [10, 11, 7,
-    15, 6], [11, 5, 19, 3, 7], [5, 1, 12, 17, 19], [1, 4, 18, 16,
-    12], [3, 19, 17, 9, 14], [17, 12, 16, 8, 9], [16, 18, 2, 13, 8], [2,
-     6, 15, 0, 13], [15, 7, 3, 14, 0]]
-) ]
-
-/** Draws a sphere
-  @param[in] center - the center of the sphere
-  @param[in] r - radius
-  @param[in] color - Color of the sphere */
-class Sphere {
-  init(center, r, color=nil, maxrefine = 3, filter=nil, transmit=nil) {
-    self.center = center
-    self.r = r
-    self.color = color
-    self.maxrefine = maxrefine
-
-    /* Optional arguments to be used by povray */
-    self.filter = filter 
-    self.transmit = transmit
-  }
-
-  refinementlevel() {
-      var n = 0 
-      while (self.r/(2^n)>0.1 && n<self.maxrefine) {
-      if (n>=_sphere.count()-1) {
-        _sphere.append(refinemesh(_sphere[-1]))
       }
-      n += 1;
-    }
-    return n
-  }
-
-  totrianglecomplex(scale=true) {
-    var center = self.center, r = self.r
-    var col = self.color
-    if (isnil(col)) col = [0.5,0.5,0.5]
-    var n = self.refinementlevel() 
-
-    var v = _sphere[n].vertexmatrix().clone()
-    var normals = _sphere[n].vertexmatrix().clone()
-    var conn = _sphere[n].connectivitymatrix(0,2) // Should clone!
-    var nv = v.dimensions()[1]
-
-    var x0=center
-    if (islist(center)) x0=Matrix(center)
-
-    // Ignores the center and size and just produces the unit ball
-    if (!scale) { x0*=0; r=1; col = [0.5,0.5,0.5] } 
-
-    for (i in 0...nv) { // Normalize, scale and translate
-      var x = v.column(i)
-      var nn = x/x.norm()
-      normals.setcolumn(i, nn)
-      v.setcolumn(i, x0 + r*nn)
     }
 
-    return TriangleComplex(v, normals, col, conn)
+    var conn = Sparse(np, nt)
+    for (i in 0...n) {
+      var i2 = (i < n-1) ? i+2 : 1, ni2 = (i < n-1) ? n+i+2 : n+1
+      _tri(conn, i, 0, i2, i+1)                 // 0-A cap (outward -Z)
+      _tri(conn, n+i, np-1, n+i+1, ni2)         // B-1 cap
+      _tri(conn, 2*n+i, i+1, i2, n+i+1)         // A-B sidewall
+      _tri(conn, 3*n+i, i2, ni2, n+i+1)
+    }
+
+    return TriangleComplex(vertices, normals, col, conn)
   }
 
 }
 
-/** Draws an arrow
-  @param[in] start - start point
-  @param[in] end - end point
-  @param[in] aspectratio - aspect ratio of the arrow
-  @param[in] n - number of faces to use
-  @param[in] color - Color of the sphere */
-class Arrow {
-  init(start, end, aspectratio=0.1, n=10, color=nil, filter=nil, transmit=nil) {
-    self.start = Matrix(start)
-    self.end = Matrix(end)
-    self.aspectratio = aspectratio
-    self.n = n
-    self.color = color
+/* ----------------------------------------------------------------
+ * Arrow
+ *
+ * Represents an arrow from tail `start` to tip `end`.
+ *   Arrow(start, end, aspectratio=0.1, radius=nil, n=10, color=Red)
+ *   - start, end : tail and tip positions
+ *   - aspectratio : head length as a fraction of |end - start|;
+ *       if radius is omitted, also sets shaft radius = aspectratio × length
+ *   - radius : optional shaft radius; when set, aspectratio still controls
+ *       only the head proportions
+ *   - n, color : as Cylinder
+ * ---------------------------------------------------------------- */
 
-    /* Optional arguments to be used by povray*/
-    self.filter = filter 
-    self.transmit = transmit
-  }
-
-  totrianglecomplex () {
-    var aspectratio = self.aspectratio
-    var n = self.n
-
-    var col = self.color
-    if (isnil(col)) col = [0.5,0.5,0.5]
-
-    var np=3*n+2 // 2 points at the end plus 3*n point
-    var nt=6*n
-    var dim=self.start.count()
-    var vertices=Matrix(dim, np)
-    var normals=Matrix(dim, np)
-
-    var x1=self.start, x2=self.end
-    var dx=x2-x1 // Vector from x1 to x2
-    var length = dx.norm()
-    var ndx=dx/length
-
-    var px=_normalvector(dx)
-    var pxnorm=px.norm()
-    if (abs(pxnorm)<1e-15) return
-    px=0.5*length*aspectratio*px/pxnorm
-
-    // Head and base of the arrow
-    vertices.setcolumn(0, x1)
-    vertices.setcolumn(np-1, x2)
-    normals.setcolumn(0, -1*dx)
-    normals.setcolumn(np-1, dx)
-
+class Arrow is Cylinder {
+  toTriangleComplex(unit=false) {
+    var aspectratio = self.aspectratio, n = self.n, col = self.color
     /* The arrow is structured like so:
 
            [n+1...2n]   C--[2n+1...3n]
@@ -314,54 +485,235 @@ class Arrow {
            |               \
            0<----- u --->   1 3n+1
            <------ dx ------> */
-    var u=(1-aspectratio)*dx
-    for (i in 1..n) {
-        var theta = 2*Pi*(i-1)/n
-        var qx = _rotation(theta, ndx)*px
-        var nn=qx/qx.norm()
-        var pt = qx+x1
-        // Find vertex ring A by rotating px about ndx, to obtain qx, and then adding x1
-        vertices.setcolumn(i, pt)
-        // Vertex ring B is obtained by simply translating the first circle by dx*(1-ar)
-        vertices.setcolumn(n+i, pt+u)
-        // Vertex ring C is obtained by simply adding qx to the point in vertex ring B
-        vertices.setcolumn(2*n+i, pt+u+qx)
+    var nCore = 3*n+2, np = nCore + 6*n, nt = 6*n, dim = 3
+    var frame = _lineFrame(unit)
+    if (isnil(frame)) return nil
+    var x1 = frame[0], x2 = frame[1], dx = frame[2], length = frame[3]
+    var ndx = frame[4], px = frame[5]
+    if (!unit) dim = x1.count()
+    var vertices = Matrix(dim, np), normals = Matrix(dim, np)
 
-        // Normals
+    vertices.setcolumn(0, x1)
+    vertices.setcolumn(nCore-1, x2)
+    normals.setcolumn(0, -ndx)
+    normals.setcolumn(nCore-1, ndx)
+
+    var u = (1-aspectratio)*dx
+    if (unit) {
+      for (i in 1..n) {
+        var theta = 2*Pi*(i-1)/n, qx = Matrix([cos(theta), sin(theta), 0])
+        var pt = qx+x1
+        vertices.setcolumn(i, pt)
+        vertices.setcolumn(n+i, pt+u)
+        vertices.setcolumn(2*n+i, pt+u+qx)
+        normals.setcolumn(i, qx)
+        normals.setcolumn(n+i, qx)
+        normals.setcolumn(2*n+i, qx)
+      }
+    } else {
+      for (i in 1..n) {
+        var theta = 2*Pi*(i-1)/n, qx = _rotation(theta, ndx)*px, nn = qx/qx.norm()
+        var pt = qx+x1
+        vertices.setcolumn(i, pt)
+        vertices.setcolumn(n+i, pt+u)
+        vertices.setcolumn(2*n+i, pt+u+qx)
         normals.setcolumn(i, nn)
         normals.setcolumn(n+i, nn)
         normals.setcolumn(2*n+i, nn)
+      }
     }
 
-    var conn=Sparse(np,nt)
+    var nAnn = -ndx
+    var conn = Sparse(np, nt)
     for (i in 0...n) {
-      // Layer 0-A
-      conn[0,i]=1
-      conn[i+1,i]=1
-      if (i<n-1) conn[i+2,i]=1 else conn[1,i]=1
+      var i2 = (i < n-1) ? i+2 : 1, ni2 = (i < n-1) ? n+i+2 : n+1
+      var ci2 = (i < n-1) ? 2*n+i+2 : 2*n+1
+      _tri(conn, i, 0, i2, i+1)                       // 0-A cap (outward -Z)
+      _tri(conn, n+i, nCore-1, 2*n+i+1, ci2)          // C-1 tip
+      _tri(conn, 2*n+i, i+1, i2, n+i+1)               // A-B sidewall
+      _tri(conn, 3*n+i, i2, ni2, n+i+1)
+      // B-C annulus: 3 consecutive ids per tri so sorted order is -shaft.
+      var b = nCore + 6*i
+      vertices.setcolumn(b, vertices.column(n+i+1))
+      vertices.setcolumn(b+1, vertices.column(ni2))
+      vertices.setcolumn(b+2, vertices.column(2*n+i+1))
+      vertices.setcolumn(b+3, vertices.column(ni2))
+      vertices.setcolumn(b+4, vertices.column(ci2))
+      vertices.setcolumn(b+5, vertices.column(2*n+i+1))
+      for (k in 0...6) normals.setcolumn(b+k, nAnn)
+      _tri(conn, 4*n+i, b, b+1, b+2)
+      _tri(conn, 5*n+i, b+3, b+4, b+5)
+    }
 
-      // C-1
-      conn[np-1,n+i]=1
-      conn[2*n+i+1,n+i]=1
-      if (i<n-1) conn[2*n+i+2,n+i]=1 else conn[2*n+1,n+i]=1
+    return TriangleComplex(vertices, normals, col, conn)
+  }
+}
 
-      // Layer A-B
-      conn[i+1,2*n+i]=1
-      conn[n+i+1,2*n+i]=1
-      if (i<n-1) conn[i+2,2*n+i]=1 else conn[1,2*n+i]=1
+/* ----------------------------------------------------------------
+ * Sphere
+ * 
+ * Represents a spherical shell of radius r about a center
+ * ---------------------------------------------------------------- */
 
-      if (i<n-1) conn[i+2,3*n+i]=1 else conn[1,3*n+i]=1
-      if (i<n-1) conn[n+i+2,3*n+i]=1 else conn[n+1,3*n+i]=1
-      conn[n+i+1,3*n+i]=1
+var _sphereCache = Dictionary() // Cache unit spheres by level -> (verts, faces)
 
-      // Layer B-C
-      conn[n+i+1,4*n+i]=1
-      if (i<n-1) conn[n+i+2,4*n+i]=1 else conn[n+1,4*n+i]=1
-      conn[2*n+i+1,4*n+i]=1
+class Sphere is GraphicsPrimitive with TriangleConvertibleMixin {
+  init(center, r, color=nil, filter=nil, transmit=nil) {
+    super.init(color=color, filter=filter, transmit=transmit) // [Compatibility shim]
+    self.center = _asPosition(center)
+    self.r = r
+  }
 
-      if (i<n-1) conn[n+i+2,5*n+i]=1 else conn[n+1,5*n+i]=1
-      if (i<n-1) conn[2*n+i+2,5*n+i]=1 else conn[2*n+1,5*n+i]=1
-      conn[2*n+i+1,5*n+i]=1
+  // Compute vertex index given azimuthal and polar indices i, j
+  _sphereIx(i, j, st, sl, nv) {
+    if (i == 0) return 0 // top pole
+    if (i == st) return nv - 1 // bottom pole
+    return 1 + (i - 1) * sl + j // ring i in 1...st−1, slot j
+  }
+
+  _uvSphere(level) {
+    if (_sphereCache.contains(level)) return _sphereCache[level]
+    var st = 6 + 4 * level, sl = 10 + 6 * level, nv = 2 + (st - 1) * sl
+    var v = Matrix(3, nv), tris = []
+    var dphi = Pi / st, dth = 2 * Pi / sl
+    for (phi, i in 0..Pi:dphi) {
+      var sp = sin(phi), cp = cos(phi)
+      for (th, j in 0..(2 * Pi - dth):dth) {
+        if (i == 0 || i == st) {
+          if (j == 0) v.setcolumn(_sphereIx(i, j, st, sl, nv), Matrix([0, 0, cp]))
+        } else {
+          v.setcolumn(_sphereIx(i, j, st, sl, nv), Matrix([sp * cos(th), sp * sin(th), cp]))
+        }
+        if (i < st) {
+          var jn = mod(j + 1, sl)
+          var a = _sphereIx(i, j, st, sl, nv), b = _sphereIx(i, jn, st, sl, nv)
+          var c = _sphereIx(i + 1, j, st, sl, nv), d = _sphereIx(i + 1, jn, st, sl, nv)
+          if (a == b || c == d) tris.append(a == b ? (a, c, d) : (a, c, b))
+          else { tris.append((a, c, b)); tris.append((b, c, d)) }
+        }
+      }
+    }
+    var f = Sparse(nv, tris.count())
+    for (tri, i in tris) { for (p in tri) f[p, i] = 1 }
+    for (tri, i in tris) f.setrowindices(i, tri)
+    _sphereCache[level] = (v, f)
+    return _sphereCache[level]
+  }
+
+  // unit true → unit ball at origin. level is the requested tessellation.
+  toTriangleComplex(unit=false, level=3) {
+    var col = self.color
+    var mesh = _uvSphere(level)
+    var uv = mesh[0], v = uv.clone(), nv = v.dimensions()[1]
+    var x0 = unit ? Matrix([0, 0, 0]) : self.center
+    var r = unit ? 1 : self.r
+    for (i in 0...nv) v.setcolumn(i, x0 + r * uv.column(i))
+    return TriangleComplex(v, uv.clone(), col, mesh[1].clone())
+  }
+}
+
+/* ----------------------------------------------------------------
+ * Tube
+ * 
+ * Represents tubes drawn around a sequence of points joined by
+ * line segments.
+ * Constructor:
+ *   Tube(pts, rad, n=10, closed=false)
+ *   Tube([x0,x1,x2], 0.1)
+ * - pts : The set of points to use
+ * - rad : Radius of the tube
+ * - n : Number of faces to use per point
+ * - closed : whether the path closes (default false)
+ * ---------------------------------------------------------------- */
+
+class Tube is GraphicsPrimitive with TriangleConvertibleMixin {
+  init(pts, rad, n=10, color=nil, closed=false, filter=nil, transmit=nil) {
+    super.init(color=color, filter=filter, transmit=transmit) // [Compatibility shim]
+    self.pts = pts
+    self.radius = rad
+    self.n = n
+    self.closed = closed
+  }
+
+  toTriangleComplex() {
+    var n = self.n, col = self.color, mat = _asVertexMatrix(self.pts)
+    var np = mat.dimensions()[1]
+    if (np < 2) return nil
+    var dim = mat.dimensions()[0], nv = n*np, nt = n*(2*(np-1))
+    if (self.closed) nt += 2*n
+    else { nv += 2; nt += 2*n }
+
+    var vertices = Matrix(dim, nv), normals = Matrix(dim, nv)
+    var sep[np], ndx[np]
+
+    // Separation vectors along the polyline
+    for (k in 0..np-2) {
+      var dx = mat.column(k+1)-mat.column(k), dlen = dx.norm()
+      if (!(dlen > _epsDraw)) return nil
+      sep[k] = dx/dlen
+      ndx[k] += sep[k]
+      ndx[k+1] += sep[k]
+    }
+
+    if (self.closed) {
+      var dx = mat.column(0)-mat.column(np-1), dlen = dx.norm()
+      if (!(dlen > _epsDraw)) return nil
+      sep[np-1] = dx/dlen
+      ndx[np-1] += sep[np-1]
+      ndx[0] += sep[np-1]
+    }
+
+    // Vertex rings (axis must be unit for _rotation)
+    for (k in 0...np) {
+      var px
+      if (k == 0) {
+        px = _normalVector(ndx[k])
+      } else {
+        var dx = vertices.column((k-1)*n)-mat.column(k-1)
+        px = dx-dx.inner(ndx[k])*ndx[k]/ndx[k].norm()
+      }
+      px = self.radius*px/px.norm()
+
+      var x1 = mat.column(k), an = ndx[k].norm()
+      if (!(an > _epsNorm)) return nil
+      var axis = ndx[k]/an
+      for (i in 0...n) {
+        var theta = i*2*Pi/n, qx = _rotation(theta, axis)*px
+        vertices.setcolumn(k*n+i, x1+qx)
+        normals.setcolumn(k*n+i, qx/qx.norm())
+      }
+    }
+
+    var conn = Sparse(nv, nt), m = 0
+    for (k in 0..np-2) {
+      for (i in 0...n) {
+        var a = k*n+i, b = (i == n-1) ? k*n : k*n+i+1, c = (k+1)*n+i
+        var d = (i == n-1) ? (k+1)*n : (k+1)*n+i+1
+        _tri(conn, m, a, b, c); m += 1
+        _tri(conn, m, b, d, c); m += 1
+      }
+    }
+
+    if (self.closed) {
+      var k = np-1
+      for (i in 0...n) {
+        var a = k*n+i, b = (i == n-1) ? k*n : k*n+i+1
+        var c = i, d = (i == n-1) ? 0 : i+1
+        _tri(conn, m, a, b, c); m += 1
+        _tri(conn, m, b, d, c); m += 1
+      }
+    } else {
+      vertices.setcolumn(nv-2, mat.column(0))
+      vertices.setcolumn(nv-1, mat.column(np-1))
+      normals.setcolumn(nv-2, -sep[0])
+      normals.setcolumn(nv-1, sep[np-2])
+
+      for (i in 0...n) {
+        var b = (i == n-1) ? 0 : i+1
+        var d = (i == n-1) ? (np-1)*n : (np-1)*n+i+1
+        _tri(conn, m, i, nv-2, b); m += 1
+        _tri(conn, m, (np-1)*n+i, d, nv-1); m += 1
+      }
     }
 
     return TriangleComplex(vertices, normals, col, conn)
@@ -369,460 +721,523 @@ class Arrow {
 
 }
 
-/** Draws a tube
-  @param[in] pts - list of points or a matrix with points as the columns
-  @param[in] rad - radius
-  @param[in] n - number of faces to use per point
-  @param[in] closed - whether to treat the point list as closed or not
-  @param[in] color - Color of the sphere */
-class Tube {
-  normalvector(vec) { // Musn't take the abs for Tube
-    var order = [vec[0], vec[1], vec[2]].order()
-    var out=vec.clone()
-    out[order[0]]=0
-    out[order[1]]=vec[order[2]]
-    out[order[2]]=-vec[order[1]]
-    return out
+/* ----------------------------------------------------------------
+ * Polygon
+ * 
+ * Represents a convex planar polygon. Vertex winding defines the 
+ * normal. 
+ * ---------------------------------------------------------------- */
+
+class Polygon is GraphicsPrimitive with TriangleConvertibleMixin {
+  init(position, color=nil) {
+    super.init(color=color)
+    self.position = _asVertexMatrix(position)
+    _checkColorCount(self.color, self.position.dimensions()[1])
+    self._validate()
   }
 
-  init(pts, rad, n=10, color=nil, closed=false, filter=nil, transmit=nil) {
-    self.pts = pts
-    self.radius = rad
-    self.n = n
-    self.closed = closed
-    self.color = color
-
-    /* Optional arguments to be used by povray*/
-    self.filter = filter
-    self.transmit = transmit
+  /** Unit geometric normal from winding of the first triangle. */
+  normal() {
+    var p = self.position
+    var n = cross3D(p.column(1)-p.column(0), p.column(2)-p.column(0))
+    var nn = n.norm()
+    if (nn < _epsNorm) _GfxPolyErr.throw()
+    return n/nn
   }
 
-  totrianglecomplex() {
-    var n = self.n
-    var col = self.color
-    if (isnil(col)) col = [0.5,0.5,0.5]
+  _validate() {
+    var p = self.position, d = p.dimensions()
+    var nv = d[1]
+    if (d[0] != 3 || nv < 3) _GfxPolyErr.throw()
 
-    var mat = self.pts
-    if (islist(self.pts)) mat = Matrix(self.pts).transpose();
+    var n = self.normal()
+    var scale = (p.column(1)-p.column(0)).norm()
+    var eps = max(1e-8, 1e-6*scale)
 
-    var np=mat.dimensions()[1]
-  	var dim=mat.dimensions()[0]
-    var nv=n*np
-  	var nt=n*(2*(np-1))
-    if (!self.closed) {
-  		nv+=2 // Two points for the caps
-  		nt+=2*n // n triangles for each cap
-  	}
+    for (i in 3...nv) {
+      if (abs((p.column(i)-p.column(0)).inner(n)) > eps)
+        _GfxPolyErr.throw()
+    }
 
-    var vertices=Matrix(dim, nv);
-    var normals=Matrix(dim, nv);
-
-  	var sep[np], ndx[np]
-
-  	// Loop over line segments to calculate separation vectors
-  	for (k in 0..np-2) {
-  		var dx=mat.column(k+1)-mat.column(k)
-  		sep[k]=dx/dx.norm()
-  		ndx[k]+=sep[k]
-  		ndx[k+1]+=sep[k]
-  	}
-
-  	// Correct ends if closed
-  	if (self.closed) {
-  		var dx=mat.column(0)-mat.column(np-1)
-  		sep[np-1]=dx/dx.norm()
-  		ndx[np-1]+=sep[np-1]
-  		ndx[0]+=sep[np-1]
-  	}
-
-  	// Now generate vertices
-   	for (k in 0...np) {
-  		var px // Vertices are generated from a point plus this displacement
-   		if (k==0) {
-  			px=self.normalvector(ndx[k])
-  		} else { // This aligns vertices generated from successive points
-  			var dx=vertices.column((k-1)*n)-mat.column(k-1)
-  			px=dx-dx.inner(ndx[k])*ndx[k]/ndx[k].norm()
-  		}
-  		px=self.radius*px/px.norm()
-
-  		var x1 = mat.column(k)
-  		for (i in 0...n) {
-  			/* Find vertex ring at point k by rotating px about ndx, to obtain qx, and then adding x1 */
-        var theta = i*2*Pi/n
-  			var qx = _rotation(theta, ndx[k])*px
-  			vertices.setcolumn(k*n+i, x1+qx)
-
-  			normals.setcolumn(k*n+i, qx/qx.norm())
-  		}
-   	}
-
-  	/* Loop over segments again to create the triangles */
-  	var conn=Sparse(nv,nt)
-
-  	var m=0
-  	for (k in 0..np-2) {
-  		for (i in 0...n) {
-  			conn[k*n+i,m]=1
-  			if (i==n-1) conn[k*n,m]=1 else conn[k*n+i+1,m]=1
-  			conn[((k+1)*n+i),m]=1
-  			m+=1
-  			if (i==n-1) conn[k*n,m]=1 else conn[k*n+i+1,m]=1
-  			if (i==n-1) conn[(k+1)*n,m]=1 else conn[((k+1)*n+i)+1,m]=1
-  			conn[((k+1)*n+i),m]=1
-  			m+=1
-  		}
-  	}
-
-  	if (self.closed) {
-  		// Connect first and last points
-  		var k=np-1
-  		for (i in 0...n) {
-  			conn[k*n+i,m]=1
-  			if (i==n-1) conn[k*n,m]=1 else conn[k*n+i+1,m]=1
-  			conn[i,m]=1
-  			m+=1
-  			if (i==n-1) conn[k*n,m]=1 else conn[k*n+i+1,m]=1
-  			if (i==n-1) conn[0,m]=1 else conn[i+1,m]=1
-  			conn[i,m]=1
-  			m+=1
-  		}
-  	} else {
-  		// End caps
-  		vertices.setcolumn(nv-2, mat.column(0))
-  		vertices.setcolumn(nv-1, mat.column(np-1))
-
-  		normals.setcolumn(nv-2, -sep[0]/sep[0].norm())
-  		normals.setcolumn(nv-1, sep[np-2]/sep[np-2].norm())
-
-  		for (i in 0...n) {
-  			conn[i,m]=1
-  			if (i==n-1) conn[0,m]=1 else conn[i+1,m]=1
-  			conn[nv-2,m]=1
-  			m+=1
-  			conn[((np-1)*n+i),m]=1
-  			if (i==n-1) conn[(np-1)*n,m]=1 else conn[((np-1)*n+i)+1,m]=1
-  			conn[nv-1,m]=1
-  			m+=1
-  		}
-  	}
-
-      return TriangleComplex(vertices, normals, col, conn, filter=self.filter, transmit=self.transmit)
+    for (i in 0...nv) {
+      var a = p.column(i)
+      var b = p.column(mod(i+1, nv))
+      var c = p.column(mod(i+2, nv))
+      if (cross3D(b-a, c-b).inner(n) < -eps)
+        _GfxPolyErr.throw()
+    }
   }
 
+  toTriangleComplex() { // Produce a fan of triangles
+    var nv = self.position.dimensions()[1]
+    var n = self.normal()
+    var normals = Matrix(3, nv)
+    for (i in 0...nv) normals.setcolumn(i, n)
+
+    var conn = Sparse(nv, nv-2)
+    for (i in 0...nv-2) _tri(conn, i, 0, i+1, i+2)
+
+    return TriangleComplex(self.position, normals, self.color, conn)
+  }
 }
 
-/* **************************************
- * Text
- **************************************** */
+/* ----------------------------------------------------------------
+ * Light
+ * 
+ * World-space point lamp. 
+ * Constructors: 
+ *   Light([1,0,0], color=Red)
+ *   Light([-1,0,0], intensity=0.2)
+ *   - position : location of point source
+ *   - color : color of the lamp
+ *   - intensity : relative intensity
+ * ---------------------------------------------------------------- */
 
-class Text {
-  init(string, posn, dirn=nil, vertical=nil, size=10, font=nil, color=nil, filter=nil, transmit=nil) {
-    self.posn = posn
-    if (islist(self.posn)) self.posn = Matrix(self.posn)
-
-    self.dirn = dirn // Direction of flow for the text 
-    if (islist(self.dirn)) self.dirn = Matrix(self.dirn)
-
-    self.vertical = vertical // Vertical direction
-    if (islist(self.vertical)) self.vertical = Matrix(self.vertical)
-    
-    self.string = string 
-    self.font = font
-    self.color = color 
-    self.size = size 
-    
-    /* Optional arguments to be used by povray*/
-    self.filter = filter 
-    self.transmit = transmit
+class Light {
+  init(position, color=nil, intensity=1) {
+    self.position = self._asLightPosition(position)
+    self.color = self._asLightColor(color)
+    self.intensity = intensity
   }
 
-  transformationmatrix() {
-    if (!(ismatrix(self.dirn) || ismatrix(self.vertical))) return nil 
-    var m = Matrix(4,4) 
-    for (i in 0..3) m[i,i]=1
-
-    if (self.dirn) for (i in 0..2) m[i,0]=self.dirn[i]
-    if (self.vertical) for (i in 0..2) m[i,1]=self.vertical[i]
-
-    // Now set the final direction to the cross product of the two 
-    var zp = _cross3d(m.column(1),m.column(0)) 
-    for (i in 0..2) m[i,2]=zp[i]
-
-    _orthogonalize(m)
-
-    return m.transpose() 
+  clone() {
+    return Light(self.position.clone(), color=self.color, intensity=self.intensity)
   }
 
+  _asLightPosition(p) { // Ensure a supplied Light position is a 3-vector
+    var m = _asPosition(p)
+    if (m.count() != 3) _GfxLightPosErr.throw()
+    return m
+  }
+
+  // Ensure a supplied Light color is a solid color
+  _asLightColor(Color c) { return Color(c.r, c.g, c.b) }
+  _asLightColor(Coloring c) { _GfxLightColorErr.throw() }
+  _asLightColor(Nil c) { return White }
+  _asLightColor(c) { return _asLightColor(asColoring(c)) }
 }
 
-class Font {
-  init (name, size, id=nil) {
-    self.name = name 
-    self.size = size 
+/* ----------------------------------------------------------------
+ * Lighting
+ *
+ * Canonicalized lighting configuration for a Graphics object.
+ *
+ * Constructors:
+ *   Lighting()                        Neutral (also nil or [])
+ *   Lighting("neutral")               or "threepoint" or "off"
+ *   Lighting(Light(...))
+ *   Lighting([x,y,z])                 one point light
+ *   Lighting([Light(...), ...])       collection of point lights
+ *   Lighting([[x,y,z], ...])          collection of point lights
+ *
+ * "auto" is accepted as an alias for "neutral".
+ * ---------------------------------------------------------------- */
+
+var _validUserLightingModes = ["auto", "neutral", "threepoint", "off"]
+
+class Lighting {
+  init() { self._setMode("neutral") } // Default 
+  init(Nil val) { self._setMode("neutral") }
+
+  init(String mode) { self._setMode(mode) }
+
+  init(Lighting lighting) {
+    self.mode = lighting.mode
+    self.lights = []
+    for (light in lighting.lights) self.lights.append(light.clone())
+  }
+
+  init(Light light) {
+    self._setCustom()
+    self._appendLight(light)
+  }
+
+  init(Matrix position) {
+    self._setCustom()
+    self._appendLight(position)
+  }
+
+  init(List lights) {
+    self._initSequence(lights)
+  }
+
+  init(Tuple lights) {
+    self._initSequence(lights)
+  }
+
+  init(val) {
+    _GfxLightValErr.throw()
+  }
+
+  _setMode(mode) {
+    if (!_validUserLightingModes.contains(mode)) _GfxLightNameErr.throw()
+    if (mode == "auto") mode = "neutral"
+
+    self.mode = mode
+    self.lights = []
+  }
+
+  _setCustom() {
+    self.mode = "custom"
+    self.lights = []
+  }
+
+  // A sequence of numbers is one position; otherwise a sequence of lamps.
+  _initSequence(seq) {
+    if (seq.count() == 0) {
+      self._setMode("neutral")
+      return
+    }
+
+    self._setCustom()
+
+    if (isnumber(seq[0])) { // List was just a single light in [x,y,z] form
+      self._appendLight(seq)
+      return
+    }
+
+    for (light in seq) self._appendLight(light)
+  }
+
+  _appendLight(Light light) {
+    if (self.lights.count() >= _LIGHT_MAX) _GfxLightNErr.throw()
+    self.lights.append(light.clone())
+  }
+
+  _appendLight(position) {
+    self._appendLight(Light(position))
+  }
+
+  addLight(Light light) { // Adding an explicit light replaces any named rig.
+    if (self.mode != "custom") self._setCustom()
+    self._appendLight(light)
+    return self
+  }
+
+  addLight(position, color=nil, intensity=1) {
+    return self.addLight(Light(position, color=color, intensity=intensity))
+  }
+
+  clone() { return Lighting(self) }
+}
+
+/* ----------------------------------------------------------------
+ * GraphicsEntry
+ * 
+ * Displaylist entry incorporating a stable id, the item to display
+ * and transformation information from model to world coordinates.
+ * Optional color override. flat is nil (renderer default), true (unlit),
+ * or false (shaded).
+ * ---------------------------------------------------------------- */
+
+class GraphicsEntry {
+  init(id, item, position=nil, scale=nil, rotate=nil, color=nil, flat=nil) {
     self.id = id
+    self.item = item
+    self.position = _asPosition(position)
+    self.scale = self._asScale(scale)
+    self.rotate = rotate
+    self.color = self._asEntryColor(color)
+    self.flat = flat // Rendering-mode override; nil means renderer default
+  }
+
+  // Visible coloring: entry override if set, else the primitive's intrinsic color.
+  effectiveColor() { return isnil(self.color) ? self.item.color : self.color }
+
+  // Construct rotation matrix for this entry
+  rotationMatrix() {
+    var r = self.rotate
+    if (isnil(r) || abs(r[0]) < _epsDraw) return nil
+    return _rotation(r[0], [r[1], r[2], r[3]])
+  }
+
+  /** Helpers to coerce a List or Matrix to a scale Matrix. */
+  _asScale(Matrix s) { return s }
+  _asScale(List s) { return Matrix(s) }
+  _asScale(Tuple s) { return Matrix(s) }
+  _asScale(s) { return isnil(s) ? 1 : s }
+
+  // Entry color is a uniform presentation override.
+  _asEntryColor(Coloring c) { return c }
+  _asEntryColor(ColorTable c) { // Reject ColorTable
+    _GfxEntryClrErr.throw()
+    return nil
+  }
+  _asEntryColor(c) { // Otherwise construct using asColoring
+    if (isnil(c)) return nil
+    return _asEntryColor(asColoring(c))
   }
 }
 
-/* **************************************
- * Graphics class
- **************************************** */
+/* ----------------------------------------------------------------
+ * Graphics
+ * 
+ * Static displaylist container. Interface:
+ *   findEntry - finds an entry from an id 
+ *   display(item) - adds a GraphicsPrimitive to the displaylist
+ *   display(item, posn) - adds a GraphicsPrimitive with posn 
+ *   setLights - sets the lighting
+ *   addLight - adds a Light
+ *   resetLights - resets 
+ * ---------------------------------------------------------------- */
 
 class Graphics {
-  init(title = nil, background = nil) {
-    self.displaylist = [] // A collection of primitives to display
+  init(title = nil, background = nil, light = nil) {
+    self.displaylist = [] // GraphicsEntry list
+    self._entryById = Dictionary() 
+    self._nextId = 1
     self.title = title
     if (!self.title) self.title="Morpho" // Title to show
-    self.background = background
-    if (!self.background) self.background = Black
+    self.background = isnil(background) ? Black : asColoring(background)
+    if (isnil(self.background)) self.background = Black
+    self.light = Lighting(light)
   }
 
-  display(item) {
-    if (isobject(item)) self.displaylist.append(item)
+  // Look up an entry by its id 
+  findEntry(id) { return self._entryById.contains(id) ? self._entryById[id] : nil }
+
+  // Appends an item to the displaylist, allocating and returning an id 
+  _append(item, position=nil, scale=nil, rotate=nil, color=nil, flat=nil) {
+    var id = self._nextId
+    self._nextId += 1
+    var e = GraphicsEntry(id, item, position=position, scale=scale, rotate=rotate,
+                          color=color, flat=flat)
+    self.displaylist.append(e)
+    self._entryById[id] = e
+    return id
   }
 
-  add(right) { // Create a union of two graphics objects
+  // Copy this displaylist into a target
+  _copyEntriesInto(g) {
+    for (el in self.displaylist) {
+      var e = GraphicsEntry(el.id, el.item, position=el.position, scale=el.scale,
+                            rotate=el.rotate, color=el.color, flat=el.flat)
+      g.displaylist.append(e)
+      g._entryById[e.id] = e
+    }
+  }
+
+  // Left-hand ids kept; right-hand entries remapped onto g
+  _joinInto(g, Graphics right) {
+    g._nextId = self._nextId
+    self._copyEntriesInto(g)
+    for (el in right.displaylist) {
+      g._append(el.item, position=el.position, scale=el.scale, rotate=el.rotate,
+                color=el.color, flat=el.flat)
+    }
+  }
+
+  /** Append a GraphicsPrimitive (identity SRT). Returns Graphics-owned id. */
+  display(GraphicsPrimitive item, color=nil, flat=nil) {
+    return self._append(item, color=color, flat=flat)
+  }
+
+  /** GraphicsPrimitive with pose: 2nd positional position + scale=/rotate=/color=/flat=. */
+  display(GraphicsPrimitive item, position, scale=nil, rotate=nil, color=nil, flat=nil) {
+    return self._append(item, position=position, scale=scale, rotate=rotate,
+                        color=color, flat=flat)
+  }
+
+  setLights(lights) { // Replace lights
+    self.light = Lighting(lights)
+    return true
+  }
+
+  addLight(Light light) {
+    self.light.addLight(light)
+    return true
+  }
+
+  addLight(position, color=nil, intensity=1) {
+    return self.addLight(Light(position, color=color, intensity=intensity))
+  }
+
+  resetLights() { // Restore neutral lighting
+    return self.setLights([])
+  }
+
+  // Copy metadata to a target object
+  _copyMetaInto(target) {
+    target.title = self.title
+    target.background = self.background
+    target.light = self.light.clone()
+  }
+
+  // Combine two Graphics; right hand side is copied into the displaylist with new ids
+  add(Graphics right) {
     var g = Graphics()
-    for (el in self.displaylist) g.displaylist.append(el)
-    for (el in right.displaylist) g.displaylist.append(el)
+    self._copyMetaInto(g)
+    self._joinInto(g, right)
     return g
   }
 }
 
-/* **************************************
- * Show a graphics object
- **************************************** */
+/* ----------------------------------------------------------------
+ * GraphicsEvent
+ * 
+ * Class defining events that may be sent by Scene. Subclasses
+ * enable Listeners to process them using multiple dispatch.
+ * ---------------------------------------------------------------- */
 
-class Show {
-  init(g) {
-    var isWindows = System.platform()=="windows"
+class GraphicsEvent with BroadcastEvent {
+  init(id) { self.id = id } // Retain the event id
+}
 
-    self.uidinit()
-    self.spheres = Dictionary() 
-    self.fonts = []
-    self.colors = Dictionary() 
+// Sent when a new id is defined 
+class GraphicsEventDefined is GraphicsEvent {}
 
-    var tempfolder = (isWindows ? "${System.homefolder()}\\AppData\\local\\Temp" : "/tmp")
-    var fname = self._randomalphanumstring(10)
-    var out = File("${tempfolder}/morpho${fname}.draw", "w")
-
-    self.write(g, out)
-
-    out.close()
-
-    if (isWindows) {
-      system("powershell -Command \"Start-Process 'morphoview' -ArgumentList '-t', '${tempfolder}/morpho${fname}.draw' -WindowStyle Hidden\"")
-    } else {
-      // 1/7/25 Redirect error output to /dev/null
-      system("morphoview -t ${tempfolder}/morpho${fname}.draw > /dev/null 2>&1 &")
+// Coalesce same-type events across ids to reduce viewer traffic.
+fn _coalesceIds(into, prev) {
+  if (isnil(prev._seen)) { // Lazily create _seen Dictionary
+    prev._seen = Dictionary()
+    for (id in prev.ids) prev._seen[id] = true
+  }
+  for (id in into.ids) {
+    if (!prev._seen.contains(id)) {
+      prev._seen[id] = true
+      prev.ids.append(id)
     }
   }
+  into.ids = prev.ids // into must inherit accumulated state
+  into._seen = prev._seen
+}
 
-  /** Generate a random name */
-  _randomalphanumstring(n) {
-    var alpha="abcdefghijklmnopqrstuvwxyz0123456789"
-    var name=""
-    for (i in 1..n) name+=alpha[Int(random()*(alpha.count()-1))]
-    return name
+// Sent when an entry is moved 
+class GraphicsEventMoved is GraphicsEvent {
+  init(id) {
+    super.init(id)
+    self.ids = [id]
+    self._seen = nil // filled on first coalesce
+  }
+  batchKey() { return GraphicsEventMoved }
+  coalesce(prev) { _coalesceIds(self, prev) }
+}
+
+// Sent when an entry is recolored
+class GraphicsEventRecolored is GraphicsEvent {
+  init(id) {
+    super.init(id)
+    self.ids = [id]
+    self._seen = nil
+  }
+  batchKey() { return GraphicsEventRecolored }
+  coalesce(prev) { _coalesceIds(self, prev) }
+}
+
+// Sent when an entry is removed from the scene
+class GraphicsEventRemoved is GraphicsEvent {}
+
+// Sent when an entry is replaced
+class GraphicsEventReplaced is GraphicsEvent {}
+
+// Sent when lighting changes
+class GraphicsEventLights is GraphicsEvent {
+  init() { super.init(0) }
+  batchKey() { return GraphicsEventLights }
+  coalesce(prev) { }
+}
+
+/* ----------------------------------------------------------------
+ * Scene
+ * 
+ * Live, updatable container paralleling Graphics. Can inform others
+ * of updates using the Broadcaster/Listener protocol
+ * ---------------------------------------------------------------- */
+
+class Scene is Graphics with Broadcaster {
+  init(title = nil, background = nil, light = nil) {
+    super.init(title=title, background=background, light=light)
+    self._broadcasterInit()
   }
 
-  uidinit() {
-    self.uid = 0
+  setLights(lights) {
+    super.setLights(lights)
+    self.notify(GraphicsEventLights())
+    return true
   }
 
-  uid() { // Generate unique identifiers 
-    self.uid+=1
-    return self.uid
+  addLight(Light l) {
+    super.addLight(l)
+    self.notify(GraphicsEventLights())
+    return true
   }
 
-  preamble(graphic, out) {
-    out.write("S 1 3")
-    out.write("W \"${graphic.title}\"")
+  // Allocate id, append entry, optionally notify Defined.
+  _append(item, position=nil, scale=nil, rotate=nil, color=nil, flat=nil, notify=true) {
+    var id = super._append(item, position=position, scale=scale, rotate=rotate,
+                           color=color, flat=flat)
+    if (notify) self.notify(GraphicsEventDefined(id))
+    return id
   }
 
-  /* The visit method for a generic `item`. 
-
-  Here, we define this separate `visitgeneric` method that performs the intended generic task, and have the actual generic `visit` method call `visitgeneric`. This enables calls to the generic fallback from *within a specific implementation*. 
-  For example, the `visit` method for a `Sphere` object can call `self.visitgeneric(item, out)` to visit the `TriangleComplex` representation of the sphere, but calling `self.visit(item, out)` would result in an infinite loop.
-  */
-  visitgeneric(item, out) {
-    self.visit(item.totrianglecomplex(), out) 
+  // Apply supplied pose components and notify. `position` nil leaves translation.
+  _move(e, position, scale, rotate) {
+    if (!isnil(position)) e.position = _asPosition(position)
+    if (!isnil(scale)) e.scale = e._asScale(scale)
+    if (!isnil(rotate)) e.rotate = rotate
+    self.notify(GraphicsEventMoved(e.id))
+    return true
   }
 
-  // Will be used by Cylinder, Arrow and Tube
-  visit(item, out) {
-    self.visitgeneric(item, out)
+  // Leave position unchanged.
+  move(id, scale=nil, rotate=nil) {
+    var e = self.findEntry(id)
+    if (isnil(e)) return false
+    return self._move(e, nil, scale, rotate)
   }
 
-  visit(Sphere item, out) {
-    var n = item.refinementlevel()
-    
-    if (item.color) {
-      self.visitgeneric(item, out)
-      return 
-    } else if (!self.spheres.contains(n)) { // Check if we already have a sphere object at this refinement level
-      var tri=item.totrianglecomplex(scale=false)
-      tri.id = self.uid() 
-      out.write("o ${tri.id}")
-      self.trianglecomplexobjectdata(tri,out) 
-      self.spheres[n]=tri
-    } 
-
-    out.write("i")
-    out.write("s ${item.r}")
-    out.write("t ${item.center[0]} ${item.center[1]} ${item.center[2]}")
-    out.write("d ${self.spheres[n].id}")
+  // Moves an entry, setting the position, and updates scale and rotate if supplied
+  move(id, position, scale=nil, rotate=nil) {
+    var e = self.findEntry(id)
+    if (isnil(e)) return false
+    return self._move(e, position, scale, rotate)
   }
 
-  trianglecomplexobjectdata(item, out) {
-    var x = item.position
-    var n = item.normals
-    var col = item.colors
-    var localcolor = false
-    var dimensions=x.dimensions()
-    var dim = dimensions[0]
-    var nv = dimensions[1]
-
-    if (ismatrix(col)) {
-      if (col.dimensions()[1]>1) localcolor = true
-    } else if (isobject(col) && !islist(col)) col = col.rgb(0)
-
-    out.write("v \"xnc\"")
-    for (i in 0...nv) {
-      var line = ""
-      for (j in 0...dim) {
-        line+="${x[j,i]} "
-      }
-      for (j in 0...dim) {
-        line+="${n[j,i]} "
-      }
-      if (localcolor) {
-        for (j in 0...3) line+="${col[j,i]} "
-      } else {
-        for (j in 0...item.colors.count()) line+="${col[j]} "
-      }
-      out.write(line)
-    }
-
-    out.write("f")
-    var f=item.connectivity
-    nv=f.dimensions()[0]
-    var nf=f.dimensions()[1]
-
-    for (i in 0...nf) {
-      var line = ""
-      for (j in 0...nv) {
-        if (f[j,i]!=0) line+="${j} "
-      }
-      out.write(line)
-    }
+  // Set presentation color for an entry 
+  recolor(id, color) {
+    var e = self.findEntry(id)
+    if (isnil(e)) return false
+    e.color = e._asEntryColor(color)
+    self.notify(GraphicsEventRecolored(id))
+    return true
   }
 
-  visit(TriangleComplex item, out) {
-    var id = self.uid() 
-    out.write("o ${id}")
-    self.trianglecomplexobjectdata(item, out)
-    out.write("i")
-    out.write("d ${id}")
+  // Removes an entry 
+  remove(id) {
+    var e = self.findEntry(id)
+    if (isnil(e)) return false
+    self.displaylist.remove(e)
+    self._entryById.remove(id)
+    self.notify(GraphicsEventRemoved(id))
+    return true
   }
 
-  fontpath() {
-    var platform = System.platform()
-    if (platform=="macos") {
-      return ["/System/Library/Fonts"]
-    } else if (platform=="windows") {
-      return ["C:/Windows/Fonts"]
-    } else return ["/usr/share/fonts","/usr/local/share/fonts"]
+  // Replaces an entry item with the provided GraphicsPrimitive
+  replace(id, GraphicsPrimitive item) {
+    var e = self.findEntry(id)
+    if (isnil(e)) return false
+    e.item = item
+    self.notify(GraphicsEventReplaced(id))
+    return true
   }
 
-  matchfontfile(file, font) {
-    var fname = file.split(".")
-    if (fname[0]==font && 
-        (fname[1]=="ttc" || fname[1]=="ttf")) return true 
-    return false 
-  } 
-
-  searchfontfolder(folder, font) {
-    for (f in Folder.contents(folder)) {
-      var path = folder + "/" + f
-      if (self.matchfontfile(f, font)) return path
-
-      if (Folder.isfolder(path)) { // Recurse
-        var result = self.searchfontfolder(path, font)
-        if (result) return result 
-      }
-    }
-    return nil
+  // Special version of replace indicating only vertex positions have changed
+  morph(id, GraphicsPrimitive item) {
+    var e = self.findEntry(id)
+    if (isnil(e)) return false
+    e.item = item
+    return true
   }
 
-  findfont(font) {
-    var base = self.fontpath() 
-    for (f in base) {
-      var found = self.searchfontfolder(f, font)
-      if (found) return found
-    }
-    return nil 
-  }
+  morph(id, item) { return false }
 
-  defaultfontname() {
-    var platform = System.platform()
-    if (platform=="macos") {
-      return "Helvetica"
-    } else if (platform=="windows") {
-      return "arial" // Note case sensitive
-    } else return "FreeSans"
-  }
+  replace(id, item) { return false }
 
-  addcolor(color, out) {
-    if (!self.colors.contains(color)) {
-      var id = self.colors[color] = self.colors.count() 
-      out.write("c ${id} ${color.r} ${color.g} ${color.b}")
-    }
-    return self.colors[color] 
-  }
-
-  addfont(font, size, out) {
-    var path = self.findfont(font)
-    if (!path) _fntntfnd.throw() 
-    var id = self.uid()
-    var fnt = Font(font, size, id=id) 
-    self.fonts.append(fnt)
-
-    out.write("F ${id} \"${path}\" ${size}")
-    return id 
-  }
-
-  findfontid(font, size, out) {
-    for (f in self.fonts) {
-      if (f.name == font && f.size == size) return f.id
-    }
-    return self.addfont(font, size, out) 
-  }
-
-  visit(Text item, out) {
-    var font = item.font
-    if (!font) font = self.defaultfontname()
-    var id = self.findfontid(font, item.size, out)
-    
-    if (item.color) {
-      var id = self.addcolor(item.color, out) 
-      out.write("C ${id}")
-    }
-
-    out.write("i")
-    var m = item.transformationmatrix() 
-    if (m) {
-      var str = "m"
-      for (i in 0..3) for (j in 0..3) str+=" "+String(m[i,j])
-      out.write(str)
-    }
-    out.write("t ${item.posn[0]} ${item.posn[1]} ${item.posn[2]}")
-    out.write("T ${id} \"${item.string}\"")
-  }
-
-  write(graphic, out) {
-    self.preamble(graphic, out)
-
-    for (item in graphic.displaylist) self.visit(item, out)
+  // Scene + Graphics
+  add(Graphics right) {
+    var g = Scene()
+    self._copyMetaInto(g)
+    self._joinInto(g, right)
+    return g
   }
 }

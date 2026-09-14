@@ -14,7 +14,13 @@
 #define MORPHO_VERSION_MINOR 6
 #define MORPHO_VERSION_PATCH 5
 
-#define MORPHO_VERSIONSTRING "0.6.5"
+#define MORPHO_STRINGIFY_(x) #x
+#define MORPHO_STRINGIFY(x) MORPHO_STRINGIFY_(x)
+
+#define MORPHO_VERSIONSTRING \
+    MORPHO_STRINGIFY(MORPHO_VERSION_MAJOR) "." \
+    MORPHO_STRINGIFY(MORPHO_VERSION_MINOR) "." \
+    MORPHO_STRINGIFY(MORPHO_VERSION_PATCH)
 
 /* **********************************************************************
  * Paths and file system
@@ -79,6 +85,9 @@
 
 /** @brief Maximum number of arguments */
 #define MORPHO_MAXARGS 255 /** @warning Note that this cannot easily be adjusted >255 without changing the instruction encoding */
+
+/** @brief Maximum number of arguments copied onto the C stack (e.g. by apply) */
+#define MORPHO_MAXCARGS 4096
 
 /** @brief Maximum number of constants */
 #define MORPHO_MAXCONSTANTS 65536 /** @warning Note that this cannot easily be adjusted >65536 without changing the instruction encoding */

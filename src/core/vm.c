@@ -688,6 +688,11 @@ static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int n
     bool argsonstack=true;
     ptrdiff_t aoffset=0;
 
+    if (nargs > MORPHO_MAXARGS) {
+        vm_runtimeerror(v, (*pc) - v->instructions, VM_TOOMANYARGS);
+        return false;
+    }
+
     value *arglist=args;
     if (arglist) {
         /** Determine whether the arguments provided are on the stack or not */
@@ -2266,6 +2271,7 @@ void morpho_initialize(void) {
     morpho_defineerror(VM_NOTANINSTANCE, ERROR_HALT, VM_NOTANINSTANCE_MSG);
     morpho_defineerror(VM_CLASSLACKSPROPERTY, ERROR_HALT, VM_CLASSLACKSPROPERTY_MSG);
     morpho_defineerror(VM_INVALIDARGS, ERROR_HALT, VM_INVALIDARGS_MSG);
+    morpho_defineerror(VM_TOOMANYARGS, ERROR_HALT, VM_TOOMANYARGS_MSG);
     morpho_defineerror(VM_NOOPTARG, ERROR_HALT, VM_NOOPTARG_MSG);
     morpho_defineerror(VM_UNKNWNOPTARG, ERROR_HALT, VM_UNKNWNOPTARG_MSG);
     morpho_defineerror(VM_INVALIDARGSDETAIL, ERROR_HALT, VM_INVALIDARGSDETAIL_MSG);

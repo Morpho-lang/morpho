@@ -186,6 +186,33 @@ char *string_index(objectstring *s, int i) {
     return NULL;
 }
 
+/** @brief Join values into a string
+ *  @param v      the virtual machine
+ *  @param prefix if a String, prepended with no separator
+ *  @param nparts number of values
+ *  @param parts  values to stringify
+ *  @param sep    separator inserted between elements, or NULL
+ *  @returns a string object, or MORPHO_NIL on failure */
+value string_join(vm *v, value prefix, unsigned int nparts, value *parts, const char *sep) {
+    varray_char buffer;
+    varray_charinit(&buffer);
+
+    if (MORPHO_ISSTRING(prefix)) {
+        objectstring *s = MORPHO_GETSTRING(prefix);
+        varray_charadd(&buffer, s->string, (int) s->length);
+    }
+
+    size_t seplen = sep ? strlen(sep) : 0;
+    for (unsigned int i=0; i<nparts; i++) {
+        if (i>0 && seplen>0) varray_charadd(&buffer, (char *) sep, (int) seplen);
+        morpho_printtobuffer(v, parts[i], &buffer);
+    }
+
+    value out = object_stringfromvarraychar(&buffer);
+    varray_charclear(&buffer);
+    return morpho_wrapandbind(v, MORPHO_ISOBJECT(out) ? MORPHO_GETOBJECT(out) : NULL);
+}
+
 /* **********************************************************************
  * String class
  * ********************************************************************** */
@@ -251,11 +278,6 @@ value String_enumerate(vm *v, int nargs, value *args) {
     }
 
     return out;
-}
-
-value String_enumerate__err(vm *v, int nargs, value *args) {
-    MORPHO_RAISE(v, ENUMERATE_ARGS);
-    return MORPHO_NIL;
 }
 
 /** Tests if a string encodes a number */
@@ -330,17 +352,29 @@ value String_substring(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Join a list of values into a string */
+value String_join__list(vm *v, int nargs, value *args) {
+    objectlist *parts = MORPHO_GETLIST(MORPHO_GETARG(args, 0));
+    return string_join(v, MORPHO_SELF(args), parts->val.count, parts->val.data, NULL);
+}
+
+value String_join__list_string(vm *v, int nargs, value *args) {
+    objectlist *parts = MORPHO_GETLIST(MORPHO_GETARG(args, 0));
+    return string_join(v, MORPHO_SELF(args), parts->val.count, parts->val.data,
+                       MORPHO_GETCSTRING(MORPHO_GETARG(args, 1)));
+}
+
 MORPHO_BEGINCLASS(String)
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", String_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "String ()", String_print, MORPHO_FN_IO),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "String ()", String_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "String (Int)", String_getindex, MORPHO_FN_THROWS),
-MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "Nil (...)", String_enumerate__err, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", String_enumerate, MORPHO_FN_THROWS),
-MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "Nil (...)", String_enumerate__err, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(STRING_ISNUMBER_METHOD, "Bool ()", String_isnumber, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(STRING_SPLIT_METHOD, "List (String)", String_split, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
-MORPHO_METHOD_SIGNATURE(STRING_SUBSTRING_METHOD, "String (Int, Int)", String_substring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
+MORPHO_METHOD_SIGNATURE(STRING_SUBSTRING_METHOD, "String (Int, Int)", String_substring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "String (List)", String_join__list, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "String (List, String)", String_join__list_string, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

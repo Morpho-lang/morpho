@@ -3990,9 +3990,9 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     /* Remember the last argument */
     registerindx lastarg=compiler_regtop(c);
 
-    /* Check we don't have too many arguments */
+    /* Check we don't have too many parameters */
     if (lastarg-func.dest>MORPHO_MAXARGS) {
-        compiler_error(c, node, COMPILE_TOOMANYARGS);
+        compiler_error(c, node, COMPILE_TOOMANYPARAMS);
         return CODEINFO_EMPTY;
     }
 
@@ -4109,9 +4109,9 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     // Remember the last argument
     registerindx lastarg=compiler_regtop(c);
 
-    // Check we don't have too many arguments
+    // Check we don't have too many parameters
     if (lastarg-rSel>MORPHO_MAXARGS) {
-        compiler_error(c, node, COMPILE_TOOMANYARGS);
+        compiler_error(c, node, COMPILE_TOOMANYPARAMS);
         return CODEINFO_EMPTY;
     }
 
@@ -5356,7 +5356,6 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_NOSUPER, ERROR_COMPILE, COMPILE_NOSUPER_MSG);
     morpho_defineerror(COMPILE_INVALIDASSIGNMENT, ERROR_COMPILE, COMPILE_INVALIDASSIGNMENT_MSG);
     morpho_defineerror(COMPILE_CLASSINHERITSELF, ERROR_COMPILE, COMPILE_CLASSINHERITSELF_MSG);
-    morpho_defineerror(COMPILE_TOOMANYARGS, ERROR_COMPILE, COMPILE_TOOMANYARGS_MSG);
     morpho_defineerror(COMPILE_TOOMANYPARAMS, ERROR_COMPILE, COMPILE_TOOMANYPARAMS_MSG);
     morpho_defineerror(COMPILE_VARALREADYDECLARED, ERROR_COMPILE, COMPILE_VARALREADYDECLARED_MSG);
     morpho_defineerror(COMPILE_FILENOTFOUND, ERROR_COMPILE, COMPILE_FILENOTFOUND_MSG);

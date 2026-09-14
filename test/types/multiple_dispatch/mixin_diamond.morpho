@@ -1,0 +1,16 @@
+// Diamond inheritance should not duplicate the shared ancestor implementation
+
+class Base {
+    f(Int x) {
+        return "base"
+    }
+}
+
+class A is Base { }
+
+class B is Base { }
+
+class C with A, B { }
+
+print C().f(1)
+// expect: base

@@ -1,0 +1,30 @@
+// Child may add another overload without dropping inherited ones
+
+class A {
+    f(Int x) {
+        return "int"
+    }
+}
+
+class B {
+    f(String x) {
+        return "string"
+    }
+}
+
+class C with A, B {
+    f(Float x) {
+        return "float"
+    }
+}
+
+var c = C()
+
+print c.f(1)
+// expect: int
+
+print c.f("hi")
+// expect: string
+
+print c.f(1.5)
+// expect: float

@@ -1,0 +1,125 @@
+import kdtree
+
+fn cloud(n, dim) {
+    var pts = []
+    for (i in 0...n) {
+        var x = Matrix(dim)
+        for (k in 0...dim) x[k] = 2*random()-1
+        pts.append(x)
+    }
+    return pts
+}
+
+fn bruteNearest(pts, q) {
+    var best = pts[0]
+    var bd = (q-best).norm()
+    for (p in pts) {
+        var d = (q-p).norm()
+        if (d < bd) { best = p; bd = d }
+    }
+    return best
+}
+
+fn nearestOk(tree, pts, q) {
+    var n = tree.nearest(q)
+    var b = bruteNearest(pts, q)
+    return abs((n.location-q).norm()-(b-q).norm()) < 1e-10
+}
+
+fn inBox(p, box) {
+    for (i in 0...p.count()) {
+        if (p[i] < box[i][0] || p[i] > box[i][1]) return false
+    }
+    return true
+}
+
+fn searchOk(tree, pts, box) {
+    var hit = tree.search(box)
+    for (node in hit) {
+        if (!inBox(node.location, box)) return false
+    }
+    var nbox = 0
+    for (p in pts) if (inBox(p, box)) nbox += 1
+    return hit.count() == nbox
+}
+
+// 2D nearest vs brute force
+var a = cloud(80, 2)
+var tree = KDTree(a)
+var q = Matrix([0.1, -0.2])
+print nearestOk(tree, a, q)
+// expect: true
+
+var box2 = [[-0.5, 0.5], [-0.4, 0.4]]
+print searchOk(tree, a, box2)
+// expect: true
+
+// Tuple query bounds
+print searchOk(tree, a, ((-0.5, 0.5), (-0.4, 0.4)))
+// expect: true
+
+// 3D nearest and search
+var b = cloud(60, 3)
+tree = KDTree(b)
+q = Matrix([0.2, 0.0, -0.3])
+print nearestOk(tree, b, q)
+// expect: true
+
+var box3 = [[-0.6, 0.6], [-0.6, 0.6], [-0.6, 0.6]]
+print searchOk(tree, b, box3)
+// expect: true
+
+// Tuple of points
+var tpts = (Matrix([0,0]), Matrix([1,0]), Matrix([0,1]))
+tree = KDTree(tpts)
+print (tree.nearest(Matrix([0.1, 0.1])).location-Matrix([0,0])).norm() < 1e-12
+// expect: true
+
+// insert and ismember
+var pnew = Matrix([0.5, 0.5])
+print !tree.ismember(pnew)
+// expect: true
+
+var node = tree.insert(pnew)
+print isobject(node) && (node.location-pnew).norm() < 1e-15
+// expect: true
+
+print isobject(tree.ismember(pnew))
+// expect: true
+
+// 1D
+var line = [Matrix([0]), Matrix([1]), Matrix([0.5]), Matrix([2])]
+tree = KDTree(line)
+print abs(tree.nearest(Matrix([1.1])).location[0]-1) < 1e-12
+// expect: true
+
+print tree.search([[0.25, 1.5]]).count() == 2
+// expect: true
+
+try {
+    KDTree([])
+    print false
+} catch {
+    "KdInit": print true
+}
+// expect: true
+
+try {
+    KDTree(1)
+    print false
+} catch {
+    "KdInit": print true
+}
+// expect: true
+
+try {
+    KDTree([Matrix([0,0]), Matrix([1,0,0])])
+    print false
+} catch {
+    "KdDim": print true
+}
+// expect: true
+
+tree = KDTree([Matrix([0,0]), Matrix([1,0])])
+tree.insert(Matrix([0,0]))
+// expect: Warning 'KdDup': Point is already in the tree.

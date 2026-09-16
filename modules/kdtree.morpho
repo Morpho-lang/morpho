@@ -1,45 +1,92 @@
 /* ***************************************************************
  * KDTree
  * ======
- * This module implements the KDTree class for spatial search
+ * k-d tree for spatial search. 
  **************************************************************** */
 
+// Constants
+var _epsKd = 1e-15 // Coincidence tolerance
+
+// Error messages
+var _KdInitErr = Error("KdInit", "You must initialize KDTree with a list of points.")
+var _KdDimErr = Error("KdDim", "All points must have the same dimension.")
+var _KdDupErr = Error("KdDup", "Point is already in the tree.")
+
+/* ----------------------------------------------------------------
+ * KDTreeNode
+ *
+ * One node of a k-d tree:
+ *   KDTreeNode(location, left, right)
+ *   location   point at this node
+ *   left/right child nodes, or nil
+ * ---------------------------------------------------------------- */
+
 class KDTreeNode {
-  init (location, left, right) {
+  init(location, left, right) {
     self.location = location
     self.left = left
     self.right = right
   }
 }
 
+/* ----------------------------------------------------------------
+ * KDTree
+ *
+ * Spatial index over a point cloud:
+ *   KDTree(pts)            pts is a List (or Tuple) of vectors
+ *   insert(pt)  -> node
+ *   ismember(pt) -> node|false
+ *   nearest(pt)  -> node
+ *   search(box)  -> List of nodes in an axis-aligned box
+ *                  box is a List or Tuple of (min, max) per axis
+ *   maxdepth() / prnt()
+ *
+ *   head, dimension, tol
+ * ---------------------------------------------------------------- */
+
 class KDTree {
-  init(pts) {
-    self.dimension = pts[0].dimensions()[0]
-    self.head=self.build(pts.clone(), 0)
-    self.tol=1e-15
+  _initPts(pts) {
+    var n = pts.count()
+    if (n == 0) _KdInitErr.throw()
+    var dim = pts[0].count()
+    for (i in 1...n) {
+      if (pts[i].count() != dim) _KdDimErr.throw()
+    }
+
+    self.dimension = dim
+    self.tol = _epsKd
+    self.head = self._build(pts.clone(), 0)
   }
 
-  build(pts, depth) { // Build a tree or subtree from a list of points
+  init(List pts) { self._initPts(pts) }
+  init(Tuple pts) { self._initPts(List(pts)) }
+  init(pts) { _KdInitErr.throw() }
+
+  // True if pt coincides with node
+  _coincides(pt, node, pivot) {
+    return abs(pt[pivot]-node.location[pivot]) < self.tol &&
+           (pt-node.location).norm() < self.tol
+  }
+
+  _build(pts, depth) { // Build a tree or subtree from a list of points
     var np = pts.count()
-    if (np==0) return nil
+    if (np == 0) return nil
 
     var axis = mod(depth, self.dimension)
 
     // Sort points to find median along current axis
     pts.sort(fn (a, b) a[axis]-b[axis])
-    var ipivot=Int((np-1)/2)
+    var ipivot = Int((np-1)/2)
 
     // Identify points on the left and right of this plane
     var left = [], right = []
     for (i in 0...ipivot) left.append(pts[i])
     for (i in ipivot+1...np) right.append(pts[i])
 
-    var node = KDTreeNode(pts[ipivot], self.build(left, depth+1), self.build(right, depth+1))
-
-    return node
+    return KDTreeNode(pts[ipivot], self._build(left, depth+1), self._build(right, depth+1))
   }
 
-  donearest(pt, start, cdepth, bst, bdst) {
+  _nearest(pt, start, cdepth, bst, bdst) {
     var depth = cdepth
     var list = []
 
@@ -47,37 +94,39 @@ class KDTree {
     for (var node = start; !isnil(node); ) {
       list.append(node)
       var pivot = mod(depth, self.dimension)
-      if (abs(pt[pivot] - node.location[pivot])<self.tol &&
-                (pt-node.location).norm()<self.tol) {
+      if (self._coincides(pt, node, pivot)) {
         return node
-      } if (pt[pivot] < node.location[pivot]) {
-        node = node.left;
+      } else if (pt[pivot] < node.location[pivot]) {
+        node = node.left
       } else {
-        node = node.right;
+        node = node.right
       }
-      depth+=1
+      depth += 1
     }
 
     // Unwind search and check whether a closer neighbor could exist
-    var best=bst, bdist=bdst
-    while (list.count()>0) {
-      depth-=1
+    var best = bst, bdist = bdst
+    while (list.count() > 0) {
+      depth -= 1
       var node = list.pop()
       var dist = (pt-node.location).norm()
       // If this point is closer, it becomes the best point
-      if (dist<bdist) { best = node; bdist = dist }
+      if (dist < bdist) { best = node; bdist = dist }
 
       // Decide if we need to check the subtree on the other side of the split
       var pivot = mod(depth, self.dimension)
-      var splitdist=pt[pivot]-node.location[pivot]
+      var splitdist = pt[pivot]-node.location[pivot]
 
-      if (abs(splitdist)<bdist) { // We do
+      if (abs(splitdist) < bdist) { // We do
         var alt
-        if (splitdist<0 && node.right) alt=self.donearest(pt, node.right, depth+1, best, bdist)
-        else if (node.left) alt=self.donearest(pt, node.left, depth+1, best, bdist)
+        if (splitdist < 0) {
+          if (node.right) alt = self._nearest(pt, node.right, depth+1, best, bdist)
+        } else {
+          if (node.left) alt = self._nearest(pt, node.left, depth+1, best, bdist)
+        }
         if (alt) { // Check if this new point is even better
           var adist = (pt-alt.location).norm()
-          if (adist<bdist) { best = alt; bdist = adist; }
+          if (adist < bdist) { best = alt; bdist = adist }
         }
       }
     }
@@ -85,25 +134,30 @@ class KDTree {
     return best
   }
 
-  domaxdepth(node, startdepth) {
+  _maxdepth(node, startdepth) {
     if (!node) return startdepth
-    return max([ self.domaxdepth(node.left, startdepth+1), self.domaxdepth(node.right, startdepth+1) ])
+    var a = self._maxdepth(node.left, startdepth+1)
+    var b = self._maxdepth(node.right, startdepth+1)
+    return (a > b) ? a : b
   }
 
-  doprint(node, depth) {
+  _print(node, depth) {
+    if (isnil(node)) return
     var s = "${depth}:"
-    for (i in 0...depth) s+=" "
-    s+=" [${node.location[0]}, ${node.location[1]}, ${node.location[2]}]"
+    for (i in 0...depth) s += " "
+    s += " ${node.location}"
     print s
-    if (node.left) self.doprint(node.left, depth+1)
-    if (node.right) self.doprint(node.right, depth+1)
+    if (node.left) self._print(node.left, depth+1)
+    if (node.right) self._print(node.right, depth+1)
   }
 
-  dosearch(query, node, depth, result) {
+  _search(query, node, depth, result) {
+    if (isnil(node)) return
+
     // Check if this point satisfies the query
     var include = true
     for (i in 0...self.dimension) {
-      include = include && (node.location[i]>=query[i][0] && node.location[i]<=query[i][1])
+      include = include && (node.location[i] >= query[i][0] && node.location[i] <= query[i][1])
     }
     if (include) result.append(node)
 
@@ -112,19 +166,22 @@ class KDTree {
     var aq = query[pivot]
     var x = node.location[pivot]
 
-    if (x>=aq[0] && node.left) self.dosearch(query, node.left, depth+1, result)
-    if (x<=aq[1] && node.right) self.dosearch(query, node.right, depth+1, result)
+    if (x >= aq[0] && node.left) self._search(query, node.left, depth+1, result)
+    if (x <= aq[1] && node.right) self._search(query, node.right, depth+1, result)
   }
 
   insert(pt) { // Inserts a point into the tree
-    var depth = 0
+    if (isnil(self.head)) {
+      self.head = KDTreeNode(pt, nil, nil)
+      return self.head
+    }
 
-    for (var node = self.head, next; node!=nil; node=next) {
+    var depth = 0
+    for (var node = self.head, next; node != nil; node = next) {
       var pivot = mod(depth, self.dimension)
 
-      if (abs(pt[pivot] - node.location[pivot])<self.tol &&
-                (pt-node.location).norm()<self.tol) {
-        print "Warning: duplicate node"
+      if (self._coincides(pt, node, pivot)) {
+        _KdDupErr.warning()
         return node
       } else if (pt[pivot] < node.location[pivot]) {
         next = node.left
@@ -139,44 +196,42 @@ class KDTree {
           return node.right
         }
       }
-      depth+=1
+      depth += 1
     }
   }
 
-  ismember(pt) { // Tests if a point is in the tree.
+  ismember(pt) { // Tests if a point is in the tree
     var depth = 0
-
-    for (var node = self.head, next; !isnil(node); ) {
+    for (var node = self.head; !isnil(node); ) {
       var pivot = mod(depth, self.dimension)
-      if (abs(pt[pivot] - node.location[pivot])<self.tol &&
-                (pt-node.location).norm()<self.tol) {
+      if (self._coincides(pt, node, pivot)) {
         return node
       } else if (pt[pivot] < node.location[pivot]) {
         node = node.left
       } else {
         node = node.right
       }
-      depth+=1
+      depth += 1
     }
     return false
   }
 
   maxdepth() { // Finds the maximum depth of the tree
-    return self.domaxdepth(self.head, 0)
+    return self._maxdepth(self.head, 0)
   }
 
   nearest(pt) {
-    return self.donearest(pt, self.head, 0, nil, 1e255)
+    if (isnil(self.head)) return nil
+    return self._nearest(pt, self.head, 0, nil, 1e255)
   }
 
   search(query) {
     var result = []
-    self.dosearch(query, self.head, 0, result)
+    self._search(query, self.head, 0, result)
     return result
   }
 
   prnt() {
-    self.doprint(self.head, 0)
+    self._print(self.head, 0)
   }
-
 }

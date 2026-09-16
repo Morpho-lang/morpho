@@ -55,6 +55,24 @@ fn _boundsEqual(a, b) { // Same axis count and lo/hi, within a tight tolerance
   return true
 }
 
+fn _boundsUnion(a, b) { // Axis-aligned union; nil is treated as empty
+  if (isnil(a)) return b
+  if (isnil(b)) return a
+  var n = a.count()
+  if (b.count() > n) n = b.count()
+  var out = []
+  for (i in 0...n) {
+    if (i >= a.count()) { out.append(b[i]); continue }
+    if (i >= b.count()) { out.append(a[i]); continue }
+    var lo = a[i][0]
+    var hi = a[i][1]
+    if (b[i][0] < lo) lo = b[i][0]
+    if (b[i][1] > hi) hi = b[i][1]
+    out.append((lo, hi))
+  }
+  return out
+}
+
 fn _planarAxis(bb) { // Which axis has zero width, or nil if none
   for (x, i in bb) {
     if (abs(x[1]-x[0])<1e-10) return i
@@ -784,6 +802,7 @@ class Plot is Scene {
     self.source = source
     self._entries = Dictionary()
     self.bounds = nil
+    self.axesBounds = nil
     self.wantAxes = axes
     if (isbool(scalebar)) {
       self.wantScalebar = scalebar
@@ -826,10 +845,11 @@ class Plot is Scene {
   }
 
   _drawAxes(nticks=5) { // Draw the bounding-box outline and axis labels
-    if (isnil(self.bounds)) return
+    if (isnil(self.axesBounds)) self.axesBounds = self.bounds
+    if (isnil(self.axesBounds)) return
     self.beginBatch()
-    self._recordEntry("axes", self.display(_domainWire(self.bounds, Color(0.55, 0.55, 0.6))))
-    for (id in self.extend(_frameLabels(self.bounds, nticks=nticks))) self._recordEntry("axes", id)
+    self._recordEntry("axes", self.display(_domainWire(self.axesBounds, Color(0.55, 0.55, 0.6))))
+    for (id in self.extend(_frameLabels(self.axesBounds, nticks=nticks))) self._recordEntry("axes", id)
     self.endBatch()
   }
 
@@ -900,7 +920,6 @@ class Plot is Scene {
 
     var hadScalebar = self._entries.contains("scalebar") || self.wantScalebar
     var hadAxes = self._entries.contains("axes") || self.wantAxes
-    var oldBounds = self.bounds
     var info = _fieldColors(self.source, selection=self.selection, grade=self.grade,
                             colormap=self.colormap, style=self.style, scale=self.scale,
                             cmin=self.cmin, cmax=self.cmax, center=self.center)
@@ -934,9 +953,13 @@ class Plot is Scene {
                      style=self.style)
     }
 
-    if (hadAxes && !_boundsEqual(oldBounds, self.bounds)) {
-      self._clearRole("axes")
-      self._drawAxes()
+    if (hadAxes) {
+      var expanded = _boundsUnion(self.axesBounds, self.bounds)
+      if (!_boundsEqual(self.axesBounds, expanded)) {
+        self.axesBounds = expanded
+        self._clearRole("axes")
+        self._drawAxes()
+      }
     }
 
     if (hadScalebar) {

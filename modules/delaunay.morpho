@@ -1,172 +1,244 @@
-/* Delaunay - Generates Delaunay simplices of a point set
- * Using a sweepline algorithm */
+/* ***************************************************************
+ * Delaunay
+ * ========
+ * Delaunay simplices of a point set (sweep / Bowyer-Watson)
+ **************************************************************** */
 
-// Compute the Circumsphere of a set of points
+/* ----------------------------------------------------------------
+ * The delaunay module provides:
+ * - Circumsphere : sphere through a simplex's vertices
+ * - Delaunay     : incrementally triangulate a point cloud
+ * ---------------------------------------------------------------- */
+
+// Constants
+var _epsDlny = 1e-8 // Tolerance for in-sphere tests
+
+// Error messages
+var _DlnyInitErr = Error("DlnyInit", "You must initialize Delaunay with a list of points to triangulate.")
+var _DlnyDimErr = Error("DlnyDim", "You must supply at least dim+1 points in dim dimensions.")
+var _DlnyDegenerateErr = Error("DlnyDegenerate", "Circumsphere is degenerate (points are coplanar or coincident).")
+
+/* ----------------------------------------------------------------
+ * Circumsphere
+ *
+ * Sphere through the vertices of a simplex:
+ *   Circumsphere(vertices, indices)
+ *     vertices  = list of points
+ *     indices   = vertex ids of the simplex
+ *
+ *   pointinsphere(pt) -> Bool   true if pt is strictly inside
+ *   center, radius, indices     circumcenter, radius, vertex ids
+ * ---------------------------------------------------------------- */
+
 class Circumsphere {
-  init (vertices, indx) {
+  init(vertices, indx) {
     var n = indx.count()-1
     var b = Matrix(n)
-    var M = Matrix(n,n)
+    var M = Matrix(n, n)
 
     var x0 = vertices[indx[0]] // Make x0 the origin
     for (var i=0; i<n; i+=1) { // Build the linear system
       var xi = vertices[indx[i+1]]-x0
       b[i] = xi.inner(xi)/2
-      M.setcolumn(i,xi)
+      M.setcolumn(i, xi)
     }
 
-    var xc=b/M.transpose() // Solve the linear system
+    var xc
+    try {
+      xc = b/M.transpose() // Solve the linear system
+    } catch {
+      "LnAlgMtrxSnglr": _DlnyDegenerateErr.throw()
+    }
 
-    self.i=indx
-    self.r=xc.norm()
-    self.x=xc+x0
+    self.indices = indx.clone()
+    self.radius = xc.norm()
+    self.center = xc+x0
   }
 
   pointinsphere(pt) {
-    return (pt-self.x).norm() < self.r
+    return (pt-self.center).norm() < self.radius
   }
 }
 
-var _errDlnyInit = Error("DlnyInit", "You must initialize Delaunay with a list of points to triangulate.")
+/* ----------------------------------------------------------------
+ * Delaunay
+ *
+ * Incremental triangulation of a point cloud. No simplex's
+ * circumsphere contains another point of the cloud.
+ *
+ *   Delaunay(pts)          pts is a List (or Tuple) of vectors
+ *   triangulate() -> List  simplices as lists of vertex indices
+ *
+ *   dim, pts, sscale, eps  dimension, point cloud, supersimplex
+ *                          scale (default 1), in-sphere tolerance
+ * ---------------------------------------------------------------- */
 
-// Generates simplices for a point cloud with the Delaunay property
-// that no simplex's circumsphere contains another point
 class Delaunay {
-  init (pts) {
-    if (!islist(pts) || pts.count()==0) _errDlnyInit.throw()
+  _initPts(pts) {
+    var n = pts.count()
+    if (n == 0) _DlnyInitErr.throw()
     var dim = pts[0].count()
-    if (pts.count()<dim+1) Error("DlnyDim", "You must supply at least ${dim+1} points in ${dim} dimensions.").throw()
+    if (n < dim+1) _DlnyDimErr.throw("You must supply at least ${dim+1} points in ${dim} dimensions.")
+    for (i in 1...n) {
+      if (pts[i].count() != dim) _DlnyDimErr.throw("All points must have the same dimension.")
+    }
 
     self.dim = dim
     self.sscale = 1
     self.pts = pts.clone()
-    self.n = pts.count()
-    self.bbox = self.calcbbox()
-    self.eps = 1e-8 // Tolerance for distance calculations
+    self.n = n
+    self.bbox = self._bbox()
+    self.eps = _epsDlny
   }
 
-  calcbbox() { // Calculate a bounding box for the point cloud
+  init(List pts) { self._initPts(pts) }
+  init(Tuple pts) { self._initPts(List(pts)) }
+  init(pts) { _DlnyInitErr.throw() }
+
+  _bbox() { // Calculate a bounding box for the point cloud
     var min = self.pts[0].clone(), max = min.clone()
 
     for (x in self.pts) {
-      for (var i=0; i<self.dim; i+=1) {
-        if (x[i]<min[i]) min[i]=x[i]
-        if (x[i]>max[i]) max[i]=x[i]
+      for (i in 0...self.dim) {
+        if (x[i] < min[i]) min[i] = x[i]
+        if (x[i] > max[i]) max[i] = x[i]
       }
     }
 
     return [min, max]
   }
 
-  picksweep() { // Pick sweep axis as the dimension with greatest extent
-    var extent = (self.bbox[1]-self.bbox[0])
-    var lext = []
-    for (dx in extent) lext.append(dx)
-
-    return lext.order()[-1]
+  _sweepAxis() { // Pick sweep axis as the dimension with greatest extent
+    var extent = self.bbox[1]-self.bbox[0]
+    var axis = 0
+    var best = extent[0]
+    for (i in 1...self.dim) {
+      if (extent[i] > best) { best = extent[i]; axis = i }
+    }
+    return axis
   }
 
-  supersimplex() { // Create a supersimplex that encloses the point cloud
-    // We create a simplex with vertices x0, x0 + lamda*[1,0,0..], x0 + lambda*[0,1,0..]...
+  _supersimplex() { // Create a supersimplex that encloses the point cloud
+    // We create a simplex with vertices x0, x0 + lambda*[1,0,0..], x0 + lambda*[0,1,0..]...
     // Where x0 and lambda are computed from a sphere that encloses the bounding box
-    var extent = (self.bbox[1]-self.bbox[0])
     var xc = (self.bbox[0]+self.bbox[1])/2 // Center of the cloud
     var r = self.sscale*(self.bbox[1]-xc).norm() // Radius of a ball that encloses the cloud
+    if (r == 0) r = 1
     var lambda = 2*(self.dim+sqrt(self.dim))*r // Scale factor
-    for (i in 0...self.dim) xc[i]-=r // Shift by r in all coordinate directions
+    for (i in 0...self.dim) xc[i] -= 2*r // Shift in all coordinate directions
 
     var pts = [xc] // Vertices
     for (i in 0...self.dim) {
       var xi = Matrix(self.dim)
-      xi[i]=lambda // Create a vector that lies in the i'th coordinate axis
+      xi[i] = lambda // Create a vector that lies in the i'th coordinate axis
       pts.append(xc+xi) // Add the vertex to the list
     }
 
     return pts
   }
 
-  triangulate() { // Create Delaunay triangulation
-    var sweep=self.picksweep() // Pick sweep dimension
+  // Boundary faces of a simplex
+  _faces(indx) {
+    if (self.dim == 1) return [[indx[0]], [indx[1]]]
+    return indx.sets(self.dim)
+  }
 
-    var pts = self.pts
+  // Key for a face, independent of vertex order
+  _faceKey(e) {
+    if (self.dim == 1) return e[0]
+    if (self.dim == 2) {
+      var a = e[0], b = e[1]
+      return (a < b) ? (a, b) : (b, a)
+    }
+    if (self.dim == 3) {
+      var a = e[0], b = e[1], c = e[2]
+      if (a > b) { var t = a; a = b; b = t }
+      if (b > c) { var t = b; b = c; c = t }
+      if (a > b) { var t = a; a = b; b = t }
+      return (a, b, c)
+    }
+    var s = e.clone()
+    s.sort()
+    return apply(Tuple, s)
+  }
+
+  triangulate() { // Create Delaunay triangulation
+    var sweep = self._sweepAxis() // Pick sweep dimension
+
+    var pts = self.pts.clone()
     var n = self.n
     var indices = List(0...n) // Create an array of indices into the vertex array
 
     // Sort points along sweep axis
-    fn cmp (i, j) {
-      var diff = pts[i][sweep] - pts[j][sweep]
-      if (diff!=0) return diff
+    fn cmp(i, j) {
+      var diff = pts[i][sweep]-pts[j][sweep]
+      if (diff != 0) return diff
       return i-j
     }
     indices.sort(cmp)
 
     // Create supersimplex
-    var ssmplx = self.supersimplex()
+    var ssmplx = self._supersimplex()
+    for (x in ssmplx) pts.append(x) // And add to the working point cloud
 
-    for (x in ssmplx) pts.append(x) // And add to the point cloud
-
-    self.open = [Circumsphere(pts, List(n..n+self.dim))]// List of open simplices
-    self.closed = [] // List of finalized simplices
+    var open = [Circumsphere(pts, List(n..n+self.dim))] // List of open simplices
+    var closed = [] // List of finalized simplices
 
     // Incrementally add each point to the mesh
-    self.ext = Dictionary() // Exterior (n-1) simplices
+    var ext = Dictionary() // Exterior (n-1) simplices
     for (ix in indices) {
-      self.ext.clear()
+      ext.clear()
       // For each open simplex, check to see if the current point is
       // inside its circumsphere. If it is, remove the triangle and add
       // its edges to an edge list.
-      self.newopen = []
-      var dx, key, e
-      for (smplx in self.open) {
-        dx = pts[ix][sweep] - smplx.x[sweep]
+      var newopen = []
+      for (smplx in open) {
+        var dx = pts[ix][sweep]-smplx.center[sweep]
 
         // If this point is to the right of this simplex's circumcircle,
         // then this simplex shouldn't get checked again. Add it to the
         // closed list and don't retain.
-        if (dx > 0.0 && dx > smplx.r) {
-          self.closed.append(smplx)
+        if (dx > 0.0 && dx > smplx.radius) {
+          closed.append(smplx)
           continue
         }
 
         // If we're outside the circumsphere, skip this simplex.
-        if ((pts[ix] - smplx.x).norm() - smplx.r > self.eps) {
-          self.newopen.append(smplx)
+        var tol = (smplx.radius > 1) ? self.eps*smplx.radius : self.eps
+        if ((pts[ix]-smplx.center).norm() - smplx.radius > tol) {
+          newopen.append(smplx)
           continue
         }
 
-        // Add the simplex's exterior to the exterior list and don't retain.
-        // sets() generates sets of order dim from the element e.g. triangles use order 2
-        for (e in smplx.i.sets(self.dim)) {
-            key = "${e}"
-            // Check if the key already exists. If so, remove the key.
-            if (self.ext.contains(key)) {
-                self.ext.remove(key)
-            }
-            else {
-                self.ext[key] = e
-            }
+        // Add the simplex's faces to the exterior list and don't retain.
+        for (e in self._faces(smplx.indices)) {
+          var key = self._faceKey(e)
+          if (ext.contains(key)) {
+            ext.remove(key)
+          } else {
+            ext[key] = e
+          }
         }
       }
-      self.open = self.newopen
+      open = newopen
 
       // Add a new simplex for each exterior (n-1) simplex.
-      for (e in self.ext.keys()) {
-        self.extel = self.ext[e]
-        self.extel.append(ix) // Include the vertex being added*
-        self.open.append(Circumsphere(pts, self.extel))
+      for (key in ext.keys()) {
+        var face = ext[key]
+        face.append(ix) // Include the vertex being added
+        open.append(Circumsphere(pts, face))
       }
     }
 
     // Copy any remaining open triangles to the closed list
-    for (smplx in self.open) self.closed.append(smplx)
+    for (smplx in open) closed.append(smplx)
 
     // Select all simplices that don't have a vertex from the supersimplex
     self.open = []
-    var record
-    for (smplx in self.closed) {
-      record = true
-      for (ix in smplx.i) if (ix>=n) record = false
-      if (record) self.open.append(smplx.i)
+    for (smplx in closed) {
+      var record = true
+      for (ix in smplx.indices) if (ix >= n) record = false
+      if (record) self.open.append(smplx.indices)
     }
 
     return self.open

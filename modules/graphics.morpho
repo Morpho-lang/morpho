@@ -976,6 +976,7 @@ class GraphicsEntry {
  *   findEntry - finds an entry from an id 
  *   display(item) - adds a GraphicsPrimitive to the displaylist
  *   display(item, posn) - adds a GraphicsPrimitive with posn 
+ *   extend(Graphics) - append another Graphics in place; returns new ids
  *   setLights - sets the lighting
  *   addLight - adds a Light
  *   resetLights - resets 
@@ -1070,6 +1071,16 @@ class Graphics {
     self._joinInto(g, right)
     return g
   }
+
+  // Append another Graphics in place; returns the new ids
+  extend(Graphics right) {
+    var ids = []
+    for (el in right.displaylist) {
+      ids.append(self._append(el.item, position=el.position, scale=el.scale,
+                              rotate=el.rotate, color=el.color, flat=el.flat))
+    }
+    return ids
+  }
 }
 
 /* ----------------------------------------------------------------
@@ -1082,9 +1093,6 @@ class Graphics {
 class GraphicsEvent with BroadcastEvent {
   init(id) { self.id = id } // Retain the event id
 }
-
-// Sent when a new id is defined 
-class GraphicsEventDefined is GraphicsEvent {}
 
 // Coalesce same-type events across ids to reduce viewer traffic.
 fn _coalesceIds(into, prev) {
@@ -1100,6 +1108,39 @@ fn _coalesceIds(into, prev) {
   }
   into.ids = prev.ids // into must inherit accumulated state
   into._seen = prev._seen
+}
+
+// Merge morph events, keeping the earliest old item and latest new item
+fn _coalesceMorphed(into, prev) {
+  if (isnil(prev._seen)) {
+    prev._seen = Dictionary()
+    for (id in prev.ids) prev._seen[id] = true
+  }
+  for (id in into.ids) {
+    if (prev._seen.contains(id)) {
+      prev.newItems[id] = into.newItems[id]
+    } else {
+      prev._seen[id] = true
+      prev.ids.append(id)
+      prev.oldItems[id] = into.oldItems[id]
+      prev.newItems[id] = into.newItems[id]
+    }
+  }
+  into.ids = prev.ids
+  into.oldItems = prev.oldItems
+  into.newItems = prev.newItems
+  into._seen = prev._seen
+}
+
+// Sent when a new id is defined
+class GraphicsEventDefined is GraphicsEvent {
+  init(id) {
+    super.init(id)
+    self.ids = [id]
+    self._seen = nil
+  }
+  batchKey() { return GraphicsEventDefined }
+  coalesce(prev) { _coalesceIds(self, prev) }
 }
 
 // Sent when an entry is moved 
@@ -1125,10 +1166,41 @@ class GraphicsEventRecolored is GraphicsEvent {
 }
 
 // Sent when an entry is removed from the scene
-class GraphicsEventRemoved is GraphicsEvent {}
+class GraphicsEventRemoved is GraphicsEvent {
+  init(id) {
+    super.init(id)
+    self.ids = [id]
+    self._seen = nil
+  }
+  batchKey() { return GraphicsEventRemoved }
+  coalesce(prev) { _coalesceIds(self, prev) }
+}
 
 // Sent when an entry is replaced
-class GraphicsEventReplaced is GraphicsEvent {}
+class GraphicsEventReplaced is GraphicsEvent {
+  init(id) {
+    super.init(id)
+    self.ids = [id]
+    self._seen = nil
+  }
+  batchKey() { return GraphicsEventReplaced }
+  coalesce(prev) { _coalesceIds(self, prev) }
+}
+
+// Sent when an entry's item is morphed
+class GraphicsEventMorphed is GraphicsEvent {
+  init(id, oldItem, newItem) {
+    super.init(id)
+    self.ids = [id]
+    self.oldItems = Dictionary()
+    self.newItems = Dictionary()
+    self.oldItems[id] = oldItem
+    self.newItems[id] = newItem
+    self._seen = nil
+  }
+  batchKey() { return GraphicsEventMorphed }
+  coalesce(prev) { _coalesceMorphed(self, prev) }
+}
 
 // Sent when lighting changes
 class GraphicsEventLights is GraphicsEvent {
@@ -1221,11 +1293,13 @@ class Scene is Graphics with Broadcaster {
     return true
   }
 
-  // Special version of replace indicating only vertex positions have changed
+  // Morph an entry to a new GraphicsPrimitive
   morph(id, GraphicsPrimitive item) {
     var e = self.findEntry(id)
     if (isnil(e)) return false
+    var old = e.item
     e.item = item
+    self.notify(GraphicsEventMorphed(id, old, item))
     return true
   }
 
@@ -1239,5 +1313,13 @@ class Scene is Graphics with Broadcaster {
     self._copyMetaInto(g)
     self._joinInto(g, right)
     return g
+  }
+
+  // Append another Graphics in place; returns the new ids
+  extend(Graphics right) {
+    self.beginBatch()
+    var ids = super.extend(right)
+    self.endBatch()
+    return ids
   }
 }

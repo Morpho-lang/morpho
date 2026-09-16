@@ -1,7 +1,6 @@
 // Test slice 
 
 import meshslice
-import plot
 
 var m = Mesh("tetrahedron.mesh")
 var f = Field(m)

@@ -1,5 +1,4 @@
 // Test selections for fieldgradient
-import constants
 import meshtools
 
 var m = LineMesh(fn (t) [t,0,0], 0..1:0.1)

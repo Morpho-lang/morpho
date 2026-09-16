@@ -1,7 +1,6 @@
 // Gaussian curvature 
 import constants
 import implicitmesh
-import plot
 
 // Make a sphere
 var impl = ImplicitMeshBuilder(fn (x,y,z) x^2+y^2+z^2-1)

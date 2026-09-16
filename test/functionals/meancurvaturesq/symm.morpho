@@ -1,7 +1,6 @@
 // Mean Sq curvature with a translational symmetry
 import constants
 import meshtools
-import plot
 import symmetry
 
 var L = 2

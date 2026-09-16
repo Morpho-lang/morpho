@@ -1,7 +1,5 @@
 // Create a hydrogel phi0 with the wrong type of Field 
 
-import plot 
-import optimize
 import meshtools
 
 var mb = MeshBuilder() 

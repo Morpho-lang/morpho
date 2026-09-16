@@ -1,5 +1,4 @@
 // Test to check that addgrade from a volume element works
-import meshtools
 
 var m = Mesh("tetrahedron2.mesh")
 m.addgrade(2)

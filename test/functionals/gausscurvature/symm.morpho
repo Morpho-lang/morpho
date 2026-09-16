@@ -1,7 +1,6 @@
 // Gaussian curvature with symmetry
 import constants
-import implicitmesh
-import plot
+import meshtools
 import symmetry
 
 var L = 2

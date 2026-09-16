@@ -168,6 +168,8 @@ void MorphoCond_wait(MorphoCond *cond, MorphoMutex *mutex);
 int MorphoAtomic_addint(int *p, int inc);
 void MorphoAtomic_adddouble(double *p, double inc);
 void MorphoAtomic_madddouble(double *p, double alpha, double x);
+bool MorphoAtomic_loadbool(bool *p);            /* return *p */
+void MorphoAtomic_storebool(bool *p, bool val); /* *p <- val */
 
 /* -------------------------------------------------------
  * Time

@@ -1,0 +1,25 @@
+// Check that "tol" tightens or loosens the adaptive stop for integration.
+
+import meshtools
+import "counter.morpho"
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+
+print abs(AreaIntegral(fn (x) x[0]^2, method={ "tol": 1e-4 }).total(m) - 1/12) < 1e-12
+print abs(AreaIntegral(fn (x) x[0]^2, method={ "tol": 1e-8 }).total(m) - 1/12) < 1e-12
+
+var c = EvaluationCounter(fn (x, y) sin(3*x+6*y))
+AreaIntegral(c.eval, method={ "tol": 1e-3 }).total(m)
+var nloose = c.count()
+c.reset()
+AreaIntegral(c.eval, method={ "tol": 1e-8 }).total(m)
+var ntight = c.count()
+print nloose < ntight
+// expect: true
+// expect: true
+// expect: true

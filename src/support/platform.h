@@ -162,6 +162,14 @@ void MorphoCond_broadcast(MorphoCond *cond);
 void MorphoCond_wait(MorphoCond *cond, MorphoMutex *mutex);
 
 /* -------------------------------------------------------
+ * Atomics
+ * ------------------------------------------------------- */
+
+int MorphoAtomic_addint(int *p, int inc);
+void MorphoAtomic_adddouble(double *p, double inc);
+void MorphoAtomic_madddouble(double *p, double alpha, double x);
+
+/* -------------------------------------------------------
  * Time
  * ------------------------------------------------------- */
 

@@ -59,9 +59,9 @@ dkms.conf
 .vscode/settings.json
 .vscode/
 
-test/FailedTests*.txt
-examples/FailedExamples*.txt
+FailedTests*.txt
 *.png
+/benchmarks
 *.out
 manual/src/manual.lyx~
 test/vtk/data.case2.vtk
@@ -79,3 +79,4 @@ build-win/*
 /.vs
 /dist
 /vcpkg_installed
+/test/__pycache__

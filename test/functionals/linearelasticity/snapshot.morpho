@@ -1,0 +1,32 @@
+var m = Mesh("stretchsquare.mesh")
+var mref = Mesh("square.mesh")
+var e = LinearElasticity(mref)
+e.poissonratio = 0.2
+
+var t0 = e.total(m)
+print abs(t0 - 1.25) < 1e-10
+// expect: true
+
+// Assigning .reference does not feed the kernel
+e.reference = "invalid"
+print abs(e.total(m) - t0) < 1e-10
+// expect: true
+
+// In-place vertex motion on the reference is invisible until update()
+e.reference = mref
+for (i in 0...mref.count()) {
+    var x = mref.vertexposition(i)
+    mref.setvertexposition(i, Matrix([2*x[0], x[1], x[2]]))
+}
+print abs(e.total(m) - t0) < 1e-10
+// expect: true
+
+e.update()
+print abs(e.total(m)) < 1e-8
+// expect: true
+
+// update(newref) snapshots a different mesh
+var mref2 = Mesh("square.mesh")
+e.update(mref2)
+print abs(e.total(m) - t0) < 1e-10
+// expect: true

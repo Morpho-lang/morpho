@@ -1,0 +1,195 @@
+import meshtools
+
+fn sortprint(s, g) {
+  var ids = s.idlistforgrade(g)
+  ids.sort()
+  print ids
+}
+
+// Two-triangle square stored as faces only
+var mb = MeshBuilder()
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([1,1,0])
+mb.addface([0,1,2])
+mb.addface([1,2,3])
+var m = mb.build()
+
+print m.count(1)
+// expect: 0
+
+var empty = SelectionBuilder(m).build()
+print empty.count(0)
+// expect: 0
+print empty.count(2)
+// expect: 0
+
+var all = SelectionBuilder(m).selectAll().build()
+print all.count(0)
+// expect: 4
+print all.count(1)
+// expect: 5
+print all.count(2)
+// expect: 2
+print m.count(1)
+// expect: 5
+
+var edges = SelectionBuilder(m).selectAll(1).build()
+print edges.count(0)
+// expect: 0
+print edges.count(1)
+// expect: 5
+print edges.count(2)
+// expect: 0
+
+var bnd = SelectionBuilder(m).boundary().build()
+sortprint(bnd, 0)
+// expect: [ 0, 1, 2, 3 ]
+sortprint(bnd, 1)
+// expect: [ 0, 1, 3, 4 ]
+print bnd.count(2)
+// expect: 0
+
+var inn = SelectionBuilder(m).interior().build()
+print inn.count(0)
+// expect: 0
+print inn.count(1)
+// expect: 1
+print inn.count(2)
+// expect: 2
+
+var f0 = Selection(m)
+f0[2, 0] = true
+var cl = SelectionBuilder(f0).closure().build()
+sortprint(cl, 0)
+// expect: [ 0, 1, 2 ]
+print cl.count(1)
+// expect: 3
+print cl.count(2)
+// expect: 1
+
+var fb = SelectionBuilder(f0).boundary().build()
+sortprint(fb, 0)
+// expect: [ 0, 1, 2 ]
+print fb.count(1)
+// expect: 3
+print fb.count(2)
+// expect: 0
+
+var fi = SelectionBuilder(cl).interior().build()
+print fi.count(0)
+// expect: 0
+print fi.count(1)
+// expect: 0
+print fi.count(2)
+// expect: 1
+
+var v0 = Selection(m)
+v0[0, 0] = true
+var st = SelectionBuilder(v0).star().build()
+sortprint(st, 0)
+// expect: [ 0 ]
+sortprint(st, 1)
+// expect: [ 0, 1 ]
+sortprint(st, 2)
+// expect: [ 0 ]
+
+var cst = SelectionBuilder(v0).star().closure().build()
+sortprint(cst, 0)
+// expect: [ 0, 1, 2 ]
+print cst.count(1)
+// expect: 3
+
+var lk = SelectionBuilder(v0).link().build()
+sortprint(lk, 0)
+// expect: [ 1, 2 ]
+print lk.count(1)
+// expect: 1
+print lk.count(2)
+// expect: 0
+
+print v0.count(1)
+// expect: 0
+print v0.count(2)
+// expect: 0
+
+// Link of the shared diagonal (vertices 1--2): the two opposite vertices
+var econn = m.connectivitymatrix(0, 1)
+var diagonal
+for (id in 0...m.count(1)) {
+  var v = econn.rowindices(id)
+  v.sort()
+  if (v[0]==1 && v[1]==2) diagonal = id
+}
+var ed = Selection(m)
+ed[1, diagonal] = true
+var elk = SelectionBuilder(ed).link().build()
+sortprint(elk, 0)
+// expect: [ 0, 3 ]
+print elk.count(1)
+// expect: 0
+print elk.count(2)
+// expect: 0
+
+// Tetrahedron stored as a volume only
+var tb = MeshBuilder()
+tb.addvertex([0,0,0])
+tb.addvertex([1,0,0])
+tb.addvertex([0,1,0])
+tb.addvertex([0,0,1])
+tb.addvolume([0,1,2,3])
+var tet = tb.build()
+
+print tet.count(1)
+// expect: 0
+print tet.count(2)
+// expect: 0
+
+var tbnd = SelectionBuilder(tet).boundary().build()
+print tbnd.count(0)
+// expect: 4
+print tbnd.count(1)
+// expect: 6
+print tbnd.count(2)
+// expect: 4
+print tbnd.count(3)
+// expect: 0
+
+var tint = SelectionBuilder(tet).interior().build()
+print tint.count(0)
+// expect: 0
+print tint.count(1)
+// expect: 0
+print tint.count(2)
+// expect: 0
+print tint.count(3)
+// expect: 1
+
+var tv = Selection(tet)
+tv[0, 0] = true
+var tlk = SelectionBuilder(tv).link().build()
+sortprint(tlk, 0)
+// expect: [ 1, 2, 3 ]
+print tlk.count(1)
+// expect: 3
+print tlk.count(2)
+// expect: 1
+print tlk.count(3)
+// expect: 0
+print tet.count(1)
+// expect: 6
+print tet.count(2)
+// expect: 4
+
+var tvol = Selection(tet)
+tvol[3, 0] = true
+var tcl = SelectionBuilder(tvol).closure().build()
+print tcl.count(0)
+// expect: 4
+print tcl.count(1)
+// expect: 6
+print tcl.count(2)
+// expect: 4
+print tcl.count(3)
+// expect: 1

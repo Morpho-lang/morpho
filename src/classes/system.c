@@ -224,6 +224,12 @@ value System_help__string(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Force a garbage collection */
+value System_collectGarbage(vm *v, int nargs, value *args) {
+    morpho_collectgarbage(v);
+    return MORPHO_NIL;
+}
+
 MORPHO_BEGINCLASS(System)
 MORPHO_METHOD_SIGNATURE(SYSTEM_PLATFORM_METHOD, "String ()", System_platform, MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(SYSTEM_VERSION_METHOD, "String ()", System_version, MORPHO_FN_ALLOCATES),
@@ -240,7 +246,8 @@ MORPHO_METHOD_SIGNATURE(SYSTEM_SETWORKINGFOLDER_METHOD, "Nil (String)", System_s
 MORPHO_METHOD_SIGNATURE(SYSTEM_WORKINGFOLDER_METHOD, "String ()", System_workingfolder, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(SYSTEM_HOMEFOLDER_METHOD, "String ()", System_homefolder, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(SYSTEM_SUBPROCESS_METHOD, "Dictionary (String)",System_subprocess, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
-MORPHO_METHOD_SIGNATURE(SYSTEM_HELP_METHOD, "String (String)", System_help__string, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES)
+MORPHO_METHOD_SIGNATURE(SYSTEM_HELP_METHOD, "String (String)", System_help__string, MORPHO_FN_IO|MORPHO_FN_THROWS|MORPHO_FN_ALLOCATES),
+MORPHO_METHOD_SIGNATURE(SYSTEM_COLLECTGARBAGE_METHOD, "Nil ()", System_collectGarbage, MORPHO_FN_IO)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

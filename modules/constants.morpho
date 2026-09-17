@@ -1,9 +1,35 @@
-/*
+/* ***************************************************************
  * Constants
+ * ===========
  * Various mathematical and Physical constants
- */
+ **************************************************************** */
+
+/* Mathematical */
 
 var Pi = 3.14159265358979323846
 var E = exp(1)
+var GoldenRatio = (1+sqrt(5))/2
+var Degree = Pi/180               // multiply degrees to get radians: 90*Degree
 
-var Inf = 1/0 
+/* IEEE specials */
+
+var Inf = 1/0
+var NaN = 0/0
+
+/* Physical (SI). Exact values are SI defining constants; the rest are CODATA 2022. */
+
+var SpeedOfLight = 299792458.0                  // m s^-1, exact
+var Planck = 6.62607015e-34                     // J s, exact
+var Hbar = Planck/(2*Pi)                        // J s, exact
+var ElementaryCharge = 1.602176634e-19          // C, exact
+var ElectronVolt = ElementaryCharge             // J, exact
+var Boltzmann = 1.380649e-23                    // J K^-1, exact
+var Avogadro = 6.02214076e23                    // mol^-1, exact
+var GasConstant = Avogadro*Boltzmann            // J mol^-1 K^-1, exact
+var StandardGravity = 9.80665                   // m s^-2, conventional
+var Epsilon0 = 8.8541878188e-12                 // F m^-1, CODATA 2022
+var Mu0 = 1/(Epsilon0*SpeedOfLight^2)           // N A^-2
+var GravitationalConstant = 6.67430e-11         // m^3 kg^-1 s^-2, CODATA 2022
+var ElectronMass = 9.1093837139e-31             // kg, CODATA 2022
+var ProtonMass = 1.67262192595e-27              // kg, CODATA 2022
+var AtomicMass = 1.66053906892e-27              // kg (dalton), CODATA 2022

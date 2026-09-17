@@ -18,7 +18,7 @@ fn integrand(x, q) {
     return 0
 }
 
-print LineIntegral(integrand, f, method={}).total(m)
+print LineIntegral(integrand, f).total(m)
 // expect: 0
 
 print out

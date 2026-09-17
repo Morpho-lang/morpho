@@ -41,7 +41,7 @@ static value _getelfn(vm *v, double *el) {
 
 static linalgError_t _setelfn(vm *v, value in, double *el) {
     if (MORPHO_ISCOMPLEX(in)) {
-        *((MorphoComplex *) el) = MORPHO_GETCOMPLEX(in)->Z;
+        *((MorphoComplex *) el) = MORPHO_GETDOUBLECOMPLEX(in);
     } else if (morpho_valuetofloat(in, el)) {
         el[1] = 0.0; // Set imaginary part to zero
     } else return LINALGERR_NON_NUMERICAL;
@@ -439,7 +439,7 @@ value ComplexMatrix_mul__complex(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
     
     objectmatrix *new = matrix_clone(a);
-    if (new) complexmatrix_scale(new, MORPHO_GETCOMPLEX(MORPHO_GETARG(args, 0))->Z);
+    if (new) complexmatrix_scale(new, MORPHO_GETDOUBLECOMPLEX(MORPHO_GETARG(args, 0)));
     return morpho_wrapandbind(v, (object *) new);
 }
 

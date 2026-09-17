@@ -1,0 +1,18 @@
+import meshtools
+import "../numericalderivatives.morpho"
+
+var m = Mesh("triangle.mesh")
+var nn = Field(m, Matrix([1, 1, 1/2]))
+var lnn = NormSq(nn)
+
+var fg = lnn.fieldgradient(nn)
+var nfg = numericalfieldgradient(lnn, m, nn)
+
+print (fg-nfg).linearize().norm() < 1e-6
+// expect: true
+
+// Energy is independent of a different Field: gradient is zero.
+var other = Field(m, Matrix([0, 1, 0]))
+var z = lnn.fieldgradient(other)
+print z.linearize().norm() < 1e-15
+// expect: true

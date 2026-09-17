@@ -1,0 +1,25 @@
+// Typed dispatch for ScalarPotential
+var m = Mesh("tetrahedron.mesh")
+
+fn phi(x,y,z) {
+  return x^2+y^2+z^2
+}
+
+fn gradphi(x,y,z) {
+  return Matrix([2*x,2*y,2*z])
+}
+
+var a = ScalarPotential(phi, gradphi)
+
+print abs(a.integrand(m, 0) - 0.375) < 1e-5
+// expect: true
+
+print abs(a.total(m) - 1.5) < 1e-5
+// expect: true
+
+var s = Selection(m, fn (x,y,z) z>0)
+print a.total(m, s) < a.total(m)
+// expect: true
+
+print a.integrand()
+// expect error 'MltplDsptchFld'

@@ -1,0 +1,46 @@
+// Indexed assignment to a captured local (upvalue)
+
+var setlist, getlist
+{
+  var a = [0, 0]
+  fn set() {
+    a[0] = 1
+    a[1] += 2
+  }
+  fn get() { return a }
+  setlist = set
+  getlist = get
+}
+setlist()
+print getlist()
+// expect: [ 1, 2 ]
+
+var setmat, getmat
+{
+  var A = Matrix(2, 2)
+  fn set() {
+    A[0, 0] = 1
+    A[0, 1] = 2
+    A[1, 0] = 3
+    A[1, 1] = 4
+  }
+  fn get() { return A }
+  setmat = set
+  getmat = get
+}
+setmat()
+print getmat()
+// expect: [ 1 2 ]
+// expect: [ 3 4 ]
+
+fn foreach(visit) {
+  visit(0)
+  visit(1)
+}
+fn map() {
+  var out = [0, 0]
+  foreach(fn (id) { out[id] = id+1 })
+  return out
+}
+print map()
+// expect: [ 1, 2 ]

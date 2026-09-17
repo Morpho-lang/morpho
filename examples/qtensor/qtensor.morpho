@@ -133,15 +133,13 @@ if (refine_adaptively){
     // Select elements that have a large contribution to the elastic energy
     var en = elastic.integrand(q_tensor)
     var mean = en.sum()/en.count()
-    var srefine = Selection(m) // Start with an empty selection
-    for (id in 0...en.count()) if (en[0,id]>1.5*mean) srefine[2,id]=true // Identify high (compared to the mean) energy elements
+    var srefine = Selection(m, fn (q) q>1.5*mean, en)
   
     // Visualize the selected region for refimenemt 
     
     if (visualize_refinement){
       var gs = plotselection(m, srefine, grade=2)
-      var nn = Field(m, Matrix([1,0,0])) // Initialize to some vector
-      for (i in 0...m.count()) nn[i]=qtodirector(q_tensor[i])
+      var nn = q_tensor.op(qtodirector)
       var gnn=visualize(m, nn, 0.05)
       Show(gs+gnn)
     }
@@ -175,11 +173,8 @@ if (refine_adaptively){
   
 // Convert the q-tensor to the director and order
 
-var nn = Field(m, Matrix([1,0,0])) // Initialize to some vector
-for (i in 0...m.count()) nn[i]=qtodirector(q_tensor[i])
-
-var S = Field(m, 0) // Initialize to a scalar
-for (i in 0...m.count()) S[i]=qtoorder(q_tensor[i])
+var nn = q_tensor.op(qtodirector)
+var S = q_tensor.op(qtoorder)
 
 // Plot the scalar order field
 var splot = plotfield(S, style="interpolate", colormap = ViridisMap(), scalebar=ScaleBar(posn=[1.2,0,0]))

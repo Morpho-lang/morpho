@@ -1,0 +1,28 @@
+// Complex and ComplexMatrix quantity interpolation
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+
+var z = Field(m, fn (x, y) x + y*im)
+
+print abs(AreaIntegral(fn (x, q) q.real(), z).total(m) - 1/6) < 1e-8
+// expect: true
+
+print abs(AreaIntegral(fn (x, q) q.imag(), z).total(m) - 1/6) < 1e-8
+// expect: true
+
+print abs(AreaIntegral(fn (x, q) q.abs()^2, z).total(m) - 1/6) < 1e-8
+// expect: true
+
+var f = Field(m, ComplexMatrix([0, 0]))
+f[0,1] = ComplexMatrix([2, 0])
+f[0,2] = ComplexMatrix([0, 2im])
+
+print abs(AreaIntegral(fn (x, q) q[0].real() + q[1].imag(), f).total(m) - 2/3) < 1e-8
+// expect: true

@@ -1,0 +1,18 @@
+// Constructor (Field) / (Field, Int); grade from the Field's mesh or the Int
+var m = Mesh("triangle.mesh")
+var phi = Field(m)
+phi[1] = 1
+
+var g = GradSq(phi)
+print g.grade
+// expect: 2
+
+print abs(g.integrand(m, 0) - 0.57735) < 1e-5
+// expect: true
+
+var g1 = GradSq(phi, 2)
+print g1.grade
+// expect: 2
+
+print GradSq()
+// expect error 'MltplDsptchFld'

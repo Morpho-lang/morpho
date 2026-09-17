@@ -16,8 +16,8 @@ nn[3]=Matrix([0,1,0])
 
 var lnn = Nematic(nn)
 
-print lnn.integrand(m)
-// expect: [ 0.288706 0.288706 ]
+print (lnn.integrand(m) - Field(m, 0.288706, grade=2)).norm() < 1e-5
+// expect: true
 
 print lnn.total(m)
 // expect: 0.577411

@@ -1,0 +1,6 @@
+import meshtools
+
+var m = LineMesh(fn (u) [u, 0, 0], 0..1:0.5)
+
+print Jump(fn (x) 1, method={ "strategy": "nope" }).total(m)
+// expect error 'FnctlArgs'

@@ -13,3 +13,7 @@ print g.inner(g)
 var h = f.op(fn (x,y) x.inner(y), f)
 print h.inner(h)
 // expect: 96
+
+var k = f.op(fn (x,y,z) x.inner(y), f, f)
+print k.inner(k)
+// expect: 96

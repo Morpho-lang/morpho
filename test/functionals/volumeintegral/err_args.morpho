@@ -1,0 +1,2 @@
+print VolumeIntegral()
+// expect error 'IntgrlArgs'

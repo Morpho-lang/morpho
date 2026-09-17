@@ -1,0 +1,13 @@
+// Constructor (Field); maps vertices
+var m = Mesh("triangle.mesh")
+var nn = Field(m, Matrix([1, 1, 1/2]))
+
+var nsq = NormSq(nn)
+print nsq.grade
+// expect: 0
+
+print abs(nsq.integrand(m, 0) - 2.25) < 1e-10
+// expect: true
+
+print nsq.integrand()
+// expect error 'MltplDsptchFld'

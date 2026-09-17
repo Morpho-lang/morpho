@@ -85,6 +85,13 @@ varray_instruction *program_getbytecode(program *p) {
     return &p->code;
 }
 
+/** Retrieves instruction i; returns false if out of bounds or out is NULL. */
+bool program_getinstruction(program *p, instructionindx i, instruction *out) {
+    if (!p || !out || i<0 || i>=p->code.count) return false;
+    *out=p->code.data[i];
+    return true;
+}
+
 /** Retrieves the global function */
 objectfunction *program_getglobalfn(program *p) {
     return p->global;

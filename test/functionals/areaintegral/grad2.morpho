@@ -26,4 +26,4 @@ print AreaIntegral(fn (x, g, h) grad(g2).inner(grad(h)), g2, h).total(m)
 // expect: 8.001
 
 print AreaIntegral(fn (x, fl, gl) grad(fl).inner(grad(g)), f, g).total(m)
-// expect error 'IntgrlAmbgsFld'
+// expect error 'IntgrlFld'

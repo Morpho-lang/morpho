@@ -1,6 +1,6 @@
 class Foo {
   Foo() {
-    self = "value" // Error 'InvldAssgn'
+    self = "value" // expect error 'InvldAssgn'
   }
 }
 

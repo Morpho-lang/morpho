@@ -9,4 +9,4 @@ var nn = Field(m, fn (x,y,z) Matrix([1,0,0]))
 var lc = LineIntegral(fn (x, n) (n.inner(normal()))^2, nn)
 
 print lc.integrand(m)
-// expect error 'NormlGrade'
+// expect error 'IntgrlSpclFn'

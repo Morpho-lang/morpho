@@ -1,0 +1,67 @@
+// Shape gradient for f(q)-only AreaIntegral vs finite-difference of .total
+
+import meshtools
+import "../numericalderivatives.morpho"
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+m.addgrade(1)
+
+var q = Field(m, fn (x,y) Matrix([x, y]))
+
+fn landau(x, qv) {
+    var qt2 = qv.inner(qv)
+    return qt2 + qt2*qt2
+}
+
+var bulk = AreaIntegral(landau, q)
+print (bulk.gradient(m) - numericalgradient(bulk, m)).norm() < 1e-5
+// expect: true
+
+var bulko = AreaIntegral(landau, q, optimize=false)
+print (bulko.gradient(m) - numericalgradient(bulko, m)).norm() < 1e-5
+// expect: true
+
+fn usesx(x, qv) {
+    return x[0]*qv.inner(qv)
+}
+
+var sx = AreaIntegral(usesx, q)
+var sxo = AreaIntegral(usesx, q, optimize=false)
+print (sx.gradient(m) - sxo.gradient(m)).norm() < 1e-5
+// expect: true
+print (sx.gradient(m) - numericalgradient(sx, m)).norm() < 1e-5
+// expect: true
+
+fn usesgrad(x, qv) {
+    var g = grad(qv)
+    return g[0].inner(g[0]) + g[1].inner(g[1])
+}
+
+var sg = AreaIntegral(usesgrad, q)
+print (sg.gradient(m) - numericalgradient(sg, m)).norm() < 1e-4
+// expect: true
+
+var mb3 = MeshBuilder()
+mb3.addvertex([0,0,0])
+mb3.addvertex([1,0,0])
+mb3.addvertex([0,1,0])
+mb3.addface([0,1,2])
+var m3 = mb3.build()
+m3.addgrade(1)
+var q3 = Field(m3, fn (x,y,z) Matrix([0,0,1]))
+
+fn usesn(x, qv) {
+    return qv.inner(normal())
+}
+
+var sn = AreaIntegral(usesn, q3)
+var sno = AreaIntegral(usesn, q3, optimize=false)
+print (sn.gradient(m3) - sno.gradient(m3)).norm() < 1e-5
+// expect: true
+print (sn.gradient(m3) - numericalgradient(sn, m3)).norm() < 1e-5
+// expect: true

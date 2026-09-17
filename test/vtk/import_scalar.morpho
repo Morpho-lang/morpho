@@ -10,6 +10,6 @@ print m // expect: <Mesh: 2 vertices>
 
 var f = vtkI.field("f")
 
-print f // expect: <Field>
+print f.linearize()
 // expect: [ -1 ]
 // expect: [ 1 ]

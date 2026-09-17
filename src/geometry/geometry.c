@@ -4,6 +4,9 @@
  *  @brief Geometry wrapper
  */
 
+#include "build.h"
+#ifdef MORPHO_INCLUDE_GEOMETRY
+
 #include "geometry.h"
 
 void geometry_initialize(void) {
@@ -14,3 +17,5 @@ void geometry_initialize(void) {
     fespace_initialize();
     selection_initialize();
 }
+
+#endif

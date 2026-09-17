@@ -25,7 +25,7 @@ fn integrand(x, q) {
     return 0
 }
 
-print VolumeIntegral(integrand, f, method={}).total(m)
+print VolumeIntegral(integrand, f).total(m)
 // expect: 0
 
 print out

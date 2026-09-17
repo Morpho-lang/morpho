@@ -19,11 +19,13 @@ fn gradphi(x,y,z) {
 
 var lp = ScalarPotential(phi, gradphi)
 
-print lp.integrand(m)
-// expect: [ 0 1 1 2 ]
+var all = lp.integrand(m)
+print abs(all[0])<1e-12 && abs(all[1]-1)<1e-12 && abs(all[2]-1)<1e-12 && abs(all[3]-2)<1e-12
+// expect: true
 
-print lp.integrand(m, s)
-// expect: [ 0 0 1 2 ]
+var sel = lp.integrand(m, s)
+print abs(sel[0])<1e-12 && abs(sel[1])<1e-12 && abs(sel[2]-1)<1e-12 && abs(sel[3]-2)<1e-12
+// expect: true
 
 print lp.total(m)
 // expect: 4

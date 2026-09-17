@@ -1,0 +1,6 @@
+var m = Mesh("hex.mesh")
+var e = EquiElement()
+e.grade = nil
+
+print e.total(m)
+// expect error 'FnctlArgs'

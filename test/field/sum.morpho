@@ -1,0 +1,22 @@
+// Sum of a scalar Field is a Float; sum of a matrix Field is a Matrix
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var f = Field(m)
+for (i in 0...4) f[i]=i
+print f.sum()
+// expect: 6
+
+var g = Field(m, 0.5, grade=2)
+print abs(g.sum() - 1) < 1e-12
+// expect: true
+
+print abs(Area().integrand(m).sum() - Area().total(m)) < 1e-12
+// expect: true
+
+var h = Field(m, Matrix([[1, 0], [0, 2]]))
+print h.sum()
+// expect: [ 4 0 ]
+// expect: [ 0 8 ]

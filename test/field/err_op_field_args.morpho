@@ -1,0 +1,4 @@
+var m = Mesh("square.mesh")
+var f = Field(m)
+f.op(fn (x) x, "not a field")
+// expect error 'FldOp'

@@ -1,0 +1,40 @@
+// weightByReference: f(q) shape gradient is zero; f(x) is not.
+
+import meshtools
+import "../numericalderivatives.morpho"
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var mref = mb.build()
+mref.addgrade(1)
+
+var m = mref.clone()
+m.setvertexmatrix(2*m.vertexmatrix())
+
+var q = Field(m, fn (x,y) Matrix([0.1, 0.2]))
+
+fn landau(x, qv) {
+    var qt2 = qv.inner(qv)
+    return qt2 + qt2*qt2
+}
+
+var bulk = AreaIntegral(landau, q, reference=mref, weightByReference=true)
+print bulk.gradient(m).norm() < 1e-12
+// expect: true
+
+fn usesx(x, qv) {
+    return x[0]*qv.inner(qv)
+}
+
+var sx = AreaIntegral(usesx, q, reference=mref, weightByReference=true)
+print sx.gradient(m).norm() > 1e-8
+// expect: true
+print (sx.gradient(m) - numericalgradient(sx, m)).norm() < 1e-5
+// expect: true
+
+var sxo = AreaIntegral(usesx, q, reference=mref, weightByReference=true, optimize=false)
+print (sx.gradient(m) - sxo.gradient(m)).norm() < 1e-5
+// expect: true

@@ -1,0 +1,8 @@
+// Check method dictionary options "errornorm" is "max" or "sum"
+
+import meshtools
+
+var m1 = LineMesh(fn (t) [t], 0..1:0.5)
+
+var a = LineIntegral(fn (x) x[0], method={ "errornorm": "l2" }).total(m1)
+// expect error 'IntgrtrMthdTyp'

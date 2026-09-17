@@ -208,17 +208,15 @@ void vm_bindrecursive(vm *v, value obj) {
     vmstatus old = v->status; // Preserve status
     v->status = VM_BIND; // Enter bind mode
     
-    object *oldobjects = v->objects; // Remember the previous head of the managed list.
-    object *boundary = oldobjects; // Stop at the previous head of the managed list.
+    object *boundary = v->objects; // Stop at the previous head of the managed list.
     
     vm_bindobjectwithoutcollect(v, obj); // Bind first object
 
     do {
         object *head = v->objects;
 
-        // Loop over newly added objects, calling their markfn which causes children to be bound.
+        // Loop over newly added objects, calling their markfn which causes unmanaged children to be bound.
         for (object *current = head; current != boundary; current = current->next) {
-            current->status = OBJECT_ISMARKED; // Ensure newly added objects are retained at least across this gc run.
             objecttypedefn *defn = object_getdefn(current);
             if (defn->markfn) defn->markfn(current, v);
         }
@@ -228,7 +226,14 @@ void vm_bindrecursive(vm *v, value obj) {
 
     v->status=old; // Restore status
 
-    vm_checkgc(v);
+#ifndef MORPHO_DEBUG_STRESSGARBAGECOLLECTOR
+    if (v->bound>v->nextgc)
+#endif
+    {   // Retain root object if we're about to collect
+        int handle = morpho_retainobjects(v, 1, &obj);
+        vm_collectgarbage(v);
+        morpho_releaseobjects(v, handle);
+    }
 }
 
 /** @brief Binds an object to a Virtual Machine.
@@ -313,6 +318,26 @@ void morpho_bindrecursive(vm *v, value obj) {
     vm_bindrecursive(v, obj);
 }
 
+/** @brief Binds an object as a child of a parent object.
+ *  @details Ensures that the GC can correctly see the parent object. 
+ *           GC does not attempt to collect child objects. 
+ *  @param obj     object to bind as a child (must be unmanaged)
+ *  @param parent  parent object whose lifetime owns the child
+ *  @returns true on success, false if already bound or arguments are invalid */
+bool morpho_bindtoparent(object *obj, object *parent) {
+    if (!obj || !parent || obj==parent) return false;
+    if (obj->status!=OBJECT_ISUNMANAGED || obj->next!=NULL) return false;
+    
+    obj->status=OBJECT_ISCHILD;
+    obj->next=parent;
+    return true;
+}
+
+/** @brief Tests whether an object is bound as a child of a parent object. */
+bool morpho_ischildobject(object *obj) {
+    return obj && obj->status==OBJECT_ISCHILD;
+}
+
 /** @brief   Convenience function to wrap a single object into a value and bind to the VM
  *  @param   v VM to use
  *  @param   out Object to wrap
@@ -345,7 +370,7 @@ value morpho_wrapandbindrecursive(vm *v, object *obj) {
  *  @param obj  the object to check
  *  @returns true if it is managed, false otherwise */
 bool morpho_ismanagedobject(object *obj) {
-    return MORPHO_ISGARBAGECOLLECTED(MORPHO_OBJECT(obj));
+    return obj && MORPHO_ISGARBAGECOLLECTED(MORPHO_OBJECT(obj));
 }
 
 /* **********************************************************************
@@ -901,18 +926,24 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
 #define OPERROR(op){vm_throwOpError(v,pc-v->instructions,VM_INVLDOP,op,left,right); goto vm_error; }
 #define ERRORCHK() if (v->err.cat!=ERROR_NONE) goto vm_error;
     
-/** Macro to redirect an opcode to a method call on an object */
+/** Macro to redirect an opcode to a method call on an object.
+ * A missing left-hand overload (MltplDsptchFld) is not a hard error: it means
+ * the method does not apply, so we try the right-hand selector. */
 #define OPREDIRECT(leftselector, rightselector, regout) \
     if (MORPHO_ISOBJECT(left)) { \
         if (vm_invoke(v, left, leftselector, 1, &right, &reg[regout])) { \
             ERRORCHK(); \
             if (!MORPHO_ISNIL(reg[a])) DISPATCH(); \
+        } else if (morpho_matcherror(&v->err, VM_MLTPLDSPTCHFLD)) { \
+            error_clear(&v->err); \
         } \
     } \
     if (MORPHO_ISOBJECT(right)) { \
         if (vm_invoke(v, right, rightselector, 1, &left, &reg[regout])) { \
             ERRORCHK(); \
             DISPATCH(); \
+        } else if (morpho_matcherror(&v->err, VM_MLTPLDSPTCHFLD)) { \
+            error_clear(&v->err); \
         } \
     }
     
@@ -2066,8 +2097,8 @@ DEFINE_VARRAY(vm, struct svm *)
 bool vm_subkernels(vm *v, int nkernels, vm **subkernels) {
     int nk=0;
     
-    /* Check for unused subkernels */
-    for (int i=0; i<v->subkernels.count; i++) {
+    /* Reuse up to nkernels unused subkernels. */
+    for (int i=0; i<v->subkernels.count && nk<nkernels; i++) {
         vm *kernel=v->subkernels.data[i];
         if (!kernel->parent) { // Check whether subkernel is unused
             subkernels[nk]=kernel;

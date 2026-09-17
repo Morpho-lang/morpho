@@ -30,6 +30,18 @@ write(f + g)
 write(f - g)
 // expect: [0, 0.5, 1, 1.5]
 
+write(f + 1)
+// expect: [1, 2, 3, 4]
+
+write(1 + f)
+// expect: [1, 2, 3, 4]
+
+write(f - 0.5)
+// expect: [-0.5, 0.5, 1.5, 2.5]
+
+write(1 - f)
+// expect: [1, 0, -1, -2]
+
 // Clone
 var h = f.clone()
 
@@ -57,8 +69,7 @@ import meshtools
 var sm = LineMesh(fn (t) [t,0,0], 0..1:0.2)
 
 var sf = Field(sm, 2.0)
-print sf
-// expect: <Field>
+print sf.linearize()
 // expect: [ 2 ]
 // expect: [ 2 ]
 // expect: [ 2 ]
@@ -66,8 +77,7 @@ print sf
 // expect: [ 2 ]
 // expect: [ 2 ]
 sf = Field(sm, 2)
-print sf
-// expect: <Field>
+print sf.linearize()
 // expect: [ 2 ]
 // expect: [ 2 ]
 // expect: [ 2 ]

@@ -1,0 +1,8 @@
+// Check method dictionary option "tol" is a number
+
+import meshtools
+
+var m1 = LineMesh(fn (t) [t], 0..1:0.5)
+
+var a = LineIntegral(fn (x) x[0], method={ "tol": "tight" }).total(m1)
+// expect error 'IntgrtrMthdTyp'

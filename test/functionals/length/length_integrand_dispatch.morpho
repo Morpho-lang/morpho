@@ -1,0 +1,20 @@
+// Typed dispatch for Length map methods
+import meshtools
+
+var m = LineMesh(fn(t) [t^2, 0, 0], 0..10)
+var l = Length()
+
+print abs(l.integrand(m, 5) - 11) < 1e-10
+// expect: true
+
+print abs(l.integrand(m, 1, 5) - 11) < 1e-10
+// expect: true
+
+var s = Selection(m, fn (x,y,z) x<=25)
+s.addgrade(1)
+
+print l.total(m, s) < l.total(m)
+// expect: true
+
+print l.integrand()
+// expect error 'MltplDsptchFld'

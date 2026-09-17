@@ -1,0 +1,16 @@
+// Prototype from a callable is a temporary object, not a stack argument.
+// Binding the Field must not let GC sweep it.
+
+var m = Mesh("square.mesh")
+var f = Field(m, fn (x, y, z) Matrix([1, 2]))
+
+print f.prototype()
+// expect: [ 1 ]
+// expect: [ 2 ]
+
+print f[0]
+// expect: [ 1 ]
+// expect: [ 2 ]
+
+print abs(AreaIntegral(fn (x, q) q.inner(q), f).total(m) - 5) < 1e-8
+// expect: true

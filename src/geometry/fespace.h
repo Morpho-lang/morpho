@@ -1,16 +1,20 @@
 /** @file fespace.h
  *  @author T J Atherton
  *
- *  @brief Finite element fespaces
+ *  @brief Finite element fespaces and veneer class
  */
 
 #ifndef fespace_h
 #define fespace_h
 
-#include "geometry.h"
+#include "build.h"
+#ifdef MORPHO_INCLUDE_GEOMETRY
+
+#include "field.h"
+#include "elements.h"
 
 /* -------------------------------------------------------
- * Discretization type definitions
+ * fespace type definitions
  * ------------------------------------------------------- */
 
 /** @brief Interpolation functions are called to assign weights to the nodes given barycentric coordinates */
@@ -35,7 +39,14 @@ typedef void (*hessianfn) (double *, double *);
 /** @brief Element definitions comprise a sequence of instructions to map field degrees of freedom to local nodes */
 typedef int eldefninstruction;
 
-/** @brief Discretization definitions */
+/** @brief Element definition opcodes. LINE/AREA/VOLUME values match the corresponding mesh grade. */
+#define ELEMENT_LINE_OPCODE     1
+#define ELEMENT_AREA_OPCODE     2
+#define ELEMENT_VOLUME_OPCODE   3
+#define ELEMENT_QUANTITY_OPCODE 255
+#define ELEMENT_ENDDEFN         -1
+
+/** @brief fespace definition structure */
 typedef struct sfespace {
     char *name; /**  Name of the fespace */
     grade grade; /** Grade of element this fespace is defined on */
@@ -52,7 +63,7 @@ typedef struct sfespace {
 } fespace;
 
 /* -------------------------------------------------------
- * Discretization object type
+ * fespace object type
  * ------------------------------------------------------- */
 
 extern objecttype objectfespacetype;
@@ -69,8 +80,14 @@ typedef struct {
 /** Gets the object as a fespace */
 #define MORPHO_GETFESPACE(val)   ((objectfespace *) MORPHO_GETOBJECT(val))
 
+/** Name of a fespace definition, or NULL */
+#define FESPACE_NAME(disc) ((disc) ? (disc)->name : NULL)
+
+/** Name of a FiniteElementSpace value, or NULL if val is not a space */
+#define MORPHO_GETFESPACENAME(val) (MORPHO_ISFESPACE(val) ? FESPACE_NAME(MORPHO_GETFESPACE(val)->fespace) : NULL)
+
 /* -------------------------------------------------------
- * FunctionSpace veneer class
+ * FiniteElementSpace veneer class
  * ------------------------------------------------------- */
 
 #define FINITEELEMENTSPACE_CLASSNAME "FiniteElementSpace"
@@ -81,7 +98,7 @@ typedef struct {
 #define FINITEELEMENTSPACE_NODECOORDS_METHOD "nodeCoords"
 
 /* -------------------------------------------------------
- * Discretization error messages
+ * FiniteElementSpace error messages
  * ------------------------------------------------------- */
 
 #define FNSPC_ARGS                       "FnSpcArgs"
@@ -91,11 +108,16 @@ typedef struct {
 #define FNSPC_NOTFOUND_MSG               "Function space '%s' on grade %i not found."
 
 /* -------------------------------------------------------
- * Discretization interface
+ * fespace interface
  * ------------------------------------------------------- */
+
+objectfespace *objectfespace_new(fespace *disc);
 
 fespace *fespace_find(char *name, grade g);
 fespace *fespace_findlinear(grade g);
+
+objectfespace *fespace_newfromname(char *name, grade g);
+objectfespace *fespace_newlinear(grade g);
 
 bool fespace_doftofieldindx(objectfield *field, fespace *disc, int nv, int *vids, fieldindx *findx);
 bool fespace_nodefieldindex(fespace *disc, int node, grade *g, int *sid, int *indx);
@@ -110,3 +132,5 @@ void fespace_hessian(fespace *disc, double *lambda, objectmatrix *hess);
 void fespace_initialize(void);
 
 #endif
+
+#endif /* fespace_h */

@@ -1,0 +1,3 @@
+var m = Mesh("square.mesh")
+m.vertexposition()
+// expect error 'MltplDsptchFld'

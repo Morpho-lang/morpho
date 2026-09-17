@@ -1,0 +1,27 @@
+// EquiElement.weight: Matrix row and scalar Field on the functional grade
+
+import meshtools
+
+var m = LineMesh(fn (t) [t, 0, 0], 0..1:0.5)
+var v = m.vertexmatrix()
+v.setcolumn(1, Matrix([0.3, 0, 0]))
+
+var le = EquiElement(grade=1)
+print abs(le.integrand(m)[1]-0.32)<1e-12
+// expect: true
+
+var wm = Matrix([[1, 3]])
+le.weight = wm
+print abs(le.integrand(m)[1]-1.70)<1e-12
+// expect: true
+
+var wf = Field(m, grade=1)
+wf[0] = 1
+wf[1] = 3
+le.weight = wf
+print abs(le.integrand(m)[1]-1.70)<1e-12
+// expect: true
+
+var le2 = EquiElement(grade=1, weight=wf)
+print abs(le2.integrand(m)[1]-1.70)<1e-12
+// expect: true

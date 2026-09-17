@@ -1,0 +1,172 @@
+// CG3 Kronecker property, partition of unity, and gradient/hessian finite differences
+
+import meshtools
+
+fn copylambda(lambda) {
+    var out = []
+    for (x in lambda) out.append(x)
+    return out
+}
+
+fn perturb(lambda, dir, h) {
+    var out = copylambda(lambda)
+    out[0] -= h
+    out[dir+1] += h
+    return out
+}
+
+fn unitfield(m, fe, el, inode) {
+    var f = Field(m, 0, finiteelementspace=fe)
+    var dofs = f.elementDofs(el)
+    var idx = dofs[inode]
+    f[idx[0], idx[1], idx[2]] = 1
+    return f
+}
+
+fn checkkronecker(m, fe, el) {
+    var n = fe.count()
+    var ok = true
+    for (i in 0...n) {
+        var f = unitfield(m, fe, el, i)
+        for (j in 0...n) {
+            var val = f.evalElement(el, fe.nodeCoords(j))
+            var expected = 0
+            if (i==j) expected = 1
+            if (abs(val-expected) > 1e-12) ok = false
+        }
+    }
+    return ok
+}
+
+fn checkunity(m, fe, el, samples) {
+    var f = Field(m, 1, finiteelementspace=fe)
+    var ok = true
+    for (lambda in samples) {
+        if (abs(f.evalElement(el, lambda)-1) > 1e-12) ok = false
+    }
+    return ok
+}
+
+fn checkgradfd(m, fe, el) {
+    var n = fe.count()
+    var gdim = fe.grade()
+    var h = 1e-6
+    var ok = true
+    for (i in 0...n) {
+        var f = unitfield(m, fe, el, i)
+        fn integrand(x, q) {
+            var g = grad(q)
+            var lambda = []
+            lambda.append(1)
+            for (k in 0...gdim) {
+                lambda.append(x[k])
+                lambda[0] -= x[k]
+            }
+            for (d in 0...gdim) {
+                var fd = (f.evalElement(el, perturb(lambda, d, h)) -
+                          f.evalElement(el, perturb(lambda, d, -h)))/(2*h)
+                if (abs(g[d]-fd) > 1e-6) ok = false
+            }
+            return 0
+        }
+        if (gdim==1) LineIntegral(integrand, f).total(m)
+        if (gdim==2) AreaIntegral(integrand, f).total(m)
+        if (gdim==3) VolumeIntegral(integrand, f).total(m)
+    }
+    return ok
+}
+
+fn checkhessfd(m, fe, el) {
+    var n = fe.count()
+    var gdim = fe.grade()
+    var h = 1e-5
+    var ok = true
+    for (i in 0...n) {
+        var f = unitfield(m, fe, el, i)
+        fn integrand(x, q) {
+            var H = hess(q)
+            if ((H-H.transpose()).norm() > 1e-10) ok = false
+            var lambda = []
+            lambda.append(1)
+            for (k in 0...gdim) {
+                lambda.append(x[k])
+                lambda[0] -= x[k]
+            }
+            for (r in 0...gdim) {
+                for (c in 0...gdim) {
+                    var fd
+                    if (r==c) {
+                        fd = (f.evalElement(el, perturb(lambda, r, h)) -
+                              2*f.evalElement(el, lambda) +
+                              f.evalElement(el, perturb(lambda, r, -h)))/(h*h)
+                    } else {
+                        fd = (f.evalElement(el, perturb(perturb(lambda, r, h), c, h)) -
+                              f.evalElement(el, perturb(perturb(lambda, r, h), c, -h)) -
+                              f.evalElement(el, perturb(perturb(lambda, r, -h), c, h)) +
+                              f.evalElement(el, perturb(perturb(lambda, r, -h), c, -h)))/(4*h*h)
+                    }
+                    if (abs(H[r,c]-fd) > 5e-4) ok = false
+                }
+            }
+            return 0
+        }
+        if (gdim==1) LineIntegral(integrand, f).total(m)
+        if (gdim==2) AreaIntegral(integrand, f).total(m)
+        if (gdim==3) VolumeIntegral(integrand, f).total(m)
+    }
+    return ok
+}
+
+var mb1 = MeshBuilder()
+mb1.addvertex([0, 0, 0])
+mb1.addvertex([1, 0, 0])
+mb1.addedge([0, 1])
+var m1 = mb1.build()
+var fe1 = FiniteElementSpace("CG3", grade=1)
+
+print checkkronecker(m1, fe1, 0)
+// expect: true
+print checkunity(m1, fe1, 0, [[0.3, 0.7], [0.5, 0.5], [0.25, 0.75]])
+// expect: true
+print checkgradfd(m1, fe1, 0)
+// expect: true
+print checkhessfd(m1, fe1, 0)
+// expect: true
+
+var mb2 = MeshBuilder()
+mb2.addvertex([0, 0])
+mb2.addvertex([1, 0])
+mb2.addvertex([0, 1])
+mb2.addface([0, 1, 2])
+var m2 = mb2.build()
+m2.addgrade(1)
+var fe2 = FiniteElementSpace("CG3", grade=2)
+
+print checkkronecker(m2, fe2, 0)
+// expect: true
+print checkunity(m2, fe2, 0, [[1/3, 1/3, 1/3], [0.5, 0.3, 0.2], [0.2, 0.2, 0.6]])
+// expect: true
+print checkgradfd(m2, fe2, 0)
+// expect: true
+print checkhessfd(m2, fe2, 0)
+// expect: true
+
+var mb3 = MeshBuilder()
+mb3.addvertex([0, 0, 0])
+mb3.addvertex([1, 0, 0])
+mb3.addvertex([0, 1, 0])
+mb3.addvertex([0, 0, 1])
+mb3.addvolume([0, 1, 2, 3])
+var m3 = mb3.build()
+m3.addgrade(1)
+m3.addgrade(2)
+var fe3 = FiniteElementSpace("CG3", grade=3)
+
+print checkkronecker(m3, fe3, 0)
+// expect: true
+print checkunity(m3, fe3, 0, [[0.25, 0.25, 0.25, 0.25], [0.4, 0.3, 0.2, 0.1], [0.1, 0.2, 0.3, 0.4]])
+// expect: true
+print checkgradfd(m3, fe3, 0)
+// expect: true
+print checkhessfd(m3, fe3, 0)
+// expect: true

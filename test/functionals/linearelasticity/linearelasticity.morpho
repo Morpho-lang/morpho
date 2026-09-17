@@ -13,17 +13,17 @@ print e.reference
 print e.grade
 // expect: 2
 
-print e.integrand(m)
-// expect: [ 0.625 0.625 ]
+print (e.integrand(m) - Field(m, 0.625, grade=2)).norm() < 1e-5
+// expect: true
 
 print e.total(m)
 // expect: 1.25
 
-print e.integrand(mshear)
-// expect: [ 0.0303819 0.0303819 ]
+print (e.integrand(mshear) - Field(mshear, 0.0303819, grade=2)).norm() < 1e-5
+// expect: true
 
-print e.integrand(mscale)
-// expect: [ 1.5625 1.5625 ]
+print (e.integrand(mscale) - Field(mscale, 1.5625, grade=2)).norm() < 1e-5
+// expect: true
 
 print e.gradient(mscale)
 // expect: [ -2.08333 2.08333 -2.08333 2.08333 ]

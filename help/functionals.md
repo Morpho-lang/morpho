@@ -12,12 +12,12 @@ Many functionals are built in. Additional functionals are available by importing
 
 Functionals provide a number of standard methods:
 
-* `total`(mesh) - returns the value of the integral with a provided mesh, selection and fields
-* `integrand`(mesh) - returns the contribution to the integral from each element
-* `gradient`(mesh) - returns the gradient of the functional with respect to vertex motions.
-* `fieldgradient`(mesh, field) - returns the gradient of the functional with respect to components of the field
-
-Each of these may be called with a mesh, a field and a selection.
+* `total`(mesh) — value of the integral; also `total`(mesh, selection)
+* `integrand`(mesh) — contribution from each element as a scalar `Field` on the functional's grade; also `integrand`(mesh, selection)
+* `integrand`(mesh, id) — contribution from a single element as a `Float`; `integrand`(mesh, grade, id) sets the grade explicitly
+* `gradient`(mesh) — derivative with respect to vertex motion; also `gradient`(mesh, selection)
+* `hessian`(mesh) — sparse second derivative with respect to vertex motion, where provided; also `hessian`(mesh, selection)
+* `fieldgradient`(field) — derivative with respect to field values, where provided
 
 [showsubtopics]: # (subtopics)
 
@@ -27,22 +27,21 @@ Each of these may be called with a mesh, a field and a selection.
 The `total` method returns the value of a functional:
 
     print fnl.total(mesh)
-
-You can also supply optional fields and a selection as appropriate for the functional.
+    print fnl.total(mesh, selection)
 
 ## Integrand
 [tagintegrand]: # (integrand)
 
-The `integrand` method returns the contribution from each element:
+The `integrand` method returns a scalar `Field` with one value per element of the functional's grade. 
 
-    print fnl.integrand(mesh)
+    var fld = fnl.integrand(mesh)
+    print fld[id]
+    print fnl.integrand(mesh, selection)
 
-## IntegrandForElement
-[tagintegrandforelement]: # (integrandforelement)
+Evaluate a single element as a `Float` with the functional's default grade, or choose an explicit grade:
 
-Some functionals also provide an `integrandForElement` method that evaluates the integrand for a single element:
-
-    print fnl.integrandForElement(mesh, element)
+    print fnl.integrand(mesh, id)
+    print fnl.integrand(mesh, grade, id)
 
 ## Gradient
 [taggradient]: # (gradient)
@@ -50,13 +49,17 @@ Some functionals also provide an `integrandForElement` method that evaluates the
 The `gradient` method returns the derivative of a functional with respect to vertex motion:
 
     print fnl.gradient(mesh)
+    print fnl.gradient(mesh, selection)
 
 ## Fieldgradient
 [tagfieldgradient]: # (fieldgradient)
 
 Functionals that depend on a field may provide a `fieldgradient` method that returns the derivative with respect to field values:
 
-    print fnl.fieldgradient(mesh, f)
+    print fnl.fieldgradient(f)
+    print fnl.fieldgradient(f, mesh)
+
+If the functional stores more than one field (for example `NematicElectric` or a `LineIntegral` with several fields), pass the field you want the derivative with respect to.
 
 ## Hessian
 [taghessian]: # (hessian)
@@ -64,12 +67,13 @@ Functionals that depend on a field may provide a `fieldgradient` method that ret
 Some functionals provide a `hessian` method:
 
     print fnl.hessian(mesh)
+    print fnl.hessian(mesh, selection)
 
 For example, a typical workflow for a field-dependent functional is
 
     var value = fnl.total(mesh)
     var gradx = fnl.gradient(mesh)
-    var gradf = fnl.fieldgradient(mesh, f)
+    var gradf = fnl.fieldgradient(f)
 
 where `value` is the functional value, `gradx` is the derivative with respect to vertex positions and `gradf` is the derivative with respect to field values.
 
@@ -78,7 +82,7 @@ For example, for a field-dependent functional:
     var fnl = GradSq(phi)
     print fnl.total(mesh)
     print fnl.gradient(mesh)
-    print fnl.fieldgradient(mesh, phi)
+    print fnl.fieldgradient(phi)
 
 ## Length
 [taglength]: # (length)
@@ -109,6 +113,8 @@ Evaluate the area enclosed of a circular loop:
     var m = LineMesh(fn (t) [cos(t), sin(t), 0], 0...2*Pi:Pi/20, closed=true)
     var larea = AreaEnclosed()
     print larea.total(m)
+
+`AreaEnclosed` sums unsigned triangle areas from the origin to each edge. Oriented meshes are not yet supported, so a non-convex loop may give an incorrect result.
 
 See the `Functionals` entry for general information about functionals.
 
@@ -169,14 +175,22 @@ See the `Functionals` entry for general information about functionals.
 
 The `LinearElasticity` functional measures the linear elastic energy away from a reference state. 
 
-You must initialize with a reference mesh:
+Initialize with a reference mesh:
 
     var le = LinearElasticity(mref)
 
-Manually set the poisson's ratio and grade to operate on:
+Optionally choose the grade at construction:
+
+    var le = LinearElasticity(mref, 1)
+
+Manually set Poisson's ratio:
 
     le.poissonratio = 0.2
-    le.grade = 2
+
+To use a different reference configuration, if the reference mesh changes, call `update`:
+
+    le.update(newref) // Replace with a new reference mesh
+    le.update()       // Recalculate cached reference data
 
 The energy for each element in the Mesh is computed as follows: First the Gram matrix `S` is computed for the element as well as the Gram matrix `F` for the corresponding element in the reference Mesh. These quantities are used to compute the Cauchy-Green strain tensor:
 
@@ -194,6 +208,12 @@ See the `Functionals` entry for general information about functionals.
 [tagequielement]: # (equielement)
 
 The `EquiElement` functional measures the discrepency between the size of elements adjacent to each vertex. It can be used to equalize elements for regularization purposes.
+
+Optionally weight elements with a scalar `Field` on the functional's grade, or a row `Matrix` with one entry per element:
+
+    var w = Field(mesh, grade=1)
+    var le = EquiElement(grade=1, weight=w)
+    le.weight = w
 
 See the `Functionals` entry for general information about functionals.
 
@@ -258,9 +278,9 @@ Here is an example for a 2D disk mesh.
     var interior = whole.difference(bnd)
 
     var gauss = GaussCurvature()
-    print gauss.total(mesh, selection=interior) // expect: 0
+    print gauss.total(mesh, interior) // expect: 0
     gauss.geodesic = true
-    print gauss.total(mesh, selection=bnd) // expect: 2*Pi
+    print gauss.total(mesh, bnd) // expect: 2*Pi
 
 See the `Functionals` entry for general information about functionals.
 
@@ -276,6 +296,7 @@ Initialize with the required field:
 Compute the integral of GradSq(phi):
 
     print le.total(mesh)
+    print le.fieldgradient(phi)
 
 See the `Functionals` entry for general information about functionals.
 
@@ -302,16 +323,55 @@ See the `Functionals` entry for general information about functionals.
 The `NematicElectric` functional measures the integral of a nematic and electric coupling term integral((n.E)^2) where the electric field E may be computed from a scalar potential or supplied as a vector.
 
 Initialize with a director field `nn` and a scalar potential `phi`:
+
     var lne = NematicElectric(nn, phi)
+
+Differentiate with respect to either stored field:
+
+    print lne.fieldgradient(nn)
+    print lne.fieldgradient(phi)
 
 See the `Functionals` entry for general information about functionals.
 
 ## NormSq
 [tagnormsq]: # (normsq)
 
-The `NormSq` functional measures the elementwise L2 norm squared of a field.
+The `NormSq` functional measures the L2 norm squared of a field at every node of its finite element space.
 
 See the `Functionals` entry for general information about functionals.
+
+## Quadrature
+[tagquadrature]: # (quadrature)
+
+`LineIntegral`, `AreaIntegral` and `VolumeIntegral` use an adaptive quadrature engine by default. An optional `method` dictionary customizes the rule and the adaptive stopping test:
+
+    AreaIntegral(fn (x) x[0]*x[1])
+    AreaIntegral(fn (x) x[0]*x[1], method={ "rule": "cubtri7" })
+    AreaIntegral(fn (x) x[0]*x[1], method={ "rule": "tri4", "adapt": false })
+    AreaIntegral(fn (x) x[0]*x[1], method={ "errornorm": "sum" })
+    AreaIntegral(fn (x) x[0]*x[1], method={ "tol": 1e-8 })
+
+Omitting `method`, or passing an empty dictionary, uses the default adaptive engine for that grade.
+
+Recognized keys in the `method` dictionary are:
+
+* `rule` — a `String` naming a quadrature rule, or `"hybrid2d"` for the default two-dimensional strategy. Unknown names raise `IntgrtrRlNtFnd`.
+* `degree` — an `Int` requesting a rule of at least that degree when `rule` is omitted.
+* `adapt` — a `Bool`. The default is `true`. With `adapt=false`, a named rule is evaluated once and no p- or h-refinement is done.
+* `errornorm` — `"max"` (the default) or `"sum"`. Any other value, or a non-string, raises `IntgrtrMthdTyp`.
+* `tol` — a `Float` (the default is `1e-6`). Integers are accepted. A non-numeric value raises `IntgrtrMthdTyp`.
+
+With `errornorm: "max"`, h-refinement (dividing elements into smaller pieces) stops when the largest element error is below `tol` times the absolute value of the last root estimate. `"sum"` uses the older, more conservative test on the summed element errors. On a vertex singularity the true global error under `"max"` can sit a little above `tol`; use `"sum"` if you need the tighter bound.
+
+Useful named quadrature rules include:
+
+1D: `gauss1`/`kronrod3`, `gauss2`/`kronrod5`, `gauss5`/`kronrod11`, `gauss7`/`kronrod15` with `midpoint`/`simpson` for educational purposes.
+2D: `tri4`, `tri10`, `tri20`, `cubtri7`, `cubtri19` and `cools7`/`cools16`.
+3D: `keast4`, `keast5`, `tet5`, `tet6` and `grundmann3d0`–`grundmann3d5`.
+
+Integral functionals attempt to evaluate the integral efficiently, and may use a number of optimizations that typically accelerate performance but can degrade it in pathological cases. An optional `optimize` argument, `true` by default, may be set to `false` as a hint not to use those shortcuts:
+
+    AreaIntegral(fn (x) x[0]*x[1], optimize=false)
 
 ## LineIntegral
 [taglineintegral]: # (lineintegral)
@@ -333,6 +393,10 @@ You can also integrate functions that involve fields:
 where `n` is a vector field. The local interpolated value of this field is passed to your integrand function. More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `LineIntegral`.
 
 The gradient of a field is available within an integrand function using the `gradient()` function.
+
+The field derivative of the integral is `fieldgradient(f)` for a field `f` supplied to the constructor.
+
+An optional `method` dictionary customizes the quadrature; see the `quadrature` help entry for further details.
 
 See the `Functionals` entry for general information about functionals.
 
@@ -357,6 +421,8 @@ More than one field can be used; they are passed as arguments to the integrand f
 
 The gradient of a field is available within an integrand function using the `gradient()` function.
 
+An optional `method` dictionary customizes the quadrature; see the `quadrature` help entry for further details.
+
 See the `Functionals` entry for general information about functionals.
 
 ## VolumeIntegral
@@ -375,6 +441,8 @@ You can also integrate functions that involve fields:
 More than one field can be used; they are passed as arguments to the integrand function in the order you supply them to `VolumeIntegral`.
 
 The gradient of a field is available within an integrand function using the `gradient()` function.
+
+An optional `method` dictionary customizes the quadrature; see the `quadrature` help entry for further details.
 
 See the `Functionals` entry for general information about functionals.
 
@@ -419,8 +487,10 @@ The integrand receives the interface position `x` followed by the interpolated f
 
 Within a `Jump` integrand, the special function `jumpdn(field)` returns the jump in the normal derivative of a supplied field across the current interface.
 
-`Jump` also accepts the same optional integration settings as the integral functionals. In particular, the `method` dictionary may specify a `strategy` of `"centroid"` or `"quadrature"`:
+The field derivative is `fieldgradient(phi)` for a field supplied to the constructor.
 
-    var j = Jump(fn (x, phi) jumpdn(phi)^2, phi, method: {"strategy": "quadrature"})
+`Jump` also accepts a `method` dictionary. A `strategy` of `"centroid"` (the default) or `"quadrature"` selects how the interface is sampled. In `"quadrature"` mode the other keys are those documented under `quadrature`:
+
+    var j = Jump(fn (x, phi) jumpdn(phi)^2, phi, method={ "strategy": "quadrature" })
 
 See the `Functionals` entry for general information about functionals.

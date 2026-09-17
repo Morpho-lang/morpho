@@ -9,6 +9,6 @@ try {
 try {
     var C = Complex(1,"text")    
 } catch {
-    "CmplxCns" : print "ok"
+    "MltplDsptchFld" : print "ok"
 // expect: ok
 }    

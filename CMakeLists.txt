@@ -4,6 +4,17 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+# Single-config generators (Unix Makefiles, Ninja) default to an empty
+# CMAKE_BUILD_TYPE, which means no -O3. Multi-config generators (Xcode, VS)
+# ignore CMAKE_BUILD_TYPE; --config selects the variant at build time.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    message(STATUS "CMAKE_BUILD_TYPE unset; defaulting to Release")
+    set(CMAKE_BUILD_TYPE Release CACHE STRING
+        "Build type (Debug, Release, RelWithDebInfo, MinSizeRel)" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+        "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
+endif()
+
 project(morpho-libmorpho)
 
 #-------------------------------------------------------------------------------
@@ -12,7 +23,24 @@ project(morpho-libmorpho)
 
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
-add_library(morpho SHARED "") 
+add_library(morpho SHARED "")
+
+#-------------------------------------------------------------------------------
+# Release LTO
+#-------------------------------------------------------------------------------
+
+include(CheckIPOSupported)
+check_ipo_supported(RESULT MORPHO_IPO_SUPPORTED OUTPUT MORPHO_IPO_OUTPUT LANGUAGES C)
+if(MORPHO_IPO_SUPPORTED)
+    set_property(TARGET morpho PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        set_property(TARGET morpho PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
+    message(STATUS "IPO/LTO enabled for Release")
+else()
+    message(STATUS "IPO/LTO not enabled (${MORPHO_IPO_OUTPUT})")
+endif()
+ 
 
 #-------------------------------------------------------------------------------
 # Options
@@ -164,6 +192,7 @@ target_include_directories(morpho PUBLIC src
                                   src/datastructures
                                   src/debug
                                   src/geometry
+                                  src/geometry/functionals
                                   src/linalg
                                   src/support )
 
@@ -174,6 +203,7 @@ source_group("core" REGULAR_EXPRESSION src/core/.*\\.[ch])
 source_group("datastructures" REGULAR_EXPRESSION src/datastructures/.*\\.[ch])
 source_group("debug" REGULAR_EXPRESSION src/debug/.*\\.[ch])
 source_group("geometry" REGULAR_EXPRESSION src/geometry/.*\\.[ch])
+source_group("geometry/functionals" REGULAR_EXPRESSION src/geometry/functionals/.*\\.[ch])
 source_group("linalg" REGULAR_EXPRESSION src/linalg/.*\\.[ch])
 source_group("support" REGULAR_EXPRESSION src/support/.*\\.[ch])
 

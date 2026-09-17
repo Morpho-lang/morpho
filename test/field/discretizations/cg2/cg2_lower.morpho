@@ -1,0 +1,40 @@
+// CG2 traces onto lower-dimensional spaces
+
+import meshtools
+
+fn exact2(x, y) { return x^2 + x*y + y^2 }
+fn exact3(x, y, z) { return x^2 + y^2 + z^2 + x*y + y*z }
+
+var mb2 = MeshBuilder()
+mb2.addvertex([0, 0])
+mb2.addvertex([1, 0])
+mb2.addvertex([0, 1])
+mb2.addface([0, 1, 2])
+var m2 = mb2.build()
+m2.addgrade(1)
+
+var fe2 = FiniteElementSpace("CG2", grade=2)
+var f2 = Field(m2, exact2, finiteelementspace=fe2)
+var bnd2 = Selection(m2, boundary=true)
+
+print abs(LineIntegral(fn (x, q) (q-exact2(x[0], x[1]))^2, f2).total(m2, bnd2)) < 1e-12
+// expect: true
+
+var mb3 = MeshBuilder()
+mb3.addvertex([0, 0, 0])
+mb3.addvertex([1, 0, 0])
+mb3.addvertex([0, 1, 0])
+mb3.addvertex([0, 0, 1])
+mb3.addvolume([0, 1, 2, 3])
+var m3 = mb3.build()
+m3.addgrade(1)
+m3.addgrade(2)
+
+var fe3 = FiniteElementSpace("CG2", grade=3)
+var f3 = Field(m3, exact3, finiteelementspace=fe3)
+var bnd3 = Selection(m3, boundary=true)
+
+print abs(AreaIntegral(fn (x, q) (q-exact3(x[0], x[1], x[2]))^2, f3).total(m3, bnd3)) < 1e-12
+// expect: true
+print abs(LineIntegral(fn (x, q) (q-exact3(x[0], x[1], x[2]))^2, f3).total(m3)) < 1e-12
+// expect: true

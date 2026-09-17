@@ -50,7 +50,7 @@ class QTensor {
       var qt2=qt*qt
       return self.a2*qt2 + self.a4*qt2*qt2
     }
-    var bulk = AreaIntegral(landau, self.q_tensor, method={})
+    var bulk = AreaIntegral(landau, self.q_tensor)
     self.problem.addenergy(bulk)
 
     // Define anchoring energy functional at the boundary
@@ -60,7 +60,7 @@ class QTensor {
       var wxy = t[0]*t[1]
       return (q[0]-wxx)^2+(q[1]-wxy)^2
     }
-    var anchor = LineIntegral(anchoring, self.q_tensor, method={})
+    var anchor = LineIntegral(anchoring, self.q_tensor)
     self.problem.addenergy(anchor, selection=self.bnd, prefactor = self.EA)
 
     // The elastic energy is the grad-squared of the q-tensor
@@ -69,7 +69,7 @@ class QTensor {
       return g[0].inner(g[0]) + g[1].inner(g[1]) 
     }
 
-    var elastic = AreaIntegral(elasticity, self.q_tensor, method={})
+    var elastic = AreaIntegral(elasticity, self.q_tensor)
     self.problem.addenergy(elastic, prefactor = self.K)
 
     return self.problem
@@ -111,8 +111,7 @@ class QTensor {
       // Select elements that have a large contribution to the elastic energy
       var en = GradSq(self.q_tensor).integrand(self.q_tensor)
       var mean = en.sum()/en.count()
-      srefine = Selection(self.mesh) // Start with an empty selection
-      for (id in 0...en.count()) if (en[0,id]>lambda*mean) srefine[2,id]=true // Identify high (compared to the mean) energy elements
+      srefine = Selection(self.mesh, fn (q) q>lambda*mean, en)
       print "Refining ${srefine.count(2)} elements"
     }
 
@@ -186,13 +185,8 @@ class QTensor {
       return g
     }
 
-    var nn = Field(self.mesh, Matrix([1,0,0]), grade=self.q_tensor.shape()) // Initialize to some vector
-    for (g in 0..mg) for (i in 0...self.mesh.count(g)) {
-      nn[g,i]=qtodirector(self.q_tensor[g,i])
-    }
-    
-    var S = Field(self.mesh, 0) // Initialize to a scalar
-    for (i in 0...self.mesh.count()) S[i]=qtoorder(self.q_tensor[i])
+    var nn = self.q_tensor.op(qtodirector)
+    var S = self.q_tensor.op(qtoorder)
 
     var splot = plotfield(S, style="interpolate", colormap = ViridisMap(), scalebar=ScaleBar(posn=[1.2,0,0]))
     var gnn=visualize(self.mesh, nn, 0.05)

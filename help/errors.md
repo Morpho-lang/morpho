@@ -1091,21 +1091,6 @@ This error occurs when sparse format conversion fails.
 
 This error occurs when a sparse matrix operation fails.
 
-## CmplxCns
-[tagcmplxcns]: # (cmplxcns)
-
-This error occurs when the Complex constructor is called with invalid arguments. It should be called with two floats:
-
-    var c = Complex(1) // Causes 'CmplxCns'
-
-## CmplxInvldArg
-[tagcmplxinvldarg]: # (cmplxinvldarg)
-
-This error occurs when complex arithmetic methods receive invalid arguments:
-
-    var c = Complex(1, 2)
-    c + "string" // Causes 'CmplxInvldArg'
-
 ## CmpxArg
 [tagcmpxarg]: # (cmpxarg)
 
@@ -1468,13 +1453,6 @@ This error occurs when a mesh file cannot be found:
 
     var m = Mesh("nonexistent.mesh") // Causes 'MshFlNtFnd'
 
-## MshArgs
-[tagmshargs]: # (mshargs)
-
-This error occurs when Mesh receives invalid arguments. It expects either a single file name or no arguments:
-
-    var m = Mesh(123) // Causes 'MshArgs'
-
 ## MshVrtMtrxDim
 [tagmshvrtmtrxdim]: # (mshvrtmtrxdim)
 
@@ -1510,21 +1488,12 @@ This error occurs when a vertex id is not an integer when loading a mesh file.
 
 This error occurs when a vertex is not found when loading a mesh file.
 
-## MshStVrtPsnArgs
-[tagmshstvrtpsnargs]: # (mshstvrtpsnargs)
+## MshInvldDim
+[tagmshinvlddim]: # (mshinvlddim)
 
-This error occurs when setvertexposition receives invalid arguments. It expects a vertex id and a position matrix:
+This error occurs when `Mesh` is constructed with a negative dimension:
 
-    var m = Mesh()
-    m.setvertexposition("invalid") // Causes 'MshStVrtPsnArgs'
-
-## MshVrtPsnArgs
-[tagmshvrtpsnargs]: # (mshvrtpsnargs)
-
-This error occurs when vertexposition receives invalid arguments. It expects a vertex id:
-
-    var m = Mesh()
-    m.vertexposition() // Causes 'MshVrtPsnArgs'
+    var m = Mesh(-1) // Causes 'MshInvldDim'
 
 ## MshInvldId
 [tagmshinvldid]: # (mshinvldid)
@@ -1534,22 +1503,6 @@ This error occurs when an invalid element id is used:
     var m = Mesh()
     m.element(-1) // Causes 'MshInvldId'
 
-## MshCnnMtxArgs
-[tagmshcnnmtxargs]: # (mshcnnmtxargs)
-
-This error occurs when connectivitymatrix receives invalid arguments. It expects integer arguments:
-
-    var m = Mesh()
-    m.connectivitymatrix("invalid") // Causes 'MshCnnMtxArgs'
-
-## MshAddGrdArgs
-[tagmshaddgrdargs]: # (mshaddgrdargs)
-
-This error occurs when addgrade receives invalid arguments. It expects either an integer grade and optionally a sparse connectivity matrix:
-
-    var m = Mesh()
-    m.addgrade("invalid") // Causes 'MshAddGrdArgs'
-
 ## MshAddGrdOutOfBnds
 [tagmshaddgrdoutofbnds]: # (mshaddgrdoutofbnds)
 
@@ -1557,14 +1510,6 @@ This error occurs when attempting to add elements of a grade that exceeds the me
 
     var m = Mesh()
     m.addgrade(10) // Causes 'MshAddGrdOutOfBnds' if max grade is lower
-
-## MshAddSymArgs
-[tagmshaddsymargs]: # (mshaddsymargs)
-
-This error occurs when addsymmetry receives invalid arguments. It expects an object that provides a transform method and optionally a selection:
-
-    var m = Mesh()
-    m.addsymmetry("invalid") // Causes 'MshAddSymArgs'
 
 ## MshAddSymMsngTrnsfrm
 [tagmshaddsymmsngtrnsfrm]: # (mshaddsymmsngtrnsfrm)
@@ -1575,37 +1520,6 @@ This error occurs when addsymmetry receives an object that doesn't provide a tra
     var obj = Object()
     m.addsymmetry(obj) // Causes 'MshAddSymMsngTrnsfrm'
 
-## SlNoMsh
-[tagslnomsh]: # (slnomsh)
-
-This error occurs when a Selection operation requires a Mesh object but doesn't receive one:
-
-    var s = Selection("invalid") // Causes 'SlNoMsh'
-
-## SlIsSlArg
-[tagslisslarg]: # (slisslarg)
-
-This error occurs when Selection.isselected receives invalid arguments. It requires a grade and element id:
-
-    var s = Selection(mesh)
-    s.isselected(1) // Causes 'SlIsSlArg' (missing element id)
-
-## SlGrdArg
-[tagslgrdarg]: # (slgrdarg)
-
-This error occurs when a Selection method requires a grade as an argument but doesn't receive one:
-
-    var s = Selection(mesh)
-    s.method() // Causes 'SlGrdArg' if grade required
-
-## SlStArg
-[tagslstarg]: # (slstarg)
-
-This error occurs when Selection set methods receive invalid arguments. They require a selection:
-
-    var s = Selection(mesh)
-    s.union("invalid") // Causes 'SlStArg'
-
 ## SlBnd
 [tagslbnd]: # (slbnd)
 
@@ -1614,17 +1528,21 @@ This error occurs when a mesh has no boundary elements:
     var m = Mesh()
     m.boundary() // Causes 'SlBnd' if no boundary exists
 
-## FldMshArg
-[tagfldmsharg]: # (fldmsharg)
+## SlMsh
+[tagslmsh]: # (slmsh)
 
-This error occurs when Field receives invalid arguments. It expects a mesh as its first argument:
+This error occurs when a set operation is applied to Selections that refer to different Meshes:
 
-    var f = Field("invalid") // Causes 'FldMshArg'
+    var s1 = Selection(mesh1)
+    var s2 = Selection(mesh2)
+    s1.union(s2) // Causes 'SlMsh'
 
 ## FldArgs
 [tagfldargs]: # (fldargs)
 
-This error occurs when Field receives invalid optional arguments. It allows 'grade' as an optional argument.
+This error occurs when Field receives invalid optional arguments. It allows `grade` and `finiteelementspace` as optional arguments:
+
+    Field(mesh, foo=1) // Causes 'FldArgs'
 
 ## FldBnds
 [tagfldbnds]: # (fldbnds)
@@ -1633,22 +1551,6 @@ This error occurs when a Field index is out of bounds:
 
     var f = Field(mesh)
     f[100, 100, 100] // Causes 'FldBnds' if out of bounds
-
-## FldInvldIndx
-[tagfldinvldindx]: # (fldinvldindx)
-
-This error occurs when Field indices are not numerical:
-
-    var f = Field(mesh)
-    f["x", "y", "z"] // Causes 'FldInvldIndx'
-
-## FldInvldArg
-[tagfldinvldarg]: # (fldinvldarg)
-
-This error occurs when Field arithmetic methods receive invalid arguments. They expect a field or number:
-
-    var f = Field(mesh)
-    f + "string" // Causes 'FldInvldArg'
 
 ## FldIncmptbl
 [tagfldincmptbl]: # (fldincmptbl)
@@ -1667,13 +1569,22 @@ This error occurs when an assignment value has an incompatible shape with field 
     var f = Field(mesh)
     f[0, 0, 0] = Matrix([[1,2,3,4]]) // Causes 'FldIncmptblVal' if shape doesn't match
 
+## FldKind
+[tagfldkind]: # (fldkind)
+
+This error occurs when a named Field constructor is given a function whose first return value is not of the advertised kind. `Field(mesh, fn)` infers the kind from that value; `ScalarField`, `MatrixField`, and `ComplexMatrixField` require a matching kind:
+
+    MatrixField(mesh, fn (x) 3.0) // Causes 'FldKind'
+
 ## FldOp
 [tagfldop]: # (fldop)
 
-This error occurs when Field.op receives invalid arguments. It requires a callable object as the first argument and fields of compatible shape as other arguments:
+This error occurs when Field.op receives extra arguments that are not Fields:
 
     var f = Field(mesh)
-    f.op("not callable", f) // Causes 'FldOp'
+    f.op(fn (x) x, "not a field") // Causes 'FldOp'
+
+A non-callable first argument raises `MltplDsptchFld` instead.
 
 ## FldOpFn
 [tagfldopfn]: # (fldopfn)
@@ -1686,37 +1597,48 @@ This error occurs when Field.op cannot construct a Field from the return value o
 ## FnSpcArgs
 [tagfnspcargs]: # (fnspcargs)
 
-This error occurs when a FunctionSpace is created with invalid arguments. It must be initialized with a label and a grade:
+This error occurs when `FiniteElementSpace` is given an invalid `grade` option. The constructor takes a label, with an optional integer grade:
 
-    FunctionSpace("invalid") // Causes 'FnSpcArgs'
+    FiniteElementSpace("CG1", grade="x") // Causes 'FnSpcArgs'
 
 ## FnSpcNtFnd
 [tagfnspcntfnd]: # (fnspcntfnd)
 
-This error occurs when a function space cannot be found:
+This error occurs when a function space cannot be found for the requested label and grade:
 
-    FunctionSpace.find("nonexistent", 1) // Causes 'FnSpcNtFnd'
-
-## FnctlIntMsh
-[tagfnctlintmsh]: # (fnctlintmsh)
-
-This error occurs when a functional's integrand method requires a mesh as an argument but doesn't receive one:
-
-    var func = Length()
-    func.integrand() // Causes 'FnctlIntMsh'
+    FiniteElementSpace("nonexistent", grade=1) // Causes 'FnSpcNtFnd'
 
 ## FnctlELNtFnd
 [tagfnctleltfnd]: # (fnctleltfnd)
 
-This error occurs when a mesh doesn't provide elements of the required grade:
+This error occurs when a mesh doesn't provide elements of the grade a functional maps over, or the functional cannot act on that grade:
 
-    var func = Length()
-    func.integrand(mesh) // Causes 'FnctlELNtFnd' if mesh lacks required grade
+    var func = Volume()
+    func.integrand(mesh) // Causes 'FnctlELNtFnd' on a surface mesh
+
+Jump raises the same error if parent connectivity for the interface grade is missing. GradSq raises it on line meshes, where the gradient is not implemented.
+
+## FnctlFESpc
+[tagfnctlfespc]: # (fnctlfespc)
+
+This error occurs when a Field's finite element space cannot be used with this functional. For example, integrating a line Field over area elements, or using a piecewise-constant (`CG0`) Field with `Jump` or `NormSq`:
+
+    AreaIntegral(fn (x, q) q, Field(m, grade=1)).total(m) // Causes 'FnctlFESpc' on a surface mesh
+
+## FnctlNoFESpc
+[tagfnctlnofespc]: # (fnctlnofespc)
+
+Line, area and volume integrals, and Jump, need a Field with a finite element space. This error is raised if the Field was created without one (`finiteelementspace=nil`). Leave that option off to use the default `CG1` space.
+
+    LineIntegral(fn (x, q) q, Field(m, finiteelementspace=nil)).total(m) // Causes 'FnctlNoFESpc'
 
 ## FnctlArgs
 [tagfnctlargs]: # (fnctlargs)
 
-This error occurs when invalid arguments are passed to a functional method.
+This error occurs when a functional constructor or prepare step is given invalid arguments (a missing Field, reference mesh, or option). 
+
+    var func = Length()
+    func.integrand() // Causes 'MltplDsptchFld'
 
 ## VolEnclZero
 [tagvolenclzero]: # (volenclzero)
@@ -1724,137 +1646,69 @@ This error occurs when invalid arguments are passed to a functional method.
 This error occurs when VolumeEnclosed detects an element of zero size. Check that a mesh point is not coincident with the origin:
 
     var func = VolumeEnclosed()
-    func.total(mesh) // Causes 'VolEnclZero' if element has zero size
-
-## LnElstctyRef
-[taglnelstctyref]: # (lnelstctyref)
-
-This error occurs when LinearElasticity requires a mesh as an argument but doesn't receive one:
-
-    var func = LinearElasticity()
-    func.total() // Causes 'LnElstctyRef'
-
-## LnElstctyPrp
-[taglnelstctyprp]: # (lnelstctyprp)
-
-This error occurs when LinearElasticity is missing required properties. It requires 'reference' to be a mesh, 'grade' to be an integer, and 'poissonratio' to be a number:
-
-    var func = LinearElasticity()
-    func.reference = "invalid" // Causes 'LnElstctyPrp'
-
-## HydrglArgs
-[taghydrglargs]: # (hydrglargs)
-
-This error occurs when Hydrogel receives invalid arguments. It requires a reference mesh and allows 'grade', 'a', 'b', 'c', 'd', 'phi0', and 'phiref' as optional arguments.
-
-## HydrglPrp
-[taghydrglprp]: # (hydrglprp)
-
-This error occurs when Hydrogel is missing required properties. It requires the first argument to be a mesh, 'grade' to be an integer, 'a', 'b', 'c', 'd', 'phiref' to be numbers, and 'phi0' to be a number or Field.
+    func.total(mesh) // Causes 'VolEnclZero' if an element is coincident with the origin
 
 ## HydrglFldGrd
 [taghydrglfldgrd]: # (hydrglfldgrd)
 
-This error occurs when Hydrogel is given phi0 as a Field that lacks scalar elements in the required grade.
+This error occurs when Hydrogel is given `phi0` as a Field that lacks scalar elements in the grade Hydrogel maps over.
 
 ## HydrglZrRfVl
 [taghydrglzrrfvl]: # (hydrglzrrfvl)
 
-This error occurs when a Hydrogel reference element has a tiny volume. This is a warning.
+This warning occurs when a Hydrogel reference element has a tiny volume.
 
 ## HydrglBnds
 [taghydrglbnds]: # (hydrglbnds)
 
-This error occurs when phi is outside bounds in a Hydrogel calculation. This is a warning.
-
-## EquiElArgs
-[tagequielargs]: # (equielargs)
-
-This error occurs when EquiElement receives invalid arguments. It allows 'grade' and 'weight' as optional arguments.
-
-## GradSqArgs
-[taggradsqargs]: # (gradsqargs)
-
-This error occurs when GradSq receives invalid arguments. It requires a field as the argument:
-
-    var func = GradSq()
-    func.total("invalid") // Causes 'GradSqArgs'
-
-## NmtcArgs
-[tagnmtcargs]: # (nmtcargs)
-
-This error occurs when Nematic receives invalid arguments. It requires a field as the argument:
-
-    var func = Nematic()
-    func.total("invalid") // Causes 'NmtcArgs'
-
-## NmtcElArgs
-[tagnmtcelargs]: # (nmtcelargs)
-
-This error occurs when NematicElectric receives invalid arguments. It requires the director and electric field or potential as arguments (in that order).
+This warning occurs when `phi` is outside `(0, 1)` in a Hydrogel calculation. The value is clamped and evaluation continues.
 
 ## SclrPtFnCllbl
 [tagsclrptfncllbl]: # (sclrptfncllbl)
 
 This error occurs when a ScalarPotential function is not callable:
 
-    var func = ScalarPotential()
-    func.function = "invalid" // Causes 'SclrPtFnCllbl'
+    var a = ScalarPotential()
+    a.function = 0.4
+    a.integrand(mesh) // Causes 'SclrPtFnCllbl'
 
 ## IntgrlArgs
 [tagintgrlargs]: # (intgrlargs)
 
-This error occurs when an Integral functional receives invalid arguments. It requires a callable argument followed by zero or more Fields:
+This error occurs when an Integral or Jump is constructed with invalid arguments. It requires a callable, followed by zero or more Fields. `method`, if present, must be a Dictionary:
 
-    var func = LineIntegral()
-    func.total("invalid") // Causes 'IntgrlArgs'
-
-## IntgrlMthdDct
-[tagintgrlmthddct]: # (intgrlmthddct)
-
-This error occurs when an Integral's method argument is not a Dictionary containing configuration settings:
-
-    var func = LineIntegral()
-    func.method = "invalid" // Causes 'IntgrlMthdDct'
+    LineIntegral(fn (x) x[0], method="Foo") // Causes 'IntgrlArgs'
 
 ## IntgrlFld
 [tagintgrlfld]: # (intgrlfld)
 
-This error occurs when an Integral cannot identify a field:
+This error occurs when `grad` or `hess` cannot tell which Field you mean. Pass the Field object, not the interpolated value, if more than one Field is in scope:
 
-    var func = LineIntegral()
-    func.total(fn(x) { return x }, "invalid") // Causes 'IntgrlFld'
+    AreaIntegral(fn (x, fl, gl) grad(fl).inner(grad(g)), f, g) // Causes 'IntgrlFld'
 
-## IntgrlGrdEvl
-[tagintgrlgrdevl]: # (intgrlgrdevl)
+## IntgrlDffEvl
+[tagintgrldffevl]: # (intgrldffevl)
 
-This error occurs when gradient evaluation fails in an Integral:
-
-    var func = LineIntegral()
-    func.gradient(mesh) // Causes 'IntgrlGrdEvl' if evaluation fails
-
-## IntgrlAmbgsFld
-[tagintgrlambgsfld]: # (intgrlambgsfld)
-
-This error occurs when a field reference is ambiguous in an Integral. Call with a Field object:
-
-    var func = LineIntegral()
-    func.total(fn(x) { return x }) // Causes 'IntgrlAmbgsFld' if ambiguous
-
-## IntgrlNFlds
-[tagintgrlnflds]: # (intgrlnflds)
-
-This error occurs when an incorrect number of Fields is provided for an integrand function:
-
-    var func = LineIntegral()
-    func.total(fn(x, y) { return x + y }, field1) // Causes 'IntgrlNFlds' if wrong number
+This error occurs when `grad` or `hess` evaluation fails in an Integral, or the finite element space does not support that derivative.
 
 ## IntgrlSpclFn
 [tagintgrlspclfn]: # (intgrlspclfn)
 
-This error occurs when a special function is called outside of an Integral:
+This error occurs when a special function such as `tangent`, `normal` or `grad` is used outside an Integral, or on the wrong grade of element:
 
-    tangent() // Causes 'IntgrlSpclFn' (must be called within integrand)
+    tangent() // Causes 'IntgrlSpclFn'
+
+## IntgrlNested
+[tagintgrlnested]: # (intgrlnested)
+
+This error occurs when an Integral or Jump is evaluated from inside another Integral or Jump integrand. Nested evaluation is not supported:
+
+    AreaIntegral(fn (x) LineIntegral(fn (y) 1).total(m)).total(m) // Causes 'IntgrlNested'
+
+## JumpUnimpl
+[tagjumpunimpl]: # (jumpunimpl)
+
+This error occurs when a Jump integrand uses an evaluation that is not implemented yet, such as a normal-derivative jump that the finite element space cannot provide.
 
 ## IntgrtrSbdvns
 [tagintgrtrsbdvns]: # (intgrtrsbdvns)
@@ -1874,7 +1728,7 @@ This error occurs when an integrator quadrature rule cannot be found:
 ## IntgrtrRlUnavlb
 [tagintgrtrrlunavlb]: # (intgrtrrlunavlb)
 
-This error occurs when no quadrature rule is available that matches the provided integrator method dictionary:
+This error occurs when no quadrature rule is available that matches the provided integrator method dictionary, including `"hybrid2d"` used outside two dimensions:
 
     var method = {"rule": "invalid", "degree": 100}
     // Causes 'IntgrtrRlUnavlb' if no matching rule
@@ -1882,9 +1736,11 @@ This error occurs when no quadrature rule is available that matches the provided
 ## IntgrtrMthdTyp
 [tagintgrtrmthdtyp]: # (intgrtrmthdtyp)
 
-This error occurs when an integrator method dictionary option has the wrong type:
+This error occurs when an integrator method dictionary option has the wrong type, or when `errornorm` is not `"max"` or `"sum"`:
 
-    var method = {"rule": 123} // Causes 'IntgrtrMthdTyp' if rule must be string
+    var method = {"rule": 123} // Causes 'IntgrtrMthdTyp' since rule must be a String
+    LineIntegral(fn (x) x[0], method={ "errornorm": "l2" }) // Causes 'IntgrtrMthdTyp'
+    LineIntegral(fn (x) x[0], method={ "tol": "tight" }) // Causes 'IntgrtrMthdTyp'
 
 ## DbgSymbl
 [tagdbgsymbl]: # (dbgsymbl)

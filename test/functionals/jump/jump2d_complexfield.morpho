@@ -1,0 +1,28 @@
+// CG1 ComplexField as a Jump integrand quantity (plus-side interpolation)
+
+import constants
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([1,1,0])
+mb.addface([0,1,2])
+mb.addface([1,3,2])
+
+var m = mb.build()
+m.addgrade(1)
+
+var fe = FiniteElementSpace("CG1", grade=2)
+var f = Field(m, fn (x,y,z) x + y*im, finiteelementspace=fe)
+
+// Shared-edge centroid is (0.5, 0.5); q.real() = 0.5, length = sqrt(2)
+print abs(Jump(fn (x, q) q.real(), f, method={ "strategy": "centroid" }).total(m) - 0.5*sqrt(2)) < 1e-8
+// expect: true
+
+print abs(Jump(fn (x, q) q.real(), f, method={ "strategy": "quadrature" }).total(m) - 0.5*sqrt(2)) < 1e-8
+// expect: true
+
+print abs(Jump(fn (x, q) q.abs()^2, f, method={ "strategy": "centroid" }).total(m) - 0.5*sqrt(2)) < 1e-8
+// expect: true

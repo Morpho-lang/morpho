@@ -30,8 +30,9 @@ var le = EquiElement()
 var v = m.vertexmatrix()
 v.setcolumn(1, Matrix([0.3, 0, 0]))
 
-print le.integrand(m)
-// expect: [ 0 0.32 0 ]
+var got = le.integrand(m)
+print abs(got[0])<1e-12 && abs(got[1]-0.32)<1e-12 && abs(got[2])<1e-12
+// expect: true
 
 print le.total(m)
 // expect: 0.32

@@ -1,1 +1,1 @@
-self // Error 'SlfOtsdClss'
+self // expect error 'SlfOtsdClss'

@@ -13,5 +13,5 @@ fn integrand(x, u) {
     return g.norm()^2
 }
 
-print abs(LineIntegral(integrand, f, method={ }).total(m) - 18*sqrt(2)/5) < 1e-8
+print abs(LineIntegral(integrand, f).total(m) - 18*sqrt(2)/5) < 1e-8
 // expect: true

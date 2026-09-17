@@ -1,0 +1,5 @@
+var m = Mesh("square.mesh")
+var s = Selection(m)
+
+s.count()
+// expect error 'MltplDsptchFld'

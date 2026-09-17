@@ -1,0 +1,9 @@
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0, 0, 0])
+mb.addvertex([1, 0, 0])
+var m = mb.build()
+
+print Jump(fn (x) 1).total(m)
+// expect error 'FnctlELNtFnd'

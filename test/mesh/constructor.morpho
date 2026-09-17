@@ -1,0 +1,24 @@
+var m = Mesh()
+print m.vertexmatrix().dimensions()
+// expect: (3, 0)
+
+var m2d = Mesh(2)
+print m2d
+// expect: <Mesh: 0 vertices>
+
+var v = Matrix(2, 3)
+v.setcolumn(0, Matrix([0,0]))
+v.setcolumn(1, Matrix([1,0]))
+v.setcolumn(2, Matrix([0.5,1]))
+
+m2d.setvertexmatrix(v)
+print m2d
+// expect: <Mesh: 3 vertices>
+print m2d.count(0)
+// expect: 3
+
+var m2 = Mesh(v)
+print m2
+// expect: <Mesh: 3 vertices>
+print m2.vertexmatrix().dimensions()
+// expect: (2, 3)

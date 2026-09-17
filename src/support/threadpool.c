@@ -39,13 +39,21 @@ MorphoThreadFnReturnType threadpool_worker(void *ref) {
 
         if (pool->stop) break; /* Terminate if asked to do so */
 
-        varray_taskpop(&pool->queue, &t); /* Get the task */
+        /* Thread awoke, but there is no work to do. */
+        if (!varray_taskpop(&pool->queue, &t)) {
+            MorphoMutex_unlock(&pool->lock_mutex);
+            continue;
+        }
         pool->nprocessing++;
         MorphoMutex_unlock(&pool->lock_mutex);
 
-        if (t.func) { (t.func) (t.arg); }; /* Perform the assigned task */
+        bool ok=true;
+        if (t.func) ok=(t.func) (t.arg); /* Perform the assigned task */
+        t.func=NULL; /* Prevent accidental reuse of the task */
+        t.arg=NULL;
 
         MorphoMutex_lock(&pool->lock_mutex);
+        if (!ok) pool->failed=true;
         pool->nprocessing--;
         if (!pool->stop && pool->nprocessing == 0 && pool->queue.count == 0)
             MorphoCond_signal(&pool->work_halted_cond);
@@ -76,6 +84,7 @@ bool threadpool_init(threadpool *pool, int nworkers) {
     pool->nthreads=nworkers;
     pool->stop=false;
     pool->nprocessing=0;
+    pool->failed=false;
 
     for (int i=0; i<pool->nthreads; i++) {
         MorphoThread thread;
@@ -105,21 +114,29 @@ void threadpool_clear(threadpool *pool) {
     varray_MorphoThreadclear(&pool->threads);
 }
 
-/** Adds a task to the threadpool */
-bool threadpool_add_task(threadpool *pool, workfn func, void *arg) {
-    bool success=true;
+/** Queue n tasks with the same workfn. */
+bool threadpool_add_tasks(threadpool *pool, int n, workfn func, void **args) {
+    if (n<1) return true;
+
+    task tasks[n];
+    for (int i=0; i<n; i++) {
+        tasks[i].func=func;
+        tasks[i].arg=args[i];
+    }
+
     MorphoMutex_lock(&pool->lock_mutex);
-
-    task t = { .func = func, .arg=arg };
-    if (!varray_taskadd(&pool->queue, &t, 1)) success=false; /* Add the task to the queue */
-
-    MorphoCond_broadcast(&pool->work_available_cond); /* Signal there is work to be done */
+    bool success=varray_taskadd(&pool->queue, tasks, n);
+    if (!success) pool->failed=true;
+    if (n>1) MorphoCond_broadcast(&pool->work_available_cond);
+    else MorphoCond_signal(&pool->work_available_cond);
     MorphoMutex_unlock(&pool->lock_mutex);
     return success;
 }
 
-/** Blocks until all tasks in the thread pool are complete */
-void threadpool_fence(threadpool *pool) {
+/** Blocks until all tasks in the thread pool are complete.
+    Returns false if any workfn in the batch returned false, or a task could not be queued.
+    Clears the failure flag so the next batch starts clean. */
+bool threadpool_fence(threadpool *pool) {
     MorphoMutex_lock(&pool->lock_mutex);
 
     while (true) {
@@ -129,5 +146,9 @@ void threadpool_fence(threadpool *pool) {
         } else break;
     }
 
+    bool ok=!pool->failed;
+    pool->failed=false;
+
     MorphoMutex_unlock(&pool->lock_mutex);
+    return ok;
 }

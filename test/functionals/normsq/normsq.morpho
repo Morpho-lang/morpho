@@ -8,8 +8,8 @@ var nn = Field(m, Matrix([1,1,1/2]))
 
 var lnn = NormSq(nn)
 
-print lnn.integrand(m)
-// expect: [ 2.25 2.25 2.25 ]
+print (lnn.integrand(m) - Field(m, 2.25)).norm() < 1e-5
+// expect: true
 
 print lnn.total(m)
 // expect: 6.75
@@ -19,7 +19,7 @@ print lnn.gradient(m)
 // expect: [ 0 0 0 ]
 // expect: [ 0 0 0 ]
 
-var fg = lnn.fieldgradient(m)
+var fg = lnn.fieldgradient(nn)
 
 for (f in fg) print f
 // expect: [ 2 ]

@@ -2,4 +2,4 @@
 
 var a = "a"
 var b = "b"
-a + b = "value" // Error 'InvldAssgn'
+a + b = "value" // expect error 'InvldAssgn'

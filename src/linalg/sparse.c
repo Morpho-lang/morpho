@@ -1011,11 +1011,14 @@ objectsparseerror sparse_tomatrix(objectsparse *in, objectmatrix **out) {
 
 /** Clones a sparse matrix */
 objectsparse *sparse_clone(objectsparse *s) {
+    if (!s) return NULL;
     objectsparse *new = object_newsparse(NULL, NULL);
+    if (!new) return NULL;
 
-    if (new) {
-        sparsedok_copy(&s->dok, &new->dok);
-        sparseccs_copy(&s->ccs, &new->ccs);
+    if (!sparsedok_copy(&s->dok, &new->dok) ||
+        (s->ccs.cptr && !sparseccs_copy(&s->ccs, &new->ccs))) {
+        object_free((object *) new);
+        return NULL;
     }
 
     return new;

@@ -4,6 +4,7 @@ target_sources(morpho
         debugannotation.c   debugannotation.h
         error.c             error.h
         object.c            object.h
+        objectpool.c        objectpool.h
         program.c           program.h
         signature.c         signature.h
         syntaxtree.c        syntaxtree.h
@@ -21,6 +22,7 @@ target_sources(morpho
         debugannotation.h
         error.h
         object.h
+        objectpool.h
         program.h
         signature.h
         syntaxtree.h

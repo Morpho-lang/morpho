@@ -84,8 +84,7 @@ for (iter in 1..itermax) {
     // Select elements that have a large contribution to the energy
     var en = lf.integrand(nn)
     var mean = en.sum()/en.count()
-    var srefine = Selection(m)
-    for (id in 0...en.count()) if (en[0,id]>1.5*mean) srefine[2,id]=true
+    var srefine = Selection(m, fn (q) q>1.5*mean, en)
 
     // Create a mesh refiner
     mr=MeshRefiner([m, nn, bnd])
@@ -138,10 +137,6 @@ Show(gdisp)
 
 // Visualize the elastic energy density
 var fe = lf.integrand(nn)
-var ff = Field(m, grade=2)
-for (i in 0...m.count(2)) {
-  ff[2,i]=fe[0,i]
-}
 
 var sb = ScaleBar(nticks=3,          // Maximum number of ticks
                   length=1,          // Length of scalebar
@@ -154,7 +149,7 @@ var sb = ScaleBar(nticks=3,          // Maximum number of ticks
                   fontsize=6 )      // Font size 
 
 
-Show(plotfield(ff, colormap=GrayMap(), scalebar=sb))
+Show(plotfield(fe, colormap=GrayMap(), scalebar=sb))
 
 gdisp.background = White
 var pov = POVRaytracer(gdisp)

@@ -1,0 +1,19 @@
+// Constructor (Field) with named options; grade from the Field's mesh
+var m = Mesh("square.mesh")
+var nn = Field(m, Matrix([1, 0, 0]))
+nn[0] = Matrix([1/sqrt(2), 1/sqrt(2), 0])
+nn[2] = Matrix([1/sqrt(2), 1/sqrt(2), 0])
+nn[3] = Matrix([0, 1, 0])
+
+var lnn = Nematic(nn)
+print lnn.grade
+// expect: 2
+
+print abs(lnn.integrand(m, 0) - 0.288706) < 1e-5
+// expect: true
+
+print abs(Nematic(nn, ksplay=1, ktwist=0, kbend=0).total(m)) >= 0
+// expect: true
+
+print Nematic()
+// expect error 'MltplDsptchFld'

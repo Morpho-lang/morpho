@@ -1,0 +1,44 @@
+// Nested grad() is allowed on the local fieldgradient path; nested hess() is not.
+
+import meshtools
+import "../numericalderivatives.morpho"
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+m.addgrade(1)
+
+var q = Field(m, fn (x,y) Matrix([x, y]))
+
+fn helper(qv) {
+    var g = grad(qv)
+    return g[0].inner(g[0])
+}
+
+fn sneaky(x, qv) {
+    return helper(qv)
+}
+
+var bulk = AreaIntegral(sneaky, q, method={ "adapt": false })
+print (bulk.fieldgradient(q, m) - numericalfieldgradient(bulk, m, q)).linearize().norm() < 1e-4
+// expect: true
+
+var bulkd = AreaIntegral(sneaky, q)
+print (bulkd.fieldgradient(q, m) - numericalfieldgradient(bulkd, m, q)).linearize().norm() < 1e-4
+// expect: true
+
+fn hhelper(qv) {
+    var h = hess(qv)
+    return h.norm()^2
+}
+
+fn sneakyh(x, qv) {
+    return hhelper(qv)
+}
+
+var bh = AreaIntegral(sneakyh, q, method={ "adapt": false })
+print bh.fieldgradient(q, m)
+// expect error 'IntgrlFstPath'

@@ -1,0 +1,6 @@
+import meshtools
+
+var m = Mesh("square.mesh")
+var a = Area()
+
+print a.integrand(m, 1) // expect: 0.5

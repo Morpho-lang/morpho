@@ -3,6 +3,7 @@
 
 import meshtools
 import plot
+import morphoview
 import optimize4
 
 var delta=0.25/8 // Mesh spacing

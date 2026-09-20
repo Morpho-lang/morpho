@@ -1,6 +1,7 @@
 // 3D Superellipsoid
 import meshgen
 import plot
+import morphoview
 
 var dh = 0.2
 

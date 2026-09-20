@@ -1,6 +1,7 @@
 import meshtools
 import optimize
 import plot
+import morphoview
 import povray
 import meshgen
 
@@ -135,7 +136,7 @@ fn visualize(m, nn, dl) {
   for (i in 0...nv) {
     var x = v.column(i)
     var y = Matrix([x[0], x[1], 0])
-    g.display(Cylinder(y-nn[i]*dl, y+nn[i]*dl, aspectratio=0.3))
+    g.display(Cylinder(y-nn[i]*dl, y+nn[i]*dl, aspectratio=0.15))
   }
   return g
 }

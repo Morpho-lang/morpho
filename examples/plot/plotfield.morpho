@@ -1,5 +1,6 @@
 // Plot a functional integrand Field with no copy.
 import plot
+import morphoview
 import implicitmesh
 
 /* Closed surface for demonstration */

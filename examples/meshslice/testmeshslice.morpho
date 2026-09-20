@@ -2,6 +2,7 @@
 
 import meshtools
 import plot
+import morphoview
 import meshslice
 
 // We'll create a spherical example mesh 
@@ -44,7 +45,7 @@ fn visualizedirector(m, nn, dl) {
   var g = Graphics()
   for (i in 0...m.count()) {
     var x = v.column(i)
-    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.3))
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.15))
   }
   return g
 }

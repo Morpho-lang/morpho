@@ -187,7 +187,7 @@ fn visualize(m, nn, dl) {
   for (i in 0...nv) {
     var x = v.column(i)
     g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl,
-    aspectratio=0.3))
+    aspectratio=0.15))
   }
   return g
 }

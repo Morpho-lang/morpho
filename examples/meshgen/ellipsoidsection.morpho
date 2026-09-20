@@ -1,6 +1,7 @@
 // 3D Ellipsoidal shell intersecting with a plane
 import meshgen
 import plot
+import morphoview
 
 var dh = 0.2
 var e0 = Domain(fn (x) -((x[0]/2)^2+x[1]^2+x[2]^2-1))

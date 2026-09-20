@@ -3,6 +3,7 @@
 
 import meshgen
 import plot
+import morphoview
 import povray
 import optimize4
 
@@ -165,8 +166,8 @@ class QTensor {
       1. m is the mesh
       2. nn is the director field and
       3. dl is the half-length of the cylinders to be drawn. 
-      4. aspectratio (optional argument) is the aspect ratio of the cylinders. (default is 0.3 here) */
-    fn visualize(m, nn, dl, aspectratio=0.3) {
+      4. aspectratio (optional argument) is the aspect ratio of the cylinders. (default is 0.15 here) */
+    fn visualize(m, nn, dl, aspectratio=0.15) {
       var v = m.vertexmatrix()
       var nv = v.dimensions()[1]
       var g = Graphics()

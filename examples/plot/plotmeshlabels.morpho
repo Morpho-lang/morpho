@@ -1,5 +1,6 @@
 // Plot mesh labels 
 import plot
+import morphoview
 import meshgen 
 
 /* Create a lo-res spherical mesh for demonstration purposes */

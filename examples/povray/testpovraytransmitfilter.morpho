@@ -5,6 +5,7 @@
 import constants
 import color
 import plot
+import morphoview
 import povray
 import meshtools
 

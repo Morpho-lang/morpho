@@ -1,5 +1,6 @@
 // Plot a selection 
 import plot
+import morphoview
 import meshtools
 
 /* Create a simple mesh for demonstration purposes */

@@ -1,6 +1,7 @@
 // Superellipse domain
 import meshgen
 import plot
+import morphoview
 
 // Superellipse
 var e1 = Domain(fn (x) -((x[0]^4+x[1]^4)^(1/4)-1))

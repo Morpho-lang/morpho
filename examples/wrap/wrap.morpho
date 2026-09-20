@@ -4,6 +4,7 @@ This models a fluid interface between two colloidal particles, for example */
 import graphics
 import meshtools
 import plot
+import morphoview
 import optimize
 
 // Create a initial cube

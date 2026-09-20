@@ -1,6 +1,7 @@
 // Domain composed of overlapping disks
 import meshgen
 import plot
+import morphoview
 
 // Create a complicated domain by composing circular disk domains
 var a = CircularDomain(Matrix([-0.5,0]), 1)

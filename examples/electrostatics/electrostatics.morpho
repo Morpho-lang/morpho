@@ -1,6 +1,7 @@
 // Solve Laplace's equation on a square domain by minimizing |grad V|^2
 import meshtools
 import plot
+import morphoview
 import optimize
 
 var delta=0.25 // Mesh spacing

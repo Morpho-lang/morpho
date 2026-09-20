@@ -2,6 +2,7 @@
 import constants
 import color
 import plot
+import morphoview
 import povray
 
 var icos = [[-0.688191, 0, 0.131433], [0.688191,

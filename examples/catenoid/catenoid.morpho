@@ -5,6 +5,7 @@
 // Showcases: AreaMesh, Area, conjugategradient, fixing boundary in the optimizer.
 import meshtools
 import plot
+import morphoview
 import optimize
 
 // Set up geometrical parameters

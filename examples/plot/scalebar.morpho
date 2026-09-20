@@ -2,6 +2,7 @@
 
 import color
 import plot
+import morphoview
 import meshgen 
 
 var m = AreaMesh(fn (u,v) [u, v, 0], -1..1:0.1, -1..1:0.1)

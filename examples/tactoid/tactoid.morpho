@@ -1,6 +1,7 @@
 import meshtools
 import optimize
 import plot
+import morphoview
 import povray
 
 // Create mesh and director field
@@ -124,7 +125,7 @@ fn visualize(m, nn, dl) {
   var g = Graphics()
   for (i in 0...nv) {
     var x = v.column(i)
-    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.3))
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.15))
   }
   return g
 }

@@ -3,6 +3,7 @@
 import graphics
 import meshtools
 import plot
+import morphoview
 import optimize
 
 var Nlevels = 4 // Levels of refinement

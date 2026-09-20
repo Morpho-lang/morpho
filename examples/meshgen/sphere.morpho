@@ -1,6 +1,7 @@
 // Sphere
 import meshgen
 import plot
+import morphoview
 
 var dh = 0.2
 var dom = Domain(fn (x) -(x[0]^2+x[1]^2+x[2]^2-1))

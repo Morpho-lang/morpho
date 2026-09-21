@@ -52,6 +52,7 @@ var R=(V0/(4/3*Pi))^(1/3)
 var area = 4*Pi*R^2
 print "Final area: ${Af} True area: ${area} diff: ${abs(Af-area)}"
 
-var g = plotmesh(m)
+m.addgrade(1)
+var g = Plot(m, grade=[1,2], style=["shaded", "thick"])
 g.title="Cube"
 Show(g)

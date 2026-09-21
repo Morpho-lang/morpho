@@ -9,4 +9,4 @@ var dom = c.difference(hs)
 var mg = MeshGen(dom, [-1..1:0.2, -1..1:0.2], quiet=false)
 var m = mg.build()
 
-Show(plotmesh(m, grade=1))
+Show(Plot(m, grade=1, style="thick"))

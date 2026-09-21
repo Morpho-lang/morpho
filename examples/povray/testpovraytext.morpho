@@ -8,7 +8,7 @@ var m = AreaMesh(fn (u,v) [u,v,0], -1..1:0.5, -1..1:0.5)
 m.addgrade(1)
 g.display(Text("Square mesh", [-0.65,1.1,0], size=20, dirn=[1,0,0], vertical=[0,1,0]))
 
-g = g + plotmesh(m, grade=1)
+g = g + Plot(m, grade=1, style="thick")
 Show(g)
 var pov = POVRaytracer(g)
 

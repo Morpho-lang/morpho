@@ -12,4 +12,4 @@ var dom = a.union(b).difference(c)
 var mg = MeshGen(dom, [-2..2:0.1, -1..1:0.1], quiet=false)
 var m = mg.build()
 
-Show(plotmesh(m, grade=1))
+Show(Plot(m, grade=1, style="thick"))

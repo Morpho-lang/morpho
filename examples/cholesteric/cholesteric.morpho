@@ -12,7 +12,7 @@ m.addgrade(1)
 
 var substrate = Selection(m, fn (x,y,z) abs(y-(-0.5))<0.001 || abs(y-(0.5))<0.001)
 substrate.addgrade(1)
-//Show(plotselection(m, substrate, grade=1))
+//Show(Plot(substrate, grade=1, style="thick"))
 
 var nn = Field(m, Matrix([1,0,0]))
 

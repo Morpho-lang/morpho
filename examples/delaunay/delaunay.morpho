@@ -54,4 +54,4 @@ Show(Plot(m2d, style="thick", grade=[0,1]))
 
 var m3d = DelaunayMesh(b)
 m3d.addgrade(1) // Mesh as returned only contains grade 2 elements (triangles) so add the bars
-Show(Plot(m3d, grade=[0,1]))
+Show(Plot(m3d, style="thick", grade=[0,1]))

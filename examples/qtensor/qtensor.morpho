@@ -139,7 +139,7 @@ if (refine_adaptively){
     // Visualize the selected region for refimenemt 
     
     if (visualize_refinement){
-      var gs = plotselection(m, srefine, grade=2)
+      var gs = Plot(srefine, grade=2, style=["shaded", "thick"])
       var nn = q_tensor.op(qtodirector)
       var gnn=visualize(m, nn, 0.05)
       Show(gs+gnn)
@@ -163,7 +163,7 @@ if (refine_adaptively){
     equiangulate(m)
   
     // Visualize the refined mesh at each stage
-    if (visualize_refinement) Show(plotmesh(m, grade=1))
+    if (visualize_refinement) Show(Plot(m, grade=1, style="thick"))
   
     opt.conjugategradient(iters)
   }
@@ -178,11 +178,11 @@ var nn = q_tensor.op(qtodirector)
 var S = q_tensor.op(qtoorder)
 
 // Plot the scalar order field
-var splot = plotfield(S, style="interpolate", colormap = ViridisMap(), scalebar=ScaleBar(posn=[1.2,0,0]))
+var splot = Plot(S, style="interpolate", colormap = ViridisMap(), scalebar=ScaleBar(posn=[1.2,0,0]))
 // Plot the director using the visualize function we wrote above
 var gnn=visualize(m, nn, 0.05)
 
-// Both `plotfield` and `visualize` return a Graphics object. We can just add the two to get the final plot 
+// Both `Plot` and `visualize` return a Graphics object. We can just add the two to get the final plot 
 var gdisp = splot+gnn
 
 // Generate a POVRaytracer object using the Graphics() object

@@ -49,4 +49,4 @@ var control = LBFGSController(adapt)
 control.optimize(1000)
 
 // Display the result
-Show(plotmesh(mesh, grade=1) + plotfield(phi, style="interpolate"))
+Show(Plot(mesh, grade=1, style="thick") + Plot(phi, style="interpolate"))

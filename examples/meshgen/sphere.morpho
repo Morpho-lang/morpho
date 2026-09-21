@@ -8,4 +8,4 @@ var dom = Domain(fn (x) -(x[0]^2+x[1]^2+x[2]^2-1))
 var mg = MeshGen(dom, [-1..1:dh, -1..1:dh, -1..1:dh], quiet=false)
 var m = mg.build()
 
-Show(plotmesh(m, grade=1))
+Show(Plot(m, grade=1, style="thick"))

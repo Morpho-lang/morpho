@@ -131,7 +131,7 @@ fn visualize(m, nn, dl) {
 }
 
 // Visualize the result
-var g=plotmesh(m, grade=1)
+var g=Plot(m, grade=1, style="thick")
 var gnn=visualize(m, nn, 0.2/itermax)
 var gdisp = g+gnn
 Show(gdisp)
@@ -150,7 +150,7 @@ var sb = ScaleBar(nticks=3,          // Maximum number of ticks
                   fontsize=6 )      // Font size 
 
 
-Show(plotfield(fe, colormap=GrayMap(), scalebar=sb))
+Show(Plot(fe, colormap=GrayMap(), scalebar=sb))
 
 gdisp.background = White
 var pov = POVRaytracer(gdisp)

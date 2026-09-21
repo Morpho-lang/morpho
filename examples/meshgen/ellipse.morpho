@@ -6,4 +6,4 @@ import morphoview
 var e0 = Domain(fn (x) -((x[0]/2)^2+x[1]^2-1))
 var mg = MeshGen(e0, [-2..2:0.2, -1..1:0.2])
 var m = mg.build()
-Show(plotmesh(m, grade=1))
+Show(Plot(m, grade=1, style="thick"))

@@ -63,7 +63,7 @@ for (i in 1..10) {
 
 print "Final mesh has ${mesh.count(2)} elements"
 
-Show(plotmesh(mesh, grade=1))
+Show(Plot(mesh, grade=1, style="thick"))
 
 // Display the result
-Show(plotfield(phi, style="interpolate"))
+Show(Plot(phi, style="interpolate"))

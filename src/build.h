@@ -40,8 +40,9 @@
 
 #define MORPHO_EXTENSION "morpho"             // File extension for morpho files
 #define MORPHO_HELPEXTENSION "md"             // File extension for help files
+
 #ifndef MORPHO_DYLIBEXTENSION
-    #define MORPHO_DYLIBEXTENSION "dylib"     // File extension for extensions
+    #define MORPHO_DYLIBEXTENSION "dylib"     // File extension for extensions; typically overridden by CMake
 #endif
 
 #define MORPHO_DIRSEPARATOR '/'               // File directory separator

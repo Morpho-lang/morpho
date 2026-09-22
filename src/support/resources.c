@@ -43,7 +43,7 @@ static char *_dir[] = {
 /* Map morphoresourcetypes to extensions */
 static char *_helpext[] =      { MORPHO_HELPEXTENSION, "" };
 static char *_moduleext[] =    { MORPHO_EXTENSION, "" };
-static char *_extensionext[] = { MORPHO_DYLIBEXTENSION, "dylib", "so", "" };
+static char *_extensionext[] = { MORPHO_DYLIBEXTENSION, "dylib", "so", "dll", "" };
 
 static char **_ext[] = { _helpext, _moduleext, _extensionext };
 

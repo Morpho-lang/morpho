@@ -24,7 +24,6 @@ void program_init(program *p) {
     varray_debugannotationinit(&p->annotations);
     p->global=object_newfunction(MORPHO_PROGRAMSTART, MORPHO_NIL, NULL, 0);
     p->boundlist=NULL;
-    dictionary_init(&p->symboltable);
     varray_globalinfoinit(&p->globals);
     varray_valueinit(&p->classes);
 }
@@ -47,9 +46,8 @@ void program_clear(program *p) {
     #ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
         fprintf(stderr, "------\n");
     #endif
-    /* Note we don't free the contents as they are already interned */
+    /* Globals hold interned symbols owned by the global symbol table */
     varray_globalinfoclear(&p->globals);
-    dictionary_clear(&p->symboltable);
     varray_valueclear(&p->classes);
 }
 
@@ -109,29 +107,20 @@ void program_bindobject(program *p, object *obj) {
     }
 }
 
-/** @brief Interns a symbol into the programs symbol table.
- *  @details Note that the string is cloned if it does not exist already.
- *           Interning is used to accelerate dynamic lookups as the same string for a symbol will be used universally */
+/** @brief Interns a symbol.
+ *  @details Selectors live in the global symbol table so a name compiled from
+ *           Morpho source and the same name registered later by an extension
+ *           are the same object. The program does not own the string. */
 value program_internsymbol(program *p, value symbol) {
-    value new = symbol, out;
+    (void) p;
 #ifdef MORPHO_DEBUG_SYMBOLTABLE
     fprintf(stderr, "Interning symbol '");
     morpho_printvalue(NULL, symbol);
 #endif
-    
-    if (builtin_checksymbol(symbol)) { // Check if this is part of the built in symbol table already
-        return builtin_internsymbol(symbol);
-    }
-    
-    if (!dictionary_get(&p->symboltable, symbol, NULL)) {
-       new = object_clonestring(symbol);
-    }
-    
-    out = dictionary_intern(&p->symboltable, new);
+    value out = builtin_internsymbol(symbol);
 #ifdef MORPHO_DEBUG_SYMBOLTABLE
     fprintf(stderr, "' at %p\n", (void *) MORPHO_GETOBJECT(out));
 #endif
-    program_bindobject(p, MORPHO_GETOBJECT(out));
     return out;
 }
 

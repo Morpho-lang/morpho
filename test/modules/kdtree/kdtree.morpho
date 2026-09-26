@@ -108,7 +108,7 @@ try {
     KDTree(1)
     print false
 } catch {
-    "KdInit": print true
+    "MltplDsptchFld": print true
 }
 // expect: true
 

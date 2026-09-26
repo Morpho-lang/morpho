@@ -104,7 +104,7 @@ try {
     Delaunay(1)
     print false
 } catch {
-    "DlnyInit": print true
+    "MltplDsptchFld": print true
 }
 // expect: true
 

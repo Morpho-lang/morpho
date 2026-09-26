@@ -97,7 +97,6 @@ class Color is Coloring {
     }
     self._initSeq(col)
   }
-  init(x) { _ClrBadInitErr.throw() }
 
   red(x) { return self.r }
   green(x) { return self.g }

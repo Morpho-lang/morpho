@@ -93,7 +93,6 @@ class Delaunay {
 
   init(List pts) { self._initPts(pts) }
   init(Tuple pts) { self._initPts(List(pts)) }
-  init(pts) { _DlnyInitErr.throw() }
 
   _bbox() { // Calculate a bounding box for the point cloud
     var min = self.pts[0].clone(), max = min.clone()

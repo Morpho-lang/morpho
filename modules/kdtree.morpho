@@ -60,7 +60,6 @@ class KDTree {
 
   init(List pts) { self._initPts(pts) }
   init(Tuple pts) { self._initPts(List(pts)) }
-  init(pts) { _KdInitErr.throw() }
 
   // True if pt coincides with node
   _coincides(pt, node, pivot) {

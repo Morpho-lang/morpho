@@ -1,169 +1,515 @@
-/* Color module */
+/* ***************************************************************
+ * Color
+ * =====
+ * Library to provide a shared definition of color for morpho.
+ **************************************************************** */
 
 import constants
 
-class Color {
-  init(r,g,b) {
-    self.r = r
-    self.g = g
-    self.b = b
+// Error messages
+var _ClrBadInitErr = Error("ClrBadInit", "Color expects RGB, RGBA, or a length-3/4 List, Tuple, or vector Matrix.")
+var _ClrTblInitErr = Error("ClrTblInit", "ColorTable expects a Matrix with 3 or 4 rows (RGB or RGBA columns).")
+var _ClrAbstractErr = Error("ClrAbstract", "Coloring must implement rgb().")
+var _ClrGradInitErr = Error("ClrGradInit", "GradientMap expects two Colors, or a List/Tuple of Colors or (t, Color) stops. For the old default polynomial, use TundraMap().")
+var _ClrChbyshvOrdrErr = Error("ClrChbyshvOrdr", "Order of Chebyshev approximation inconsistent.")
+
+// [Compatibility shim] Warn on out-of-bounds Color constructors
+var _ClrRgbRange = Error("ClrRgbRange", "Color components must be in [0, 1]. Use Color(r/255, g/255, b/255) for 0–255 lists.")
+var _warnedRgbRange = false
+
+var White, Black
+
+/* ----------------------------------------------------------------
+ * Coloring
+ *
+ * Protocol for colors sampled by RGB components:
+ *   rgb(x)   -> Tuple   (r, g, b)
+ *   alpha(x) -> Float   opacity (default 1)
+ *   rgba(x)  -> Tuple   (r, g, b, a)
+ *   red(x)   -> Float
+ *   green(x) -> Float
+ *   blue(x)  -> Float
+ *
+ * x is a sample parameter: unused for spot colors, an index for
+ * ColorTable, and typically in [0, 1] for ColorMap.
+ *
+ * Subclasses:
+ *   - must implement rgb(x)
+ *   - may override alpha/rgba/red/green/blue as needed
+ * ---------------------------------------------------------------- */
+
+class Coloring {
+  rgb(x) { _ClrAbstractErr.throw() }
+  alpha(x) { return 1 }
+  rgba(x) {
+    var c = self.rgb(x)
+    return (c[0], c[1], c[2], self.alpha(x))
   }
+  red(x) { return self.rgb(x)[0] }
+  green(x) { return self.rgb(x)[1] }
+  blue(x) { return self.rgb(x)[2] }
+}
+
+/* ----------------------------------------------------------------
+ * Color
+ *
+ * Simple spot colors. Sample parameter x is ignored.
+ * Constructors:
+ *   Color(r, g, b) / Color(r, g, b, a)
+ *   Color(List|Tuple|Matrix)   length-3 RGB or length-4 RGBA
+ *
+ * Arithmetic is full RGBA so (1-t)*c1 + t*c2 blends including alpha.
+ * lighten/darken keep alpha; opacity multiplies it. All three return
+ * a new Color (maps use ColorMap.lighten → Lighten delegate instead).
+ * ---------------------------------------------------------------- */
+
+fn clamp01(x) { return (x < 0) ? 0 : ((x > 1) ? 1 : x) }
+
+fn _warnRgbRange(r, g, b) {
+  if (_warnedRgbRange) return
+  if (!(r > 2 || g > 2 || b > 2)) return
+  _warnedRgbRange = true
+  _ClrRgbRange.warning("Color channel > 1; RGB is conventionally [0, 1], not 0–255.")
+}
+
+class Color is Coloring {
+  init(r, g, b) {
+    _warnRgbRange(r, g, b) // [Compatibility shim]
+    self.r = r; self.g = g; self.b = b; self.a = 1
+  }
+  init(r, g, b, a) {
+    _warnRgbRange(r, g, b) // [Compatibility shim]
+    self.r = r; self.g = g; self.b = b; self.a = a
+  }
+
+  _initSeq(seq) {
+    var n = seq.count()
+    if (n == 3) { self.init(seq[0], seq[1], seq[2]); return }
+    if (n == 4) { self.init(seq[0], seq[1], seq[2], seq[3]); return }
+    _ClrBadInitErr.throw()
+  }
+  init(List col) { self._initSeq(col) }
+  init(Tuple col) { self._initSeq(col) }
+  init(Matrix col) {
+    var d = col.dimensions(), rows = d[0], cols = d[1]
+    if (!((cols == 1 && (rows == 3 || rows == 4)) || (rows == 1 && (cols == 3 || cols == 4)))) {
+      _ClrBadInitErr.throw()
+    }
+    self._initSeq(col)
+  }
+
   red(x) { return self.r }
   green(x) { return self.g }
   blue(x) { return self.b }
-  rgb(x) { return [self.r, self.g, self.b] }
+  alpha(x) { return self.a }
+  rgb(x) { return (self.r, self.g, self.b) }
+  rgba(x) { return (self.r, self.g, self.b, self.a) }
+  color(x) { return self }
+
+  clamp() {
+    return Color(clamp01(self.r), clamp01(self.g), clamp01(self.b), clamp01(self.a))
+  }
+
+  add(Color o) { return Color(self.r+o.r, self.g+o.g, self.b+o.b, self.a+o.a) }
+  sub(Color o) { return Color(self.r-o.r, self.g-o.g, self.b-o.b, self.a-o.a) }
+  mul(Color o) { return Color(self.r*o.r, self.g*o.g, self.b*o.b, self.a*o.a) }
+  mul(t) { return Color(t*self.r, t*self.g, t*self.b, t*self.a) }
+  mulr(t) { return self.mul(t) }
+
+  blend(Color o, t) { return (1-t)*self + t*o }
+  lighten() { return self.lighten(1/3) }
+  lighten(t) { return Color(self.r+t*(1-self.r), self.g+t*(1-self.g), self.b+t*(1-self.b), self.a) }
+  darken() { return self.darken(1/3) }
+  darken(t) { return Color(self.r*(1-t), self.g*(1-t), self.b*(1-t), self.a) }
+  opacity(a) { return Color(self.r, self.g, self.b, self.a * a) }
 }
 
-// Some predefined colors
+// Predefined colors
+White = Color(1,1,1)
+Black = Color(0,0,0)
+var Clear = Color(0,0,0,0)
 var Red = Color(1,0,0)
 var Green = Color(0,1,0)
 var Blue = Color(0,0,1)
-var White = Color(1,1,1)
-var Black = Color(0,0,0)
 var Cyan = Color(0,1,1)
 var Magenta = Color(1,0,1)
 var Yellow = Color(1,1,0)
 var Brown = Color(0.6,0.4,0.2)
 var Orange = Color(1,0.5,0)
-var Pink = Color(1,0.5,0.5) 
+var Pink = Color(1,0.5,0.5)
 var Purple = Color(0.5,0,0.5)
 
-fn Gray(x) {
-  return Color(x,x,x)
+// Equal RGB; optional alpha
+fn Gray(x) { return Color(x, x, x) }
+fn Gray(x, a) { return Color(x, x, x, a) }
+
+/* ----------------------------------------------------------------
+ * HSV
+ *
+ * Construct a Color from HSV. h is degrees (wrapped to [0, 360));
+ * s, v conventionally [0, 1], not clamped.
+ * ---------------------------------------------------------------- */
+
+fn HSV(h, s, v) { return HSV(h, s, v, 1) }
+fn HSV(h, s, v, a) {
+  var hh = h - 360*floor(h/360)
+  // Int() rounds; floor first so the sector is truncated
+  var c = v*s, sector = Int(floor(hh/60)), f = hh/60 - Float(sector)
+  var x = c*f, y = c*(1 - f), m = v - c
+  var rgb = ((c,x,0), (y,c,0), (0,c,x), (0,y,c), (x,0,c), (c,0,y))
+  var t = rgb[sector]
+  return Color(t[0]+m, t[1]+m, t[2]+m, a)
 }
 
-/* Basic color maps */
+fn Blend(Color c1, Color c2, t) { return c1.blend(c2, t) }
 
-class ColorMap {
+/* ----------------------------------------------------------------
+ * ColorDelegate
+ *
+ * Wraps a Coloring and transforms each sampled Color.
+ * Subclasses override transform(Color) -> Color.
+ * ---------------------------------------------------------------- */
+
+class ColorDelegate is Coloring {
+  init(Coloring inner) { self.inner = inner }
+  transform(Color c) { return c }
+  color(x) { return self.transform(Color(self.inner.rgba(x))) }
+  rgb(x) { var c = self.color(x); return (c.r, c.g, c.b) }
+  rgba(x) {
+    var c = self.color(x)
+    return (c.r, c.g, c.b, c.a)
+  }
+  alpha(x) { return self.color(x).a }
+}
+
+/* ----------------------------------------------------------------
+ * Lighten, Darken, Opacity
+ *
+ * ColorDelegates wrapping any Coloring:
+ *   Lighten(inner) / Lighten(inner, t)   toward white (default t = 1/3)
+ *   Darken(inner)  / Darken(inner, t)    toward black (default t = 1/3)
+ *   Opacity(inner, a)                    multiply alpha by a
+ * ---------------------------------------------------------------- */
+
+class Lighten is ColorDelegate {
+  init(Coloring inner) { self.init(inner, 1/3) }
+  init(Coloring inner, t) { super.init(inner); self.t = t }
+  transform(Color c) { return c.lighten(self.t) }
+}
+
+class Darken is ColorDelegate {
+  init(Coloring inner) { self.init(inner, 1/3) }
+  init(Coloring inner, t) { super.init(inner); self.t = t }
+  transform(Color c) { return c.darken(self.t) }
+}
+
+class Opacity is ColorDelegate {
+  init(Coloring inner, a) { super.init(inner); self.a = a }
+  transform(Color c) { return Color(c.r, c.g, c.b, c.a * self.a) }
+}
+
+/* ----------------------------------------------------------------
+ * ColorTable
+ *
+ * Indexed coloring: column i of a 3×n (RGB) or 4×n (RGBA) Matrix.
+ * Canonical form produced by plot for per-vertex / per-face colors;
+ * renderers should not interpret other indexings.
+ *
+ *   rgb(i)   -> Tuple
+ *   color(i) -> Color
+ *   count()  -> Int     number of colors
+ * ---------------------------------------------------------------- */
+
+class ColorTable is Coloring {
+  init(Matrix colors) {
+    var d = colors.dimensions(), rows = d[0], cols = d[1]
+    if (!((rows == 3 || rows == 4) && cols >= 1)) _ClrTblInitErr.throw()
+    self.colors = colors
+    self._rows = rows
+  }
+
+  count() { return self.colors.dimensions()[1] }
+  channels() { return self._rows }
+
+  rgb(Int i) {
+    var m = self.colors
+    return (m[0, i], m[1, i], m[2, i])
+  }
+  alpha(Int i) {
+    if (self._rows < 4) return 1
+    return self.colors[3, i]
+  }
+  rgba(Int i) {
+    var t = self.rgb(i)
+    return (t[0], t[1], t[2], self.alpha(i))
+  }
+  color(Int i) { return Color(self.rgba(i)) }
+
+  rgb(x) { return self.rgb(Int(x)) }
+  alpha(x) { return self.alpha(Int(x)) }
+  rgba(x) { return self.rgba(Int(x)) }
+  color(x) { return self.color(Int(x)) }
+
+  // [Compatibility shim] Old mesh colors were a Matrix; face.color.column(i) was RGB.
+  column(Int i) { return Matrix(self.rgb(i)) }
+  column(i) { return self.column(Int(i)) }
+
+  opacity(a) {
+    if (a == 1) return self
+    var n = self.count()
+    var m = Matrix(4, n)
+    for (i in 0...n) {
+      var t = self.rgba(i)
+      m.setcolumn(i, Matrix([t[0], t[1], t[2], t[3]*a]))
+    }
+    return ColorTable(m)
+  }
+}
+
+/* ----------------------------------------------------------------
+ * ColorMap
+ *
+ * Maps a continuous sample x (typically in [0, 1]) to a Color.
+ * Subclasses implement rgb(x); color(x) builds a Color from rgba(x).
+ *
+ * lighten/darken/opacity return ColorDelegate wrappers (unlike Color,
+ * where the same methods eagerly return a new Color).
+ * ---------------------------------------------------------------- */
+
+class ColorMap is Coloring {
   init() { }
-  rgb(x) { return [self.red(x), self.green(x), self.blue(x)] }
+  color(x) { return Color(self.rgba(x)) }
+  // Cannot live on Coloring: Lighten is defined above.
+  lighten() { return Lighten(self, 1/3) }
+  lighten(t) { return Lighten(self, t) }
+  darken() { return Darken(self, 1/3) }
+  darken(t) { return Darken(self, t) }
+  opacity(a) { return Opacity(self, a) }
 }
+
+/* ----------------------------------------------------------------
+ * TundraMap
+ *
+ * Quadratic RGB polynomial; the former default ColorMap.
+ * ---------------------------------------------------------------- */
+
+class TundraMap is ColorMap {
+  rgb(x) {
+    return (0.29+0.04*x+0.66*x^2, 0.33+0.42*x+0.24*x^2, 0.46-0.55*x+x^2)
+  }
+}
+
+/* ----------------------------------------------------------------
+ * GradientMap
+ *
+ * Piecewise-linear gradient:
+ *   GradientMap(c0, c1)     two colors, t in [0, 1]
+ *   GradientMap(colors)     Colors evenly spaced on [0, 1]
+ *   GradientMap(stops)      (t, Color) pairs with t in [0, 1]
+ * ---------------------------------------------------------------- */
 
 class GradientMap is ColorMap {
-  red(x) { return 0.29+0.04*x+0.66*x^2 }
-  green(x) { return 0.33+0.42*x+0.24*x^2 }
-  blue(x) { return 0.46-0.55*x+x^2 }
+  init(Color a, Color b) { self.stops = [(0, a), (1, b)] }
+
+  init(stops) {
+    if (stops.count() < 2) _ClrGradInitErr.throw()
+    var n = stops.count(), even = stops[0].clss() == Color
+    self.stops = []
+    for (p, i in stops) {
+      self.stops.append(even ? (Float(i)/Float(n-1), p) : (Float(p[0]), p[1]))
+    }
+    if (!even) self.stops.sort(fn (a, b) a[0] - b[0])
+  }
+
+  _sample(x) {
+    var s = self.stops, n = s.count()
+    if (x <= s[0][0]) return s[0][1]
+    if (x >= s[n-1][0]) return s[n-1][1]
+    for (var i = 0; i < n-1; i += 1) {
+      var t0 = s[i][0], t1 = s[i+1][0]
+      if (x <= t1) return s[i][1].blend(s[i+1][1], (t1 == t0) ? 0 : (x-t0)/(t1-t0))
+    }
+    return s[n-1][1]
+  }
+
+  color(x) { return self._sample(x) }
+  rgb(x) { var c = self._sample(x); return (c.r, c.g, c.b) }
+  alpha(x) { return self._sample(x).a }
 }
+
+/* ----------------------------------------------------------------
+ * DivergingMap
+ *
+ * Three-color gradient: low | mid | high.
+ * Optional center in (0, 1), default 0.5.
+ * ---------------------------------------------------------------- */
+
+class DivergingMap is GradientMap {
+  init(Color low, Color mid, Color high) { self.init(low, mid, high, 0.5) }
+  init(Color low, Color mid, Color high, center) {
+    if (center <= 0 || center >= 1) _ClrGradInitErr.throw()
+    super.init(((0, low), (Float(center), mid), (1, high)))
+  }
+}
+
+// Example DivergingMap
+var BlueWhiteRedMap = DivergingMap(Blue, White, Red)
+
+/* ----------------------------------------------------------------
+ * CyclicMap
+ *
+ * Periodic gradient over a collection of colors.
+ * Wraps x via x - floor(x); closes the loop to colors[0].
+ * ---------------------------------------------------------------- */
+
+class CyclicMap is GradientMap {
+  init(colors) {
+    var n = colors.count()
+    if (n < 2) _ClrGradInitErr.throw()
+    var stops = []
+    for (c, i in colors) stops.append((Float(i)/Float(n), c))
+    stops.append((1, colors[0]))
+    super.init(stops)
+  }
+
+  _sample(x) { return super._sample(x - floor(x)) }
+}
+
+/* ----------------------------------------------------------------
+ * GrayMap
+ *
+ * Gray(x, x, x) for x in [0, 1].
+ * ---------------------------------------------------------------- */
 
 class GrayMap is ColorMap {
-  red(x) { return x }
-  green(x) { return x }
-  blue(x) { return x }
+  rgb(x) { return (x, x, x) }
 }
+
+/* ----------------------------------------------------------------
+ * HueMap
+ *
+ * Cyclic hue-like RGB from sinusoids; x typically in [0, 1].
+ * ---------------------------------------------------------------- */
 
 class HueMap is ColorMap {
-  red(x) { return (sin(2*Pi*(x+1/4))+1)/2 }
-  green(x) { return (sin(2*Pi*x)+1)/2 }
-  blue(x) { return (sin(2*Pi*(x-0.4))+1)/2 }
+  rgb(x) {
+    return ((sin(2*Pi*(x+1/4))+1)/2, (sin(2*Pi*x)+1)/2, (sin(2*Pi*(x-0.4))+1)/2)
+  }
 }
 
-/* Color maps expanded onto Chebyshev polynomials */
+/* ----------------------------------------------------------------
+ * ChebyshevMap
+ *
+ * ColorMap from Chebyshev polynomials.
+ * Initialize with three lists of coefficients for R, G, and B.
+ * rgb(x) clamps x to [0, 1] (extrapolation is unstable) and RGB to [0, 1].
+ * ---------------------------------------------------------------- */
 
-var _errChebyShevOrderInconsistent = Error("ClrChbyshvOrdr", "Order of Chebyshev approximation inconsistent.") 
-
-class ChebyshevMap is Color {
-  init(R,G,B) {
-    self.R = R 
-    self.G = G
-    self.B = B
-    self.order = R.count() 
-    if (G.count()!=self.order || B.count()!=self.order) _errChebyShevOrderInconsistent.throw()  
+class ChebyshevMap is ColorMap {
+  init(R, G, B) {
+    self.R = ismatrix(R) ? R : Matrix(R)
+    self.G = ismatrix(G) ? G : Matrix(G)
+    self.B = ismatrix(B) ? B : Matrix(B)
+    self.order = self.R.count()
+    if (self.G.count() != self.order || self.B.count() != self.order) _ClrChbyshvOrdrErr.throw()
   }
 
-  _chebyshev(t) {
-    var n = self.order
-    var c[n]
-    c[0]=1
-    c[1]=t
-    for (var i=2; i<n; i+=1) c[i]=2*t*c[i-1]-c[i-2]
-    return c 
-  } 
-
-  _component(x, table) {
-    var r=0
-    var c = self._chebyshev(2*x-1)
-    for (var i=0; i<self.order; i+=1) r+=c[i]*table[i]
-    return r
-  }
-
-  red(x) { return self._component(x, self.R) }
-  green(x) { return self._component(x, self.G) }
-  blue(x) { return self._component(x, self.B) }
-
-  rgb(x) { 
-    var r=0,g=0,b=0
-    var c = self._chebyshev(2*x-1)
-  
-    for (var i=0; i<self.order; i+=1) {
-      r+=c[i]*self.R[i]
-      g+=c[i]*self.G[i]
-      b+=c[i]*self.B[i]
+  // Clenshaw recurrence on R, G, B
+  rgb(x) {
+    var t = 2*clamp01(x) - 1, n = self.order, R = self.R, G = self.G, B = self.B
+    var br1 = 0, br2 = 0, bg1 = 0, bg2 = 0, bb1 = 0, bb2 = 0
+    for (var k = n-1; k >= 0; k -= 1) {
+      var br0 = R[k] + 2*t*br1 - br2, bg0 = G[k] + 2*t*bg1 - bg2, bb0 = B[k] + 2*t*bb1 - bb2
+      br2 = br1; br1 = br0; bg2 = bg1; bg1 = bg0; bb2 = bb1; bb1 = bb0
     }
-
-    return [r,g,b]
+    return (clamp01(br1 - t*br2), clamp01(bg1 - t*bg2), clamp01(bb1 - t*bb2))
   }
 }
 
-/* Colormaps corresponding to the MPL colormaps:
-   http://bids.github.io/colormap/ 
-   Here approximated by an expension in Chebyshev polynomials */
+/* ----------------------------------------------------------------
+ * ViridisMap, MagmaMap, InfernoMap, PlasmaMap
+ *
+ * Smooth Chebyshev approximations to the Matplotlib colormaps:
+ *   http://bids.github.io/colormap/
+ * ---------------------------------------------------------------- */
 
 class ViridisMap is ChebyshevMap {
   init() {
     super.init(
-      [0.4088232360482251,0.29914951760096953,0.2552612533555949,0.08113280407487648,
-   -0.03283479810992292,-0.018577351334051494,-0.0013733172532640688,
-   0.008117622664142014,0.002682386480442547], 
-      [0.5186919867937394,0.4546669273087233,-0.057431691996312643,-0.0048541541888066884,
-   -0.00853841982404364,0.0007461158760058021,0.002057901604696167,0.0008255497724669167,
-   -0.0004372356619719562], 
-      [0.3760062927570685,-0.1469374708776625,-0.1704154003941636,0.02090430542528263,
-   0.01510258354582896,0.028525837271586568,0.015009580468626441,0.004431992972452413,
-   0.004574724100591803]) 
+      (0.4088232360482251,0.29914951760096953,0.2552612533555949,0.08113280407487648,
+       -0.03283479810992292,-0.018577351334051494,-0.0013733172532640688,
+       0.008117622664142014,0.002682386480442547),
+      (0.5186919867937394,0.4546669273087233,-0.057431691996312643,-0.0048541541888066884,
+       -0.00853841982404364,0.0007461158760058021,0.002057901604696167,0.0008255497724669167,
+       -0.0004372356619719562),
+      (0.3760062927570685,-0.1469374708776625,-0.1704154003941636,0.02090430542528263,
+       0.01510258354582896,0.028525837271586568,0.015009580468626441,0.004431992972452413,
+       0.004574724100591803))
   }
 }
 
 class MagmaMap is ChebyshevMap {
   init() {
     super.init(
-      [0.5907866331910908,0.5512722667670491,-0.11869056394186639,-0.06195808758016048,
-   0.016174879132276762,0.007825552776936756,0.007068023322676562,-0.005405791682135656,
-   -0.004289466821398506,0.0022896263057962762],
-      [0.36985521972760765,0.4798725290845796,0.14385739700946584,0.020144429166912035,
-   -0.01966766336743611,-0.0077647799258502605,-0.0036190850643826634,
-   0.007536496657360997,0.0041760071789883136,-0.008101991902176933],
-      [0.4146808525196039,0.24602997042802613,-0.042495725202417074,0.15341588488121402,
-   0.00805152051307142,-0.02717096384766588,0.00206961352997524,-0.007127547734556673,
-   0.010044740905955626,0.005726967451785381])
+      (0.5907866331910908,0.5512722667670491,-0.11869056394186639,-0.06195808758016048,
+       0.016174879132276762,0.007825552776936756,0.007068023322676562,-0.005405791682135656,
+       -0.004289466821398506,0.0022896263057962762),
+      (0.36985521972760765,0.4798725290845796,0.14385739700946584,0.020144429166912035,
+       -0.01966766336743611,-0.0077647799258502605,-0.0036190850643826634,
+       0.007536496657360997,0.0041760071789883136,-0.008101991902176933),
+      (0.4146808525196039,0.24602997042802613,-0.042495725202417074,0.15341588488121402,
+       0.00805152051307142,-0.02717096384766588,0.00206961352997524,-0.007127547734556673,
+       0.010044740905955626,0.005726967451785381))
   }
 }
 
 class InfernoMap is ChebyshevMap {
   init() {
     super.init(
-      [0.5907686152333599,0.5320419550621178,-0.13225772363892413,-0.05035373817114475,
-   0.020359465701464984,0.008683202802651958,0.013948075520974724,0.0012246769354433988,
-   0.003564440313191328,0.002701158080654896,-0.000037446824389489684],
-      [0.3770580923537784,0.4998367210000978,0.14598165233845511,0.006395013608917966,
-   -0.019063425717928677,-0.006515765659684996,-0.005998826303670322,
-   0.003984370877431411,-0.0008735684997286814,-0.004013362650016195,
-   0.0037589348986688206],
-      [0.28127942085373586,0.10733379064741418,0.007259209326938936,0.23027957313656874,
-   0.05122756917452243,-0.0030648367795109203,-0.009391178685969673,-0.02397409152798162,
-   0.0029394603983608457,0.003505946325128027,0.004817080753431645])
+      (0.5907686152333599,0.5320419550621178,-0.13225772363892413,-0.05035373817114475,
+       0.020359465701464984,0.008683202802651958,0.013948075520974724,0.0012246769354433988,
+       0.003564440313191328,0.002701158080654896,-0.000037446824389489684),
+      (0.3770580923537784,0.4998367210000978,0.14598165233845511,0.006395013608917966,
+       -0.019063425717928677,-0.006515765659684996,-0.005998826303670322,
+       0.003984370877431411,-0.0008735684997286814,-0.004013362650016195,
+       0.0037589348986688206),
+      (0.28127942085373586,0.10733379064741418,0.007259209326938936,0.23027957313656874,
+       0.05122756917452243,-0.0030648367795109203,-0.009391178685969673,-0.02397409152798162,
+       0.0029394603983608457,0.003505946325128027,0.004817080753431645))
   }
 }
 
 class PlasmaMap is ChebyshevMap {
   init() {
     super.init(
-      [0.6564978820568728,0.4513005610828885,-0.1474582018543978,-0.012551792337212387,
-   -0.008412202382930323,-0.00023645100725124183,-0.0017694446884859137,
-   0.003097797063542014],
-      [0.37647105842658246,0.49541894108110207,0.119596669297474,-0.02693358423260891,
-   0.010579792365637941,0.007309311031239827,-0.011188674500084088,0.004301686509917261],
-      [0.410228609925941,-0.26056803832126973,-0.07193502017900728,0.0713778851634931,
-   0.0007021465182023984,0.00034857192848406334,0.0088834869199995,-0.00152187260983132]
-    )
+      (0.6564978820568728,0.4513005610828885,-0.1474582018543978,-0.012551792337212387,
+       -0.008412202382930323,-0.00023645100725124183,-0.0017694446884859137,
+       0.003097797063542014),
+      (0.37647105842658246,0.49541894108110207,0.119596669297474,-0.02693358423260891,
+       0.010579792365637941,0.007309311031239827,-0.011188674500084088,0.004301686509917261),
+      (0.410228609925941,-0.26056803832126973,-0.07193502017900728,0.0713778851634931,
+       0.0007021465182023984,0.00034857192848406334,0.0088834869199995,-0.00152187260983132))
   }
+}
+
+/* ----------------------------------------------------------------
+ * asColoring
+ *
+ * Coerce a value to a Coloring:
+ *   Coloring              -> itself
+ *   3×n / 4×n Matrix, n>1 -> ColorTable
+ *   3×1 / 4×1 / 1×3 / 1×4 -> Color
+ *   List / Tuple / nil    -> Color or nil
+ * ---------------------------------------------------------------- */
+
+// After ColorMap subclasses so asColoring(Coloring) matches them.
+fn asColoring(Coloring c) { return c }
+fn asColoring(Matrix c) {
+  var d = c.dimensions(), rows = d[0], cols = d[1]
+  if ((rows == 3 || rows == 4) && cols > 1) return ColorTable(c)
+  return Color(c)
+}
+fn asColoring(c) {
+  if (isnil(c)) return nil
+  return Color(c)
 }

@@ -2,13 +2,14 @@
 import meshtools
 import optimize
 import plot
+import morphoview
 
 var m = Mesh("disk.mesh")
 
 // Initial boundary selection
 var bnd=Selection(m, boundary=true)
 bnd.addgrade(0)
-//Show(plotselection(m, bnd, grade=1))
+//Show(Plot(bnd, grade=1, style="thick"))
 
 var nn = Field(m, Matrix([1,0,0]))
 
@@ -52,7 +53,7 @@ for (refiter in 1..refmax) {
 }
 
 // Visualize results
-var g=plotmesh(m, grade=1)
+var g=Plot(m, grade=1, style="thick")
 
 // Function to visualize a director field
 // m - the mesh
@@ -65,7 +66,7 @@ fn visualize(m, nn, dl) {
   for (i in 0...nv) {
     var x = v.column(i) // Get the ith vertex
 	// Draw a cylinder aligned with nn at this vertex
-    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.3))
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.15))
   }
   return g
 }

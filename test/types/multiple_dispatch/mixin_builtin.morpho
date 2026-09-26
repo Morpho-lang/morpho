@@ -1,0 +1,24 @@
+// Mixin composition should not alter builtin Object method inheritance or override
+
+class A { }
+
+class B { }
+
+class C with A, B { }
+
+var c = C()
+
+print c.respondsto("prnt")
+// expect: true
+
+print c.respondsto("invoke")
+// expect: true
+
+class D with A, B {
+    prnt() {
+        print "D"
+    }
+}
+
+D().prnt()
+// expect: D

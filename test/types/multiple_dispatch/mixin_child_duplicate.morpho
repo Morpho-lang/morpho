@@ -1,0 +1,25 @@
+// Defining the same signature twice in a child that inherited mixins is still an error
+
+class A {
+    f(Int x) {
+        return "int"
+    }
+}
+
+class B {
+    f(String x) {
+        return "string"
+    }
+}
+
+class C with A, B {
+    f(Int x) {
+        return "first"
+    }
+
+    f(Int x) {
+        return "second"
+    }
+}
+
+// expect error 'ClssDplctImpl'

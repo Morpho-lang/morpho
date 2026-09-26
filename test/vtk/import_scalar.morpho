@@ -1,6 +1,5 @@
 // Import a file containing a mesh and a scalar field
 import vtk
-import meshtools
 
 var vtkI = VTKImporter("mesh_scalar.vtk")
 

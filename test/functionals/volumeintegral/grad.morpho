@@ -1,4 +1,3 @@
-import constants
 import meshtools
 
 // Build unit tetrahedron

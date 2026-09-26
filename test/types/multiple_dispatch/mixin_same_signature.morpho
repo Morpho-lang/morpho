@@ -1,0 +1,19 @@
+// Same signature from sibling mixins keeps existing copy-order precedence:
+// last mixin in the with list wins.
+
+class A {
+    f(Int x) {
+        return "A"
+    }
+}
+
+class B {
+    f(Int x) {
+        return "B"
+    }
+}
+
+class C with A, B { }
+
+print C().f(1)
+// expect: B

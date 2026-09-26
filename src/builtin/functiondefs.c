@@ -50,23 +50,36 @@ value builtin_clock(vm *v, int nargs, value *args) {
  * Apply
  * *************************************/
 
+static bool apply_checkcargs(vm *v, unsigned int n) {
+    if (n > MORPHO_MAXCARGS) {
+        morpho_runtimeerror(v, VM_TOOMANYARGS);
+        return false;
+    }
+    return true;
+}
+
 static value builtin_apply__tuple(vm *v, int nargs, value *args) {
     value ret = MORPHO_NIL;
     objecttuple *t = MORPHO_GETTUPLE(MORPHO_GETARG(args, 1));
-    morpho_call(v, MORPHO_GETARG(args, 0), tuple_length(t), t->tuple, &ret);
+    unsigned int n = tuple_length(t);
+    if (!apply_checkcargs(v, n)) return MORPHO_NIL;
+    morpho_call(v, MORPHO_GETARG(args, 0), n, t->tuple, &ret);
     return ret;
 }
 
 static value builtin_apply__list(vm *v, int nargs, value *args) {
     value ret = MORPHO_NIL;
     objectlist *lst = MORPHO_GETLIST(MORPHO_GETARG(args, 1));
-    morpho_call(v, MORPHO_GETARG(args, 0), list_length(lst), lst->val.data, &ret);
+    unsigned int n = list_length(lst);
+    if (!apply_checkcargs(v, n)) return MORPHO_NIL;
+    morpho_call(v, MORPHO_GETARG(args, 0), n, lst->val.data, &ret);
     return ret;
 }
 
 /** Apply a function to a list of arguments */
 value builtin_apply(vm *v, int nargs, value *args) {
     value ret = MORPHO_NIL;
+    if (!apply_checkcargs(v, (unsigned int) (nargs-1))) return MORPHO_NIL;
     morpho_call(v, MORPHO_GETARG(args, 0), nargs-1, &MORPHO_GETARG(args, 1), &ret);
     return ret;
 }

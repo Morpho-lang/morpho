@@ -1,6 +1,4 @@
 import meshtools
-import plot
-import functionals
 
 var L = 1.0
 var dx = 0.1

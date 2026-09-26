@@ -587,6 +587,30 @@ void MorphoAtomic_madddouble(double *p, double alpha, double x) {
 #endif
 }
 
+/** @brief: Atomic load: return *p.
+ * @warning: Only safe for concurrent callers if all use MorphoAtomic bool functions. */
+bool MorphoAtomic_loadbool(bool *p) {
+#ifdef _WIN32
+    return (bool) InterlockedOr8((volatile CHAR *) p, 0);
+#elif defined(__GNUC__) || defined(__clang__)
+    return __atomic_load_n(p, __ATOMIC_RELAXED);
+#else
+#error "Atomics not supported on this platform."
+#endif
+}
+
+/** @brief: Atomic store: *p <- val.
+ * @warning: Only safe for concurrent callers if all use MorphoAtomic bool functions. */
+void MorphoAtomic_storebool(bool *p, bool val) {
+#ifdef _WIN32
+    InterlockedExchange8((volatile CHAR *) p, (CHAR) val);
+#elif defined(__GNUC__) || defined(__clang__)
+    __atomic_store_n(p, val, __ATOMIC_RELAXED);
+#else
+#error "Atomics not supported on this platform."
+#endif
+}
+
 /* **********************************************************************
  * Time
  * ********************************************************************** */

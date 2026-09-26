@@ -1,6 +1,5 @@
 // CG1 ComplexField as a Jump integrand quantity (plus-side interpolation)
 
-import constants
 import meshtools
 
 var mb = MeshBuilder()

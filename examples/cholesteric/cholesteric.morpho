@@ -1,6 +1,7 @@
 // Test cholesteric in a square boundary
 import meshtools
 import plot
+import morphoview
 import optimize
 
 var L = 0.5
@@ -11,7 +12,7 @@ m.addgrade(1)
 
 var substrate = Selection(m, fn (x,y,z) abs(y-(-0.5))<0.001 || abs(y-(0.5))<0.001)
 substrate.addgrade(1)
-//Show(plotselection(m, substrate, grade=1))
+//Show(Plot(substrate, grade=1, style="thick"))
 
 var nn = Field(m, Matrix([1,0,0]))
 
@@ -38,7 +39,7 @@ fn visualize(m, nn, dl) {
   var g = Graphics()
   for (i in 0...nv) {
     var x = v.column(i)
-    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.3))
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.15))
   }
   return g
 }

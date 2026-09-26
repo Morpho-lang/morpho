@@ -1,14 +1,15 @@
-// Demonstrates drawing a scalebar alongside the output of plotfield 
+// Demonstrates drawing a scalebar alongside a Plot 
 
 import color
 import plot
+import morphoview
 import meshgen 
 
 var m = AreaMesh(fn (u,v) [u, v, 0], -1..1:0.1, -1..1:0.1)
 var f = Field(m, fn (x,y,z) sin(2*Pi*x*y))
 
 // Add a scalebar 
-Show(plotfield(f, style="interpolate", colormap=ViridisMap(), scalebar=ScaleBar(posn=[1.2,0,0]))) 
+Show(Plot(f, style="interpolate", colormap=ViridisMap(), scalebar=ScaleBar(posn=[1.2,0,0]))) 
 
 // Showcases some of the many options for Scalebar 
 var sb = ScaleBar(nticks=8,          // Maximum number of ticks
@@ -21,6 +22,6 @@ var sb = ScaleBar(nticks=8,          // Maximum number of ticks
                   textcolor=White,   // Text color
                   fontsize=10 )      // Font size 
 
-Show(plotfield(f, style="interpolate", colormap=InfernoMap(), scalebar=sb))
+Show(Plot(f, style="interpolate", colormap=InfernoMap(), scalebar=sb))
 
 

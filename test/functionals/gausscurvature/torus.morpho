@@ -1,7 +1,5 @@
 // Gaussian curvature with torus
-import constants
 import implicitmesh
-import plot
 
 // Make a sphere
 // Torus

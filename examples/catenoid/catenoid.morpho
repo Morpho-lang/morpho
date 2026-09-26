@@ -5,6 +5,7 @@
 // Showcases: AreaMesh, Area, conjugategradient, fixing boundary in the optimizer.
 import meshtools
 import plot
+import morphoview
 import optimize
 
 // Set up geometrical parameters
@@ -25,7 +26,7 @@ mesh.addgrade(1)
 // Select the boundary
 var bnd = Selection(mesh, boundary=true)
 
-var g = plotselection(mesh, bnd, grade=1)
+var g = Plot(bnd, grade=[1,2], style=["shaded", "thick"])
 g.title = "Before"
 Show(g)
 
@@ -43,6 +44,6 @@ opt.fix(bnd)
 // Minimize!
 opt.conjugategradient(1000)
 
-g = plotselection(mesh, bnd, grade=1)
+g = Plot(bnd, grade=[1,2], style=["shaded", "thick"])
 g.title = "After"
 Show(g)

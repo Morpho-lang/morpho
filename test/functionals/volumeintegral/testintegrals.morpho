@@ -1,7 +1,6 @@
 // Test that integrators give correct estimates for simple integrals 
 
 import meshtools 
-import plot 
 
 var a = AreaMesh(fn (u,v) [u,v], 0..1:0.1, 0..1:0.1)
 

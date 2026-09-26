@@ -1,8 +1,6 @@
 // Test equielements with weights
 
-import meshtools
 import optimize
-import plot
 
 var m = Mesh("hex.mesh")
 m.addgrade(1)

@@ -1,0 +1,30 @@
+// Distinct overlapping signatures compose; equal-specificity calls are ambiguous
+
+class A { }
+
+class B is A { }
+
+class MixinA {
+    f(B x, A y) {
+        return "BA"
+    }
+}
+
+class MixinB {
+    f(A x, B y) {
+        return "AB"
+    }
+}
+
+class C with MixinA, MixinB { }
+
+var c = C()
+
+print c.f(B(), A())
+// expect: BA
+
+print c.f(A(), B())
+// expect: AB
+
+print c.f(B(), B())
+// expect error 'MltplDisptchAmbg'

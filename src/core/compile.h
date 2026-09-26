@@ -54,9 +54,6 @@
 #define COMPILE_CLASSINHERITSELF          "ClssCrcRf"
 #define COMPILE_CLASSINHERITSELF_MSG      "A class cannot inherit from itself."
 
-#define COMPILE_TOOMANYARGS               "TooMnyArg"
-#define COMPILE_TOOMANYARGS_MSG           "Too many arguments."
-
 #define COMPILE_TOOMANYPARAMS             "TooMnyPrm"
 #define COMPILE_TOOMANYPARAMS_MSG         "Too many parameters."
 

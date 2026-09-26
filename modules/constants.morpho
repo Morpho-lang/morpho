@@ -4,20 +4,17 @@
  * Various mathematical and Physical constants
  **************************************************************** */
 
-/* Mathematical */
-
+// Mathematical
 var Pi = 3.14159265358979323846
 var E = exp(1)
 var GoldenRatio = (1+sqrt(5))/2
 var Degree = Pi/180               // multiply degrees to get radians: 90*Degree
 
-/* IEEE specials */
-
+// IEEE specials
 var Inf = 1/0
 var NaN = 0/0
 
-/* Physical (SI). Exact values are SI defining constants; the rest are CODATA 2022. */
-
+// Physical (SI). Exact values are SI defining constants; the rest are CODATA 2022.
 var SpeedOfLight = 299792458.0                  // m s^-1, exact
 var Planck = 6.62607015e-34                     // J s, exact
 var Hbar = Planck/(2*Pi)                        // J s, exact

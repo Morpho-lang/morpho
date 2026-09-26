@@ -16,6 +16,7 @@ jobs:
     - name: configure
       run:  |
         sudo apt update
+        sudo apt install libczmq-dev
         sudo apt install libglfw3-dev 
         sudo apt install povray
         sudo apt install libfreetype6-dev
@@ -42,17 +43,19 @@ jobs:
         sudo make install
     - name: morphoview
       run: |
-        git clone https://github.com/morpho-lang/morpho-morphoview.git
+        git clone --branch dev --single-branch https://github.com/morpho-lang/morpho-morphoview.git
         cd morpho-morphoview
         mkdir build
         cd build
-        cmake ..
+        cmake -DMORPHOVIEW_LOCAL_INSTALL=ON ..
         sudo make install
+        echo "${GITHUB_WORKSPACE}/morpho-morphoview" >> "${HOME}/.morphopackages"
     - name: morphopm 
       run: |
         git clone https://github.com/Morpho-lang/morpho-morphopm.git
         cd morpho-morphopm 
-        ./morphopm install optimize4 
+        ./morphopm install optimize4
+        ./morphopm install zeromq 
     - name: test 
       run: |
         cd examples

@@ -384,15 +384,16 @@ This error occurs when a superclass cannot be found:
 ## TooMnyArg
 [tagtoomnyarg]: # (toomnyarg)
 
-This error occurs when too many arguments are passed to a function:
+This error occurs at runtime when too many arguments are passed to a function, including when `apply` unpacks a `List` or `Tuple` that is too long:
 
-    fn f(x) { return x }
-    f(1, 2, 3) // Causes 'TooMnyArg'
+    var a = []
+    for (i in 0...256) a.append(1)
+    apply(fn (...x) x.count(), a) // Causes 'TooMnyArg'
 
 ## TooMnyPrm
 [tagtoomnyprm]: # (toomnyprm)
 
-This error occurs when a function is defined with too many parameters (exceeding the maximum allowed).
+This error occurs at compile time when a function is defined with too many parameters, or a call is compiled with too many arguments passed.
 
 ## TooMnyCnst
 [tagtoomnycnst]: # (toomnycnst)

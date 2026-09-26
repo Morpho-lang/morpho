@@ -1,7 +1,6 @@
 // Test grad sq with a simple integral
 // f = x^2 + y^2 -> |grad f|^2 = 4 (x^2+y^2) -> integral over unit disk is 2 pi
 
-import meshtools
 
 var m = Mesh("disk.mesh")
 

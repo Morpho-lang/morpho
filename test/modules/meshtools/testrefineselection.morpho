@@ -1,6 +1,5 @@
 // Test refinement of selections with down projection 
 import meshtools
-import plot 
 
 var mx = AreaMesh(fn (u,v) [u,v,0], -0.5..0.5:0.5, -0.5..0.5:0.5) 
 mx.addgrade(1)

@@ -2,7 +2,6 @@
 // neither a Mesh nor a Field produces the right error
 
 import vtk
-import meshtools 
 
 var a = 3.0
 

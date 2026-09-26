@@ -12,7 +12,7 @@ Morpho is extensible and provides a convenient module system that works like sta
 
 loads the `color` module that provides functionality related to color.
 
-You can create your own modules; they're just regular morpho files that are stored in a standard place. On UNIX platforms, this is `/usr/local/share/morpho/modules`.
+You can create your own modules; they're just regular morpho files that are stored in a standard place. On UNIX platforms, this is `/usr/local/share/morpho/modules`. Packages installed with morphopm are searched before this default location, so an installed package can supersede a bundled module of the same name.
 
 [showsubtopics]: # (subtopics)
 

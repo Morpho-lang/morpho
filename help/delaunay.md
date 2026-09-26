@@ -10,14 +10,17 @@ To use the module, first import it:
 
     import delaunay
 
-To create a Delaunary triangulation from a list of points:
+To create a Delaunay triangulation from a list of points:
 
     var pts = []
     for (i in 0...100) pts.append(Matrix([random(), random()]))
     var del=Delaunay(pts)
     print del.triangulate()
 
-The module also provides `DelaunayMesh` to directly create meshes from Delaunay triangulations.
+To create a `Mesh` object directly from a Delaunay triangulation, use `DelaunayMesh` from the `meshtools` module:
+
+    import meshtools
+    var m = DelaunayMesh(pts)
 
 [showsubtopics]: # (subtopics)
 
@@ -33,6 +36,8 @@ Then call `triangulate`:
     var tri = del.triangulate()
 
 This returns a list of triangles `[ [i, j, k], ... ]`.
+
+The supersimplex that encloses the cloud can be enlarged by setting `del.sscale` (default 1) before calling `triangulate`.
 
 ## Circumsphere
 [tagcircumsphere]: # (circumsphere)

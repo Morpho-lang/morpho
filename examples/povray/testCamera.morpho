@@ -7,8 +7,9 @@ var c = Matrix([0.1,0.2,0.3])
 var impl = ImplicitMeshBuilder(fn (x,y,z) (x-c[0])^2/(0.5^2)+(y-c[1])^2/(0.75^2)+(z-c[2])^2-1)
 
 var m = impl.build(stepsize=0.25)
+m.addgrade(1)
 
-var g = plotmesh(m)
+var g = Plot(m, grade=[1,2], style=["shaded", "thick"])
 
 var pov = POVRaytracer(g)
 

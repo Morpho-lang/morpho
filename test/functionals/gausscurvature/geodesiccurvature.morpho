@@ -1,9 +1,6 @@
 // Geodesic curvature 
 import constants
 import meshtools 
-import meshgen 
-import implicitmesh
-import plot
 
 // Computes the euler characteristic of a mesh
 fn euler(mesh) {

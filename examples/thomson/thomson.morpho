@@ -3,6 +3,7 @@
 // Showcases: MeshBuilder, PairwisePotential, ScalarPotential
 import meshtools
 import plot
+import morphoview
 import optimize
 import functionals
 

@@ -1,6 +1,5 @@
 // CG1 ComplexMatrixField as an Integral quantity
 
-import constants
 import meshtools
 
 var m = AreaMesh(fn (x, y) [x, y, 0], 0..1:0.5, 0..1:0.5)

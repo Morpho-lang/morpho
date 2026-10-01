@@ -1,6 +1,7 @@
 import meshtools
 import optimize
 import plot
+import morphoview
 import povray
 import meshgen
 
@@ -135,7 +136,7 @@ fn visualize(m, nn, dl) {
   for (i in 0...nv) {
     var x = v.column(i)
     var y = Matrix([x[0], x[1], 0])
-    g.display(Cylinder(y-nn[i]*dl, y+nn[i]*dl, aspectratio=0.3))
+    g.display(Cylinder(y-nn[i]*dl, y+nn[i]*dl, aspectratio=0.15))
   }
   return g
 }
@@ -143,7 +144,7 @@ fn visualize(m, nn, dl) {
 //System.exit() 
 
 // Visualize the result
-var g=plotmesh(m, grade=1)
+var g=Plot(m, grade=1, style="thick")
 var gnn=visualize(m, nn, 0.2/itermax)
 var gdisp = g+gnn
 Show(gdisp)
@@ -162,7 +163,7 @@ var sb = ScaleBar(nticks=3,          // Maximum number of ticks
                   fontsize=6 )      // Font size 
 
 
-Show(plotfield(fe, colormap=GrayMap(), scalebar=sb))
+Show(Plot(fe, colormap=GrayMap(), scalebar=sb))
 
 gdisp.background = White
 var pov = POVRaytracer(gdisp)

@@ -1,0 +1,12 @@
+/*
+ * File.isFile
+ */
+
+print File.isFile("folder/file1.txt")
+// expect: true
+
+print File.isFile("folder")
+// expect: false
+
+print File.isFile("folder/missing.txt")
+// expect: false

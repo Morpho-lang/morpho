@@ -51,7 +51,6 @@ typedef struct sprogram {
     varray_globalinfo globals; /** Global variables */
     varray_value classes; /** Classes defined by this program */
     object *boundlist; /** Linked list of static objects bound to this program */
-    dictionary symboltable; /** The symbol table */
 } program;
 
 #define MORPHO_PROGRAMSTART 0

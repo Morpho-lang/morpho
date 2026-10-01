@@ -1,6 +1,5 @@
 // Import a file containing just a mesh
 import vtk
-import meshtools
 
 var vtkI = VTKImporter("mesh.vtk")
 

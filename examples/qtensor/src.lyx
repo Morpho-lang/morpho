@@ -772,7 +772,7 @@ fn visualize(m, nn, dl) {
 \end_layout
 
 \begin_layout Plain Layout
-    aspectratio=0.3))
+    aspectratio=0.15))
 \end_layout
 
 \begin_layout Plain Layout

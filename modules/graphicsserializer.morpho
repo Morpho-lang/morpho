@@ -1,0 +1,705 @@
+/* ***************************************************************
+ * GraphicsSerializer
+ * ==================
+ * Serialize Graphics and Scene into morphoview ASCII IR
+ **************************************************************** */
+
+import color
+import constants
+import fonts
+import graphics
+
+// Error messages
+var _GsrFntNtFndErr = Error("GsrFntNtFnd", "Font not found.")
+
+var _I4 = IdentityMatrix(4)
+var _eps = 1e-8
+var _epsNorm = 1e-15
+
+var _sphereRefineThresh = 0.1 // Threshold for sphere refinement
+var _sphereRefineMax = 3 // Maximum number of refinement levels
+
+/* ----------------------------------------------------------------
+ * TriangleComplexSerializerMixin
+ *
+ * Serialize a TriangleComplex.
+ * ---------------------------------------------------------------- */
+
+class TriangleComplexSerializerMixin {
+  _vertexLayout(TriangleComplex item) { // Format string for the color model
+    return self._vertexLayout(item, item.color)
+  }
+  _vertexLayout(TriangleComplex item, Coloring color) { return "xn" }
+  _vertexLayout(TriangleComplex item, ColorTable color) {
+    return color.channels() >= 4 ? "xnca" : "xnc"
+  }
+  _vertexLayout(TriangleComplex item, color) { return "xn" }
+
+  _vertexFormat(TriangleComplex item, Coloring color) { self._write("v \"xn\"") } // Emit the vertex format string
+  _vertexFormat(TriangleComplex item, ColorTable color) {
+    self._write(color.channels() >= 4 ? "v \"xnca\"" : "v \"xnc\"")
+  }
+
+  _vertexRows(item, color) { // Position, normal, and optional per-vertex color
+    var x = item.position, n = item.normals
+    var dim = x.dimensions()[0], nv = x.dimensions()[1]
+
+    for (i in 0...nv) {
+      var parts = []
+      for (j in 0...dim) parts.append(self._fmt(x[j,i]))
+      for (j in 0...dim) parts.append(self._fmt(n[j,i]))
+      self._vertexColor(parts, color, i)
+      self._write(parts)
+    }
+  }
+
+  _triangles(item, color) { // Emit the mesh
+    self._vertexFormat(item, color)
+    self._vertexRows(item, color)
+    self._faces(item)
+  }
+
+  _faces(item) { // Emit faces
+    self._write("f")
+    var nf = item.connectivity.dimensions()[1]
+    for (i in 0...nf) {
+      var indx = item.faceIndices(i)
+      var parts = []
+      for (j in 0...indx.count()) parts.append(indx[j])
+      self._write(parts)
+    }
+  }
+
+  _defineObject(TriangleComplex item, color=nil) { // Define a viewer object
+    if (isnil(color)) color = item.color
+    var vid = self._uid()
+    self._write("o ${vid}")
+    _triangles(item, color)
+    return vid
+  }
+
+  _define(GraphicsEntry entry, TriangleComplex item) { // Define a triangle complex
+    if (entry.flat) self._write("M flat")
+    var cid = self._drawColor(entry, item.color)
+    var vid = self._defineObject(item)
+    self._emitTransform(entry, item)
+    if (isnil(cid)) self._write("C")
+    else self._write("C ${cid}")
+    self._write("d ${entry.id} ${vid}")
+    if (entry.flat) self._write("M shaded")
+    return vid
+  }
+}
+
+/* ----------------------------------------------------------------
+ * PointCloudSerializerMixin
+ *
+ * Serialize a PointCloud. Unlit unless flat=false.
+ * ---------------------------------------------------------------- */
+
+class PointCloudSerializerMixin {
+  _vertexFormat(PointCloud item, Coloring color) { self._write("v \"x\"") } // Emit the vertex format string
+  _vertexFormat(PointCloud item, ColorTable color) {
+    self._write(color.channels() >= 4 ? "v \"xca\"" : "v \"xc\"")
+  }
+
+  _points(item, color) { // Emit points
+    self._vertexFormat(item, color)
+    var x = item.position
+    var dim = x.dimensions()[0], nv = x.dimensions()[1]
+
+    for (i in 0...nv) {
+      var parts = []
+      for (j in 0...dim) parts.append(self._fmt(x[j,i]))
+      self._vertexColor(parts, color, i)
+      self._write(parts)
+    }
+
+    var parts = ["p"]
+    for (i in 0...nv) parts.append(i)
+    self._write(parts)
+  }
+
+  _define(GraphicsEntry entry, PointCloud item) { // Define a point cloud
+    if (item.position.dimensions()[1] < 1) return nil
+    var flat = isnil(entry.flat) ? true : entry.flat
+    if (flat) self._write("M flat")
+    var cid = self._drawColor(entry, item.color)
+    var vid = self._uid()
+    self._write("o ${vid}")
+    _points(item, item.color)
+    self._emitTransform(entry, item)
+    if (isnil(cid)) self._write("C")
+    else self._write("C ${cid}")
+    self._write("d ${entry.id} ${vid}")
+    if (flat) self._write("M shaded")
+    return vid
+  }
+}
+
+/* ----------------------------------------------------------------
+ * LineSetSerializerMixin
+ *
+ * Serialize a LineSet. Unlit unless flat=false.
+ * ---------------------------------------------------------------- */
+
+class LineSetSerializerMixin {
+  _vertexFormat(LineSet item, Coloring color) { self._write("v \"x\"") } // Emit the vertex format string
+  _vertexFormat(LineSet item, ColorTable color) {
+    self._write(color.channels() >= 4 ? "v \"xca\"" : "v \"xc\"")
+  }
+
+  _lines(item, color) { // Emit lines
+    self._vertexFormat(item, color)
+    var x = item.position
+    var dim = x.dimensions()[0], nv = x.dimensions()[1]
+
+    for (i in 0...nv) {
+      var parts = []
+      for (j in 0...dim) parts.append(self._fmt(x[j,i]))
+      self._vertexColor(parts, color, i)
+      self._write(parts)
+    }
+
+    var segs = item.connectivity
+    var parts = ["l"]
+    for (i in 0...segs.count()) parts.append(segs[i])
+    self._write(parts)
+  }
+
+  _define(GraphicsEntry entry, LineSet item) { // Define a line set
+    if (item.connectivity.count() < 2) return nil
+    var flat = isnil(entry.flat) ? true : entry.flat
+    if (flat) self._write("M flat")
+    var cid = self._drawColor(entry, item.color)
+    var vid = self._uid()
+    self._write("o ${vid}")
+    _lines(item, item.color)
+    self._emitTransform(entry, item)
+    if (isnil(cid)) self._write("C")
+    else self._write("C ${cid}")
+    self._write("d ${entry.id} ${vid}")
+    if (flat) self._write("M shaded")
+    return vid
+  }
+}
+
+/* ----------------------------------------------------------------
+ * TextSerializerMixin
+ *
+ * Serialize Text. Orientation is the item's local matrix.
+ * ---------------------------------------------------------------- */
+
+class TextSerializerMixin {
+  _localMatrix(Text item) { return item.transformationMatrix() } // Local orientation of the text
+
+  _fontId(name, size) { // Font id for this face and size
+    var fonts = self._cache(TextSerializerMixin)
+    var key = "${name}:${size}"
+
+    if (fonts.contains(key)) return fonts[key]
+
+    var path = FontFinder().find(name)
+    if (!path) _GsrFntNtFndErr.throw()
+
+    var id = self._uid()
+    fonts[key] = id
+    self._write("F ${id} \"${self._escape(path)}\" ${size}")
+    return id
+  }
+
+  _define(GraphicsEntry entry, Text item) { // Define text
+    var font = item.font
+    if (isnil(font)) font = FontFinder().default()
+    var fid = self._fontId(font, item.size)
+    var cid = self._drawColor(entry, item.color)
+    self._emitTransform(entry, item)
+    self._write("C ${cid}")
+    self._write("T ${entry.id} ${fid} \"${self._escape(item.string)}\"")
+    return fid
+  }
+}
+
+/* ----------------------------------------------------------------
+ * SphereSerializerMixin
+ *
+ * Serialize Sphere using cached unit-sphere geometry.
+ * ---------------------------------------------------------------- */
+
+class SphereSerializerMixin {
+  _sphereEntryScale(entry) { // Largest scale applied by the entry
+    var scale = entry.scale
+    if (!ismatrix(scale)) return abs(scale)
+
+    var s = abs(scale[0])
+    if (abs(scale[1]) > s) s = abs(scale[1])
+    if (abs(scale[2]) > s) s = abs(scale[2])
+    return s
+  }
+
+  _sphereRefinementLevel(entry, Sphere item) { // Select sphere refinement level
+    var radius = abs(item.r) * self._sphereEntryScale(entry)
+    var level = 0
+    while (radius / (2^level) > _sphereRefineThresh &&
+           level < _sphereRefineMax) level += 1
+    return level
+  }
+
+  _localMatrix(Sphere item) { // Transform from the unit sphere to this sphere
+    var c = item.center
+    var r = item.r
+
+    if (r == 1 && c[0] == 0 && c[1] == 0 && c[2] == 0) return nil
+
+    return Matrix(((r, 0, 0, c[0]),
+                   (0, r, 0, c[1]),
+                   (0, 0, r, c[2]),
+                   (0, 0, 0, 1))).transpose()
+  }
+
+  _sphereObject(entry, Sphere item) { // Get or define the cached unit sphere
+    var level = self._sphereRefinementLevel(entry, item)
+    var cache = self._cache(SphereSerializerMixin)
+
+    if (cache.contains(level)) return cache[level]
+
+    var tri = item.toTriangleComplex(unit=true, level=level)
+    var vid = self._defineObject(tri, color=White)
+    cache[level] = vid
+    return vid
+  }
+
+  _define(GraphicsEntry entry, Sphere item) { // Define a Sphere using shared unit geometry
+    if (entry.flat) self._write("M flat")
+
+    var cid = self._defineColor(entry.effectiveColor())
+    var vid = self._sphereObject(entry, item)
+
+    self._emitTransform(entry, item)
+    self._write("C ${cid}")
+    self._write("d ${entry.id} ${vid}")
+
+    if (entry.flat) self._write("M shaded")
+    return vid
+  }
+}
+
+/* ----------------------------------------------------------------
+ * CylinderSerializerMixin
+ *
+ * Serialize Cylinder using cached unit-cylinder geometry.
+ * Arrow is a Cylinder; _object dispatches on the actual item.
+ * ---------------------------------------------------------------- */
+
+class CylinderSerializerMixin {
+  _normalVec(vec) { // A vector perpendicular to vec
+    var order = [abs(vec[0]), abs(vec[1]), abs(vec[2])].order()
+    var out = vec.clone()
+    out[order[0]] = 0
+    out[order[1]] = vec[order[2]]
+    out[order[2]] = -vec[order[1]]
+    return out
+  }
+
+  _rot3(theta, axis) { // 3x3 rotation by theta about axis
+    var x = axis[0], y = axis[1], z = axis[2]
+    var ctheta = cos(theta), stheta = sin(theta), cc = 1-ctheta
+    return Matrix(
+      ((x*x*cc+ctheta,   x*y*cc-z*stheta, x*z*cc+y*stheta),
+       (x*y*cc+z*stheta, y*y*cc+ctheta,   y*z*cc-x*stheta),
+       (z*x*cc-y*stheta, y*z*cc+x*stheta, z*z*cc+ctheta))
+    )
+  }
+
+  _axisFromTo(from, to) { // Rotation taking unit vector from onto to
+    var d = from.inner(to)
+    if (d > 1 - _eps) return (0, 1, 0, 0)
+    if (d < -1 + _eps) {
+      var ax = self._normalVec(from)
+      var n = ax.norm()
+      if (n < _epsNorm) ax = Matrix([1, 0, 0])
+      else ax = ax/n
+      return (Pi, ax[0], ax[1], ax[2])
+    }
+    var axis = cross3D(from, to)
+    axis = axis/axis.norm()
+    return (acos(d), axis[0], axis[1], axis[2])
+  }
+
+  _mat4LinearTranslate(linear, t) { // 4x4 matrix from a 3x3 linear part and translation t
+    var m = Matrix(4, 4)
+    for (i in 0..2) {
+      for (j in 0..2) m[i,j] = linear[i,j]
+      m[i,3] = t[i]
+    }
+    m[3,3] = 1
+    return m.transpose()
+  }
+
+  _degenerate(Cylinder item) { // True if the shaft has zero length
+    return (item.end - item.start).norm() < _eps
+  }
+
+  _localMatrix(Cylinder item) { // Transform from the unit cylinder to this cylinder
+    if (self._degenerate(item)) return nil
+
+    var x1 = item.start
+    var dx = item.end - x1
+    var length = dx.norm()
+    var radius = item._radius(length)
+
+    var rotate = self._axisFromTo(Matrix([0, 0, 1]), dx/length)
+    var R = abs(rotate[0]) < _eps ?
+      IdentityMatrix(3) :
+      self._rot3(rotate[0], [rotate[1], rotate[2], rotate[3]])
+
+    var S = Matrix(((radius, 0, 0),
+                    (0, radius, 0),
+                    (0, 0, length)))
+
+    return self._mat4LinearTranslate(R * S, x1)
+  }
+
+  _object(Cylinder item) { // Get or define the cached unit cylinder
+    var cache = self._cache(CylinderSerializerMixin)
+    var key = item.n
+    if (cache.contains(key)) return cache[key]
+
+    var tri = item.toTriangleComplex(unit=true)
+    var vid = self._defineObject(tri, color=White)
+    cache[key] = vid
+    return vid
+  }
+
+  _define(GraphicsEntry entry, Cylinder item) { // Define a Cylinder using shared unit geometry
+    if (self._degenerate(item)) return nil
+
+    if (entry.flat) self._write("M flat")
+    var cid = self._defineColor(entry.effectiveColor())
+    var vid = self._object(item)
+
+    self._emitTransform(entry, item)
+    self._write("C ${cid}")
+    self._write("d ${entry.id} ${vid}")
+
+    if (entry.flat) self._write("M shaded")
+    return vid
+  }
+}
+
+/* ----------------------------------------------------------------
+ * ArrowSerializerMixin
+ *
+ * Serialize Arrow using cached unit-arrow geometry.
+ * ---------------------------------------------------------------- */
+
+class ArrowSerializerMixin is CylinderSerializerMixin {
+  _object(Arrow item) { // Get or define the cached unit arrow
+    var cache = self._cache(ArrowSerializerMixin)
+    var key = (item.n, item.aspectratio)
+
+    if (cache.contains(key)) return cache[key]
+
+    var tri = item.toTriangleComplex(unit=true)
+    var vid = self._defineObject(tri, color=White)
+    cache[key] = vid
+    return vid
+  }
+}
+
+/* ----------------------------------------------------------------
+ * GraphicsSerializer
+ * ---------------------------------------------------------------- */
+
+class GraphicsSerializer with TriangleComplexSerializerMixin, 
+                              PointCloudSerializerMixin, 
+                              LineSetSerializerMixin, 
+                              TextSerializerMixin, 
+                              SphereSerializerMixin,
+                              ArrowSerializerMixin {
+  init(Graphics graphic, out) {
+    self.graphic = graphic
+    self.out = out
+    self.uid = 0
+    self.colorid = 0
+    self.caches = Dictionary()
+  }
+
+  _cache(owner) { // Get or create a cache for this mixin
+    if (!self.caches.contains(owner)) self.caches[owner] = Dictionary()
+    return self.caches[owner]
+  }
+
+  serialize(replace=false) { // Serialize the graphics
+    _preamble(replace=replace)
+    for (entry in self.graphic.displaylist) self.define(entry)
+  }
+
+  define(GraphicsEntry entry) { // Dispatch define by item type
+    return self._define(entry, entry.item)
+  }
+
+  _define(GraphicsEntry entry, item) { return nil } // Null for entries that are not understood
+
+  _define(GraphicsEntry entry, TriangleConvertibleMixin item) { // Process anything that can be converted to a TriangleComplex
+    var tri = item.toTriangleComplex()
+    if (isnil(tri)) return nil
+    return self._define(entry, tri)
+  }
+
+  lights(reset=false) { // Emit lighting
+    var lighting = self.graphic.light
+    if (lighting.mode == "neutral") {
+      if (reset) _write("L \"neutral\"")
+      return
+    }
+    if (lighting.mode != "custom") {
+      _write("L \"${lighting.mode}\"")
+      return
+    }
+
+    var n = lighting.lights.count()
+    if (n == 0) return
+
+    var parts = ["L", n, "\"xc\""]
+    for (light in lighting.lights) {
+      var p = light.position
+      var rgb = (light.intensity*light.color).rgb(0)
+      parts.append("${_fmt(p[0])} ${_fmt(p[1])} ${_fmt(p[2])}")
+      parts.append("${_fmt(rgb[0])} ${_fmt(rgb[1])} ${_fmt(rgb[2])}")
+    }
+    _write(parts)
+  }
+
+  _preamble(replace=false) { // Emit the preamble
+    _write(replace ? "U S 1" : "S 1 3")
+    _write("W \"${_escape(self.graphic.title)}\"")
+
+    var bg = self.graphic.background.rgb(0)
+    _write("G ${_fmt(bg[0])} ${_fmt(bg[1])} ${_fmt(bg[2])}")
+
+    self.lights()
+  }
+
+  _write(String s) { self.out.write(s) }
+  _write(List parts) { self.out.write(String.join(parts, " ")) }
+
+  _fmt(x) { return Float(x).format("%0.3g") } // 3 significant figures
+
+  _escape(s) { // Escape strings for morphoview IR
+    var parts = []
+    for (ch in s) {
+      if (ch == "\\" || ch == "\"") parts.append("\\")
+      parts.append(ch)
+    }
+    return String.join(parts)
+  }
+
+  _uid() { // Next object id
+    self.uid += 1
+    return self.uid
+  }
+
+  _defineColor(Coloring color) { // Define a color resource; returns its id
+    var id = self.colorid
+    self.colorid += 1
+    var rgba = color.rgba(0)
+    var r = _fmt(rgba[0]), g = _fmt(rgba[1]), b = _fmt(rgba[2]), a = _fmt(rgba[3])
+    if (rgba[3] < 0.999) _write("c ${id} ${r} ${g} ${b} ${a}")
+    else _write("c ${id} ${r} ${g} ${b}")
+    return id
+  }
+
+  _drawColor(entry, Coloring color) { return _defineColor(entry.effectiveColor()) } // Color used when drawing
+  _drawColor(entry, ColorTable color) {
+    return isnil(entry.color) ? nil : _defineColor(entry.color)
+  }
+
+  _vertexColor(parts, Coloring color, i) { } // No-op for uniform color
+  _vertexColor(parts, ColorTable color, i) { // Emit a vertex color
+    var c = color.rgb(i)
+    parts.append("${_fmt(c[0])} ${_fmt(c[1])} ${_fmt(c[2])}")
+    if (color.channels() >= 4) parts.append("${_fmt(color.alpha(i))}")
+  }
+
+  _localMatrix(item) { return nil } // Local transform for the item, if any
+
+  _isIdentity4(m) { return (m - _I4).norm() < _eps }
+
+  _emitTransform(entry, item) { // Emit transformation instructions for an entry
+    _write("i")
+    var scl = entry.scale
+    if (ismatrix(scl)) {
+      _write("s ${_fmt(scl[0])} ${_fmt(scl[1])} ${_fmt(scl[2])}")
+    } else if (scl != 1) {
+      _write("s ${_fmt(scl)}")
+    }
+    if (!isnil(entry.rotate)) {
+      var r = entry.rotate
+      if (!(abs(r[0]) < _eps)) {
+        _write("r ${_fmt(r[0])} ${_fmt(r[1])} ${_fmt(r[2])} ${_fmt(r[3])}")
+      }
+    }
+    var m = self._localMatrix(item)
+    if (!isnil(m) && !_isIdentity4(m)) {
+      var parts = ["m"]
+      for (i in 0..3) for (j in 0..3) parts.append(_fmt(m[i,j]))
+      _write(parts)
+    }
+    var p = entry.position
+    if (!(p[0] == 0 && p[1] == 0 && p[2] == 0)) {
+      _write("t ${_fmt(p[0])} ${_fmt(p[1])} ${_fmt(p[2])}")
+    }
+  }
+}
+
+/* ----------------------------------------------------------------
+ * SceneSerializer
+ *
+ * Live counterpart to GraphicsSerializer.
+ * ---------------------------------------------------------------- */
+
+class SceneSerializer is GraphicsSerializer {
+  init(Scene scene, out) {
+    super.init(scene, out)
+    self.objects = Dictionary() // Entry id -> viewer object
+    self.colors = Dictionary()  // Color -> viewer color id
+  }
+
+  serialize(replace=false) { // Serialize the scene
+    if (replace) {
+      self.objects = Dictionary()
+      self.caches = Dictionary()
+      self.colors = Dictionary()
+    }
+    super.serialize(replace=replace)
+  }
+
+  _defineColor(Coloring color) { // Reuse color ids for identical colors
+    var rgba = color.rgba(0)
+    var r = _fmt(rgba[0]), g = _fmt(rgba[1]), b = _fmt(rgba[2]), a = _fmt(rgba[3])
+    var key = "${r} ${g} ${b} ${a}"
+    if (self.colors.contains(key)) return self.colors[key]
+
+    var id = self.colorid
+    self.colorid += 1
+    if (rgba[3] < 0.999) _write("c ${id} ${r} ${g} ${b} ${a}")
+    else _write("c ${id} ${r} ${g} ${b}")
+    self.colors[key] = id
+    return id
+  }
+
+  define(GraphicsEntry entry) { // Define an entry and record its object
+    var vid = super.define(entry)
+    self._record(entry, entry.item, vid)
+    return vid
+  }
+
+  pose(id) { // Update an entry's transform
+    var entry = self.graphic.findEntry(id)
+    if (isnil(entry)) return false
+    return self._pose(entry, entry.item)
+  }
+
+  _pose(GraphicsEntry entry, item) { // Apply transform and redraw
+    self._emitTransform(entry, item)
+    self._write("d ${entry.id}")
+    return true
+  }
+
+  _pose(GraphicsEntry entry, Sphere item) { // Update a sphere, redefining if needed
+    var level = self._sphereRefinementLevel(entry, item)
+    var cache = self._cache(SphereSerializerMixin)
+
+    if (self.objects.contains(entry.id) &&
+        cache.contains(level) &&
+        self.objects[entry.id] == cache[level]) {
+      self._emitTransform(entry, item)
+      self._write("d ${entry.id}")
+      return true
+    }
+
+    self.remove(entry.id)
+    self.define(entry)
+    return true
+  }
+
+  recolor(id) { // Update an entry's color
+    var entry = self.graphic.findEntry(id)
+    if (isnil(entry)) return false
+
+    var cid = self._drawColor(entry, entry.item.color)
+    if (isnil(cid)) self._write("C")
+    else self._write("C ${cid}")
+
+    self._write("d ${id}")
+    return true
+  }
+
+  remove(id) { // Remove an entry
+    var vid = nil
+    if (self.objects.contains(id)) vid = self.objects[id]
+    self._write("X D ${id}")
+    if (self.objects.contains(id)) self.objects.remove(id)
+    if (!isnil(vid) && self._users(vid) == 0 && !self._isCachedObject(vid)) {
+      self._write("X O ${vid}")
+    }
+    return true
+  }
+
+  replace(id) { // Remove and redefine an entry
+    var entry = self.graphic.findEntry(id)
+    if (isnil(entry)) return false
+    self.remove(id)
+    self.define(entry)
+    return true
+  }
+
+  canUpdateVertices(id, oldItem, newItem) { return false } // Can this object be updated in place?
+
+  canUpdateVertices(id, TriangleComplex oldItem, TriangleComplex newItem) {
+    if (!self.objects.contains(id)) return false
+    if (oldItem.position.dimensions()[1] != newItem.position.dimensions()[1]) {
+      return false
+    }
+    return self._vertexLayout(oldItem) == self._vertexLayout(newItem)
+  }
+
+  updateVertices(id, item) { return false } // Update vertex data on an existing object
+
+  updateVertices(id, TriangleComplex item) {
+    if (!self.objects.contains(id)) return false
+    self._write("U V ${self.objects[id]}")
+    self._vertexRows(item, item.color)
+    return true
+  }
+
+  _users(vid) { // How many entries share this object
+    var n = 0
+    for (id in self.objects) {
+      if (self.objects[id] == vid) n += 1
+    }
+    return n
+  }
+
+  _cacheHasVid(owner, vid) { // Is this object in the mixin's cache?
+    if (!self.caches.contains(owner)) return false
+    var cache = self.caches[owner]
+    for (k in cache) {
+      if (cache[k] == vid) return true
+    }
+    return false
+  }
+
+  _isCachedObject(vid) { // Is this a cached unit mesh?
+    return self._cacheHasVid(SphereSerializerMixin, vid) ||
+           self._cacheHasVid(CylinderSerializerMixin, vid) ||
+           self._cacheHasVid(ArrowSerializerMixin, vid)
+  }
+
+  _record(GraphicsEntry entry, item, vid) { // Record the viewer object for this entry
+    if (!isnil(vid)) self.objects[entry.id] = vid
+  }
+
+  _record(GraphicsEntry entry, Text item, vid) { } // Text has no viewer object
+}

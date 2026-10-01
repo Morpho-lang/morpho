@@ -104,6 +104,21 @@ Returns the filename that was used to open the file:
 
     print f.filename()
 
+## isFile
+[tagisfile]: # (isfile)
+[tagisFile]: # (isfile)
+
+Tests if a path refers to a regular file. Folders or missing paths return false:
+
+    print File.isFile("path/file.txt")
+
+## exists
+[tagexists]: # (exists)
+
+Returns true if a path refers to a file or folder:
+
+    print File.exists("path/file.txt")
+
 # Folder
 [tagfolder]: # (Folder)
 

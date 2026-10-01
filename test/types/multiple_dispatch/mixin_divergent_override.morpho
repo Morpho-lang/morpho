@@ -1,0 +1,24 @@
+// Two branches override the same ancestor signature; last mixin wins
+
+class Base {
+    f(Int x) {
+        return "base"
+    }
+}
+
+class A is Base {
+    f(Int x) {
+        return "A"
+    }
+}
+
+class B is Base {
+    f(Int x) {
+        return "B"
+    }
+}
+
+class C with A, B { }
+
+print C().f(1)
+// expect: B

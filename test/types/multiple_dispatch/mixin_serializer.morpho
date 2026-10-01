@@ -1,0 +1,57 @@
+// Sibling mixins compose distinct _define / _vertexFormat / _localMatrix overloads
+
+class Triangle { }
+class Sphere { }
+class Text { }
+class PointCloud { }
+class LineSet { }
+class GraphicsEntry { }
+class Coloring { }
+
+class TriangleSerializerMixin {
+    _define(GraphicsEntry entry, Triangle item) { return "triangle" }
+    _vertexFormat(Triangle item, Coloring color) { return "triangle-fmt" }
+    _localMatrix(Triangle item) { return "triangle-mat" }
+}
+
+class SphereSerializerMixin {
+    _define(GraphicsEntry entry, Sphere item) { return "sphere" }
+    _vertexFormat(PointCloud item, Coloring color) { return "points-fmt" }
+    _localMatrix(Sphere item) { return "sphere-mat" }
+}
+
+class TextSerializerMixin {
+    _define(GraphicsEntry entry, Text item) { return "text" }
+    _vertexFormat(LineSet item, Coloring color) { return "lines-fmt" }
+}
+
+class Serializer with TriangleSerializerMixin,
+                      SphereSerializerMixin,
+                      TextSerializerMixin {
+}
+
+var s = Serializer()
+
+print s._define(GraphicsEntry(), Triangle())
+// expect: triangle
+
+print s._define(GraphicsEntry(), Sphere())
+// expect: sphere
+
+print s._define(GraphicsEntry(), Text())
+// expect: text
+
+print s._vertexFormat(Triangle(), Coloring())
+// expect: triangle-fmt
+
+print s._vertexFormat(PointCloud(), Coloring())
+// expect: points-fmt
+
+print s._vertexFormat(LineSet(), Coloring())
+// expect: lines-fmt
+
+print s._localMatrix(Triangle())
+// expect: triangle-mat
+
+print s._localMatrix(Sphere())
+// expect: sphere-mat

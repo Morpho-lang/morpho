@@ -1,4 +1,3 @@
-import meshtools
 
 var m = Mesh("triangle.mesh")
 var f = Field(m, 1, grade=2)

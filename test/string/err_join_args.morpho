@@ -1,0 +1,4 @@
+// Join requires a List, or a List and a String separator
+
+print String.join()
+// expect error 'MltplDsptchFld'

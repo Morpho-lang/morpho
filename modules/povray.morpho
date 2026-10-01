@@ -1,242 +1,603 @@
+/* ***************************************************************
+ * POV-Ray
+ * =======
+ * Serialize Graphics to POV-Ray SDL and optionally render.
+ **************************************************************** */
 
-import graphics 
+import constants
+import graphics
+import color
+import fonts
 
-class Camera {
-    init(antialias = true, width = 2048, height = 1536, viewangle = 24, viewpoint = nil, look_at = nil, sky = nil) {
-        self.antialias = antialias
-        self.width = width
-        self.height = height
-        self.viewangle = viewangle
-        self.viewpoint = viewpoint
-        self.look_at = look_at
-        self.sky = sky
-        self.light = nil
-        if (!self.viewpoint) self.viewpoint = Matrix([0,0,5])
-        if (!self.look_at) self.look_at = Matrix([0,0,0])
-        if (!self.sky) self.sky = Matrix([0,1,0])
-    }
+// Error messages
+var _PovExecErr = Error("PovExec", "Could not run POV-Ray.")
+var _PovLightRig = Error("PovLightRig",
+  "Could not form a camera frame for named lighting; emitting no lights (ambient only).")
+var _warnedLightRig = false
+var _PovFontMiss = Error("PovFontMiss",
+  "Font not found; passing the requested name through to POV-Ray.")
+var _warnedFontMiss = false
+// [Compatibility shim]
+var _PovLegacyCam = Error("PovLegacyCam",
+  "Detected use of viewpoint/viewangle/light/look_at/sky/width/height/antialias set on the POVRaytracer. Use of a Camera property is recommended; this will be deprecated in the future.")
+var _warnedLegacyCam = false
+
+// Tolerances
+var _errNorm = 1e-12 // Near-zero vector / printed component
+var _errDraw = 1e-8  // Skip a zero-length shaft
+var _errOpaque = 0.999 // Treat alpha as fully opaque
+
+fn _num(x) { return (abs(x) < _errNorm) ? 0 : x } // Snap tiny values to zero
+
+fn _povVector(v) {
+  if (v.count() < 3) return "<${_num(v[0])}, ${_num(v[1])}, 0>"
+  return "<${_num(v[0])}, ${_num(v[1])}, ${_num(v[2])}>"
 }
 
-class POVRaytracer {
-  init(graphic, camera = nil) {
+fn _povMatrix(R) {
+  return "matrix <${_num(R[0,0])}, ${_num(R[1,0])}, ${_num(R[2,0])}, ${_num(R[0,1])}, ${_num(R[1,1])}, ${_num(R[2,1])}, ${_num(R[0,2])}, ${_num(R[1,2])}, ${_num(R[2,2])}, 0, 0, 0>"
+}
 
-    self.camera = camera
-    if (!self.camera) self.camera = Camera() // Default Camera
-    self.graphic = graphic
+fn _shellQuote(s) { // Escape a path for a shell command
+  var parts = []
+  for (ch in s) {
+    if (ch == "\\" || ch == "\"" || ch == "$" || ch == "`") parts.append("\\")
+    parts.append(ch)
+  }
+  return String.join(parts)
+}
 
-    self.antialias = self.camera.antialias
-    self.width = self.camera.width
-    self.height = self.camera.height
-    self.viewangle = self.camera.viewangle
-    self.viewpoint = self.camera.viewpoint
-    self.look_at = self.camera.look_at
-    self.sky = self.camera.sky
+fn _pngPath(path) { // PNG path beside a .pov file
+  var n = path.count()
+  if (n >= 4) {
+    var ext = path.substring(n-4, n)
+    if (ext == ".pov" || ext == ".POV") return path.substring(0, n-4) + ".png"
+  }
+  return path + ".png"
+}
+
+fn _povBackgroundAlpha(graphic, transparent) { // Background opacity for this render
+  if (transparent) return 0
+  var col = graphic.background
+  if (isnil(col)) return 1
+  return col.alpha(0)
+}
+
+/* ----------------------------------------------------------------
+ * Camera
+ *
+ * Allows the user to set camera and rendering properties: 
+ * - antialias: Uses antialiasing for the render.
+ * - width: Width of the render in pixels.
+ * - height: Height of the render in pixels.
+ * - viewangle: Field of view in degrees.
+ * - viewpoint: The position of the camera in the scene.
+ * - look_at: The point the camera is looking at.
+ * - sky: The direction of the sky.
+ * - light: The light source for the scene.
+ * ---------------------------------------------------------------- */
+
+class Camera {
+  init(antialias=true, width=2048, height=1536, viewangle=24,
+       viewpoint=nil, look_at=nil, sky=nil) {
+    self.antialias = antialias
+    self.width = width
+    self.height = height
+    self.viewangle = viewangle
+    self.viewpoint = viewpoint
+    self.look_at = look_at
+    self.sky = sky
     self.light = nil
+    if (!self.viewpoint) self.viewpoint = Matrix([0, 0, 5])
+    if (!self.look_at) self.look_at = Matrix([0, 0, 0])
+    if (!self.sky) self.sky = Matrix([0, 1, 0])
   }
+}
 
-  vector(v) {
-    return "<${v[0]}, ${v[1]}, ${v[2]}>"
+/* ----------------------------------------------------------------
+ * SpherePOVMixin
+ * ---------------------------------------------------------------- */
+
+class SpherePOVMixin {
+  _define(GraphicsEntry entry, Sphere item) { // Write a sphere
+    self._write("sphere { ${_povVector(item.center)}, ${_num(item.r)} ${self._skin(entry)}${self._wrap(entry)} }")
   }
+}
 
-  color(c) {
-    if (isnil(c)) return "<0.5, 0.5, 0.5>"
-    if (ismatrix(c)) return self.vector(c)
-    else return self.vector(c.rgb(0))
+/* ----------------------------------------------------------------
+ * CylinderPOVMixin
+ * ---------------------------------------------------------------- */
+
+class CylinderPOVMixin {
+  _define(GraphicsEntry entry, Cylinder item) { // Write a cylinder
+    var dx = item.end - item.start, length = dx.norm()
+    if (!(length > _errDraw)) return
+    var r = item._radius(length)
+    self._write("cylinder { ${_povVector(item.start)}, ${_povVector(item.end)}, ${_num(r)} ${self._skin(entry)}${self._wrap(entry)} }")
   }
+}
 
-  optionalarg(item){
-    
-    var arg = ""
-  
-    if(isnil(item.filter) && !isnil(item.transmit)){
-      arg = "transmit ${item.transmit}"
-    }
-    else if(!isnil(item.filter) && isnil(item.transmit)){
-      arg = "filter ${item.filter}"
-    }
-    else if(!isnil(item.filter) && !isnil(item.transmit)){
-      arg = "filter ${item.filter} transmit ${item.transmit}"
-    }
-    return arg
+/* ----------------------------------------------------------------
+ * ArrowPOVMixin
+ *
+ * Shaft plus conical tip.
+ * ---------------------------------------------------------------- */
+
+class ArrowPOVMixin is CylinderPOVMixin {
+  _define(GraphicsEntry entry, Arrow item) { // Write an arrow
+    var dx = item.end - item.start, length = dx.norm()
+    if (!(length > _errDraw)) return
+    var r = item._radius(length)
+    var h = 1 - item.aspectratio
+    var mid = item.start + h*dx
+    var sk = self._skin(entry)
+    self._write("union {")
+    self._write("  cylinder { ${_povVector(item.start)}, ${_povVector(mid)}, ${_num(r)} ${sk} }")
+    self._write("  cone { ${_povVector(mid)}, ${_num(2*r)}, ${_povVector(item.end)}, 0 ${sk} }")
+    self._write("${self._wrap(entry)}")
+    self._write("}")
   }
+}
 
-  visit(Text item, out) {
-    var arg = self.optionalarg(item)
-    out.write("text {" +
-              "  ttf \"cyrvetic.ttf\" \"${item.string}\" 0.1, 0 \n" + 
-              "  pigment { rgb ${self.color(item.color)} ${arg} }")
-    out.write("  scale ${item.size / 75} ")
-    out.write("  translate ${item.posn[0]}*x + ${item.posn[1]}*y + ${item.posn[2]}*z ")
-    var m = item.transformationmatrix() 
-    var str
-    if (m) {
-      str = "  matrix <"
-      for (i in 0..3) {
-        for (j in 0..2) {
-          str+=" "+String(m[i,j])
-          if (i==3 && j==2) str += "> \n }"
-          else str += ", "
-          if (j==2) str +="\n"
-        }
-      }
-    }
-    else {
-        str = " } "
-    }
-    out.write(str)
-  }
+/* ----------------------------------------------------------------
+ * TriangleComplexPOVMixin
+ * ---------------------------------------------------------------- */
 
-  visit(Sphere item, out) {
-    var arg = self.optionalarg(item)
-    out.write("sphere {"+
-              " ${self.vector(item.center)}, ${item.r}"+
-              " texture { "+
-              " pigment { rgb ${self.color(item.color)} ${arg}"+
-              "} } }")
-  }
-
-  visit(Cylinder item, out) {
-    var radius = 0.5*(item.end - item.start).norm()*item.aspectratio
-    var arg = self.optionalarg(item)
-    out.write("cylinder {"+
-              " ${self.vector(item.start)}, ${self.vector(item.end)}, ${radius}"+
-              " texture { "+
-              " pigment { rgb ${self.color(item.color)} ${arg}"+
-              "} } }")
-  }
-
-  visit(Arrow item, out) {
-    var dx = (item.end - item.start).norm()
-    var radius = 0.5*dx*item.aspectratio
-    var cylend = item.start + (item.end - item.start)*(1-item.aspectratio)
-    var arg = self.optionalarg(item)
-    out.write("cylinder {"+
-              " ${self.vector(item.start)}, ${self.vector(cylend)}, ${radius}"+
-              " texture { "+
-              " pigment { rgb ${self.color(item.color)} ${arg} "+
-              "} } }")
-    out.write("cone {"+
-              " ${self.vector(cylend)}, ${2*radius}, ${self.vector(item.end)}, 0"+
-              " texture { "+
-              " pigment { rgb ${self.color(item.color)} ${arg} "+
-              "} } }")
-  }
-
-  visit(Tube item, out) {
-    self.visit(item.totrianglecomplex(), out)
-  }
-
-  visit(TriangleComplex item, out) {
-
-    var arg = self.optionalarg(item)
-
-    out.write("mesh2 {");
-
-    var nv=item.position.dimensions()[1]
-
-    out.write("vertex_vectors { ${nv}, ")
+class TriangleComplexPOVMixin {
+  _mesh(entry, item) { // Write a triangle mesh
+    var col = entry.effectiveColor()
+    var skin = self._skin(entry)
+    var tail = self._wrap(entry)
+    var flat = self._flat(entry)
+    var nv = item.position.dimensions()[1]
+    var nf = item.connectivity.dimensions()[1]
+    var per = self._perVertex(col)
+    self._write("mesh2 {")
+    self._write("  vertex_vectors { ${nv},")
     for (i in 0...nv) {
-      var s = self.vector(item.position.column(i))
-      if (i<nv-1) s+=", "
-      out.write(s)
+      self._write("${(i > 0) ? ", " : ""}${_povVector(item.position.column(i))}")
     }
-    out.write("}");
-
-    out.write("normal_vectors { ${nv}, ")
+    self._write("}")
+    self._write("  normal_vectors { ${nv},")
     for (i in 0...nv) {
-      var s = self.vector(item.normals.column(i))
-      if (i<nv-1) s+=", "
-      out.write(s)
+      self._write("${(i > 0) ? ", " : ""}${_povVector(item.normals.column(i))}")
     }
-    out.write("}");
-
-    var individualcolors = ismatrix(item.colors)
-    if (individualcolors) {
-      out.write("texture_list { ${nv}, ")
+    self._write("}")
+    if (per) {
+      var fin = self._finish(flat)
+      self._write("  texture_list { ${nv},")
       for (i in 0...nv) {
-        var s = "texture{ pigment{ rgb ${self.vector(item.colors.column(i))} ${arg} } }"
-        if (i<nv-1) s+=", "
-        out.write(s)
+        self._write("${(i > 0) ? ", " : ""}texture { ${self._pigment(col, i)}${fin} }")
       }
-      out.write("}");
+      self._write("}")
     }
-
-    var nfaces=item.connectivity.dimensions()[1]
-    out.write("face_indices { ${nfaces}, ")
-    for (i in 0...nfaces) {
-      var indx = item.connectivity.rowindices(i)
-      var s = self.vector(indx)
-      if (individualcolors) s += ",${indx[0]},${indx[1]},${indx[2]}"
-      if (i<nv-1) s+=", "
-      out.write(s)
+    self._write("  face_indices { ${nf},")
+    for (i in 0...nf) {
+      var idx = item.faceIndices(i)
+      var s = _povVector(idx)
+      if (per) s += ", ${idx[0]}, ${idx[1]}, ${idx[2]}"
+      self._write("${(i > 0) ? ", " : ""}${s}")
     }
-    out.write("}");
-
-    if (!individualcolors) {
-      out.write(" texture { "+
-                " pigment { rgb ${self.color(item.colors)} ${arg} "+
-                "} }")
-    }
-
-    out.write("}");
-
+    self._write("}")
+    if (!per) self._write("  ${skin}")
+    if (tail.count() > 0) self._write(" ${tail}")
+    self._write("}")
   }
 
-  write(file) {
-    var out = File(file, "write")
+  _define(GraphicsEntry entry, TriangleComplex item) { // Write a triangle mesh
+    self._mesh(entry, item)
+  }
+}
 
-    out.write("#include \"colors.inc\"")
-    if (self.transparent) {
-      var col = self.graphic.background.rgb(0)
-      out.write("background { rgb <${col[0]}, ${col[1]}, ${col[2]}, 1> }") // Transparent background by setting alpha to 1
+/* ----------------------------------------------------------------
+ * TubePOVMixin
+ *
+ * Tube along a path.
+ * ---------------------------------------------------------------- */
+
+class TubePOVMixin {
+  _sweep(item, skin, tail) { // Write a tube
+    var mat = asVertexMatrix(item.pts)
+    var np = mat.dimensions()[1]
+    if (np < 2) return
+    var n = item.closed ? np + 1 : np
+    self._write("sphere_sweep { linear_spline ${n},")
+    for (i in 0...n) {
+      self._write("${(i > 0) ? "," : ""} ${_povVector(mat.column(i < np ? i : 0))}, ${item.radius}")
     }
-    else {
-      out.write("background { rgb ${self.vector(self.graphic.background.rgb(0))} }")
-    }
-    out.write("camera {"+
-              "location ${self.vector(self.viewpoint)}"+
-              "up <0,1,0> right <-1.33,0,0> angle ${self.viewangle}"+
-              "look_at ${self.vector(self.look_at)} sky ${self.vector(self.sky)} }")
+    self._write(" ${skin}${tail} }")
+  }
 
-    for (item in self.graphic.displaylist) self.visit(item, out)
+  _define(GraphicsEntry entry, Tube item) { // Write a tube
+    self._sweep(item, self._skin(entry), self._wrap(entry))
+  }
+}
 
-    var shadowless = ""
-    if (self.shadowless) shadowless = " shadowless"
-    if (self.light) {
-      for (light in self.light) {
-        out.write("light_source {${self.vector(light)} color White${shadowless}}")
+/* ----------------------------------------------------------------
+ * PointCloudPOVMixin
+ *
+ * A sphere at each point.
+ * ---------------------------------------------------------------- */
+
+class PointCloudPOVMixin {
+  _unlit(PointCloud item) { return true }
+
+  _points(item, col, flat, tail) { // Write points as spheres
+    var nv = item.position.dimensions()[1]
+    if (nv < 1) return
+    var per = self._perVertex(col)
+    self._grouped(tail, fn () {
+      for (i in 0...nv) {
+        var c = per ? col.color(i) : col
+        self._write("sphere { ${_povVector(item.position.column(i))}, ${self.pointradius} ${self._texture(c, flat)} }")
       }
-    } else out.write("light_source {<-5, -5, 8> color White${shadowless}}")
+    })
+  }
 
+  _define(GraphicsEntry entry, PointCloud item) { // Write a point cloud
+    self._points(item, entry.effectiveColor(), self._flat(entry), self._wrap(entry))
+  }
+}
+
+/* ----------------------------------------------------------------
+ * LineSetPOVMixin
+ *
+ * A cylinder for each segment.
+ * ---------------------------------------------------------------- */
+
+class LineSetPOVMixin {
+  _unlit(LineSet item) { return true }
+
+  _lines(item, col, flat, tail) { // Write line segments as cylinders
+    var segs = item.connectivity
+    if (segs.count() < 2) return
+    var per = self._perVertex(col)
+    self._grouped(tail, fn () {
+      for (k in 0...segs.count():2) {
+        var i = segs[k], j = segs[k+1]
+        var c = per ? col.color(i) : col
+        self._write("cylinder { ${_povVector(item.position.column(i))}, ${_povVector(item.position.column(j))}, ${self.lineradius} ${self._texture(c, flat)} }")
+      }
+    })
+  }
+
+  _define(GraphicsEntry entry, LineSet item) { // Write a line set
+    self._lines(item, entry.effectiveColor(), self._flat(entry), self._wrap(entry))
+  }
+}
+
+/* ----------------------------------------------------------------
+ * TextPOVMixin
+ * ---------------------------------------------------------------- */
+
+class TextPOVMixin {
+  _orient(item) { // Local orientation of the text
+    var m = item.transformationMatrix()
+    if (isnil(m)) return ""
+    var parts = []
+    for (i in 0..3) {
+      for (j in 0..2) parts.append("${_num(m[i,j])}")
+    }
+    return " matrix <${String.join(parts, ", ")}>"
+  }
+
+  _text(item, skin, tail) { // Write text
+    self._write("text { ttf \"${self._escape(self._fontPath(item))}\" \"${self._escape(item.string)}\" 0.1, 0")
+    self._write("  ${skin}")
+    self._write("  scale ${item.size/75}${tail} }")
+  }
+
+  _fontPath(item) { // Font file, or cyrvetic if none was given
+    var font = item.font
+    if (isnil(font) || !font) return "cyrvetic.ttf"
+    if (self._fonts.contains(font)) return self._fonts[font]
+    var found = FontFinder().find(font)
+    if (isnil(found)) {
+      if (!_warnedFontMiss) {
+        _warnedFontMiss = true
+        _PovFontMiss.warning()
+      }
+      self._fonts[font] = font
+    } else {
+      self._fonts[font] = found
+    }
+    return self._fonts[font]
+  }
+
+  _define(GraphicsEntry entry, Text item) { // Write text
+    self._text(item, self._skin(entry), self._orient(item) + self._wrap(entry))
+  }
+}
+
+/* ----------------------------------------------------------------
+ * LightingPOVMixin
+ *
+ * Named rigs and custom point lights.
+ * ---------------------------------------------------------------- */
+
+class LightingPOVMixin {
+  _cameraAxes(cam) { // Right, up, and view axes of the camera
+    var z = cam.viewpoint - cam.look_at
+    var zn = z.norm()
+    if (!(zn > _errNorm)) return nil
+    z = z/zn
+    var y = cam.sky - z*cam.sky.inner(z)
+    var yn = y.norm()
+    if (!(yn > _errNorm)) return nil
+    y = y/yn
+    return (cross3D(y, z), y, z)
+  }
+
+  _namedRig(cam, name) { // Distant lamps for a named lighting rig
+    var axes = self._cameraAxes(cam)
+    if (isnil(axes)) {
+      if (!_warnedLightRig) {
+        _warnedLightRig = true
+        _PovLightRig.warning()
+      }
+      return []
+    }
+    var x = axes[0], y = axes[1], z = axes[2]
+    var specs
+    if (name == "threepoint") {
+      specs = [
+        (Matrix([0.5, 0.5, 1.5]), 0.85),
+        (Matrix([-1.5, -2.5, 1.5]), 0.40),
+        (Matrix([0.0, 1.5, -1.5]), 0.10)
+      ]
+    } else {
+      specs = [
+        (Matrix([1.5, -0.5, 1.5]), 0.40),
+        (Matrix([1.5, 1.5, 1.5]), 0.40),
+        (Matrix([-0.5, 1.5, 1.5]), 0.40)
+      ]
+    }
+    var out = []
+    for (s in specs) {
+      var d = s[0]
+      var dir = x*d[0] + y*d[1] + z*d[2]
+      var n = dir.norm()
+      if (!(n > _errNorm)) continue
+      out.append((cam.look_at + 100*(dir/n), s[1]))
+    }
+    return out
+  }
+
+  _writeNamedRig(sl, name) { // Write lamps for a named rig
+    for (lamp in self._namedRig(self.camera, name)) {
+      var c = lamp[1]
+      self._write("light_source { ${_povVector(lamp[0])} color rgb <${c}, ${c}, ${c}>${sl} }")
+    }
+  }
+
+  _writeLightVal(Lighting lighting, sl) { // Write lamps
+    if (lighting.mode == "off") return
+    if (lighting.mode != "custom") {
+      self._writeNamedRig(sl, lighting.mode)
+      return
+    }
+    for (lamp in lighting.lights) {
+      var p = lamp.position
+      var c = (lamp.intensity*lamp.color).rgb(0)
+      self._write("light_source { ${_povVector(p)} color rgb <${_num(c[0])}, ${_num(c[1])}, ${_num(c[2])}>${sl} }")
+    }
+  }
+  _writeLightVal(val, sl) { self._writeLightVal(Lighting(val), sl) }
+
+  _writeLights(shadowless) { // Write the scene lights
+    var sl = shadowless ? " shadowless" : ""
+    var lights = isnil(self.camera.light) ? self.graphic.light : self.camera.light
+    self._writeLightVal(lights, sl)
+  }
+}
+
+/* ----------------------------------------------------------------
+ * POVSerializer
+ *
+ * Converts Graphics / GraphicsEntry to POV-Ray SDL.
+ * Usage:
+ *   var out = File("output.pov", "write")
+ *   POVSerializer(graphic, out).serialize()
+ * ---------------------------------------------------------------- */
+
+class POVSerializer with TriangleComplexPOVMixin,
+                         PointCloudPOVMixin,
+                         LineSetPOVMixin,
+                         TextPOVMixin,
+                         SpherePOVMixin,
+                         ArrowPOVMixin,
+                         TubePOVMixin,
+                         LightingPOVMixin {
+  init(Graphics graphic, out, camera=nil, pointradius=0.02, lineradius=0.01) {
+    self.graphic = graphic
+    self.out = out
+    self.camera = isnil(camera) ? Camera() : camera
+    self.pointradius = pointradius
+    self.lineradius = lineradius
+    self._fonts = Dictionary()
+  }
+
+  serialize(transparent=false, shadowless=false) { // Write the whole graphic
+    self._write("#include \"colors.inc\"")
+    self._writeBackground(transparent)
+    self._writeCamera()
+    for (entry in self.graphic.displaylist) self.define(entry)
+    self._writeLights(shadowless)
+  }
+
+  define(GraphicsEntry entry) { // Write one displaylist entry
+    return self._define(entry, entry.item)
+  }
+
+  _define(GraphicsEntry entry, item) { } // Skip unknown items
+
+  _define(GraphicsEntry entry, TriangleConvertibleMixin item) { // Convert then dispatch
+    var tri = item.toTriangleComplex()
+    if (isnil(tri)) return nil
+    return self._define(entry, tri)
+  }
+
+  _write(s) { self.out.write(s) }
+
+  _escape(s) { // Escape \ and " for POV strings
+    var parts = []
+    for (ch in s) {
+      if (ch == "\\" || ch == "\"") parts.append("\\")
+      parts.append(ch)
+    }
+    return String.join(parts)
+  }
+
+  _perVertex(ColorTable col) { return true } // One color per vertex?
+  _perVertex(Coloring col) { return false }
+  _perVertex(col) { return false }
+
+  _pigment(Coloring col, i) { // POV pigment for a color sample
+    var t = col.rgba(i)
+    var a = t[3]
+    if (a < _errOpaque) {
+      return "pigment { rgbt <${t[0]}, ${t[1]}, ${t[2]}, ${1-a}> }"
+    }
+    return "pigment { rgb <${t[0]}, ${t[1]}, ${t[2]}> }"
+  }
+  _pigment(Coloring col) { return self._pigment(col, 0) }
+
+  _finish(flat) { return flat ? " finish { ambient 1 diffuse 0 }" : "" } // Unlit finish
+
+  _texture(col, flat) { // Pigment plus finish
+    return "texture { ${self._pigment(col)}${self._finish(flat)} }"
+  }
+
+  _skin(entry) { // Texture for this entry
+    return self._texture(entry.effectiveColor(), self._flat(entry))
+  }
+
+  _wrap(entry) { // Scale, rotate, and translate
+    var s = ""
+    var scl = entry.scale
+    if (ismatrix(scl) || islist(scl)) s += " scale ${_povVector(scl)}"
+    else if (!isnil(scl) && scl != 1) s += " scale ${scl}"
+    var R = entry.rotationMatrix()
+    if (!isnil(R)) s += " ${_povMatrix(R)}"
+    var p = entry.position
+    if (!isnil(p) && !(p[0] == 0 && p[1] == 0 && p[2] == 0)) {
+      s += " translate ${_povVector(p)}"
+    }
+    return s
+  }
+
+  _unlit(item) { return false }
+
+  _flat(entry) { return isnil(entry.flat) ? self._unlit(entry.item) : entry.flat } // Unlit?
+
+  _grouped(tail, body) { // Wrap transformed groups in a union
+    if (tail.count() > 0) self._write("union {")
+    body()
+    if (tail.count() > 0) self._write("${tail} }")
+  }
+
+  _writeBackground(transparent) { // Write the background color
+    var col = self.graphic.background
+    if (isnil(col)) col = Black
+    var t = col.rgb(0)
+    var a = _povBackgroundAlpha(self.graphic, transparent)
+    if (a < _errOpaque) {
+      self._write("background { rgbt <${t[0]}, ${t[1]}, ${t[2]}, ${1-a}> }")
+    } else {
+      self._write("background { rgb ${_povVector(t)} }")
+    }
+  }
+
+  _writeCamera() { // Write the camera
+    var cam = self.camera
+    var aspect = cam.width / cam.height
+    self._write("camera {")
+    self._write("  location ${_povVector(cam.viewpoint)}")
+    self._write("  up <0, 1, 0> right <-${aspect}, 0, 0> angle ${cam.viewangle}")
+    self._write("  look_at ${_povVector(cam.look_at)} sky ${_povVector(cam.sky)}")
+    self._write("}")
+  }
+}
+
+/* ----------------------------------------------------------------
+ * POVRaytracer
+ *
+ * File/render launcher. 
+ * Usage:
+ *   POVRaytracer(graphic).write("output.pov")
+ *   POVRaytracer(graphic).render("output.pov")
+ * ---------------------------------------------------------------- */
+
+class POVRaytracer {
+  init(graphic, camera=nil) {
+    self.graphic = graphic
+    self.camera = isnil(camera) ? Camera() : camera
+    self.pointradius = 0.02
+    self.lineradius = 0.01
+  }
+
+  init(graphic, camera) {
+    self.graphic = graphic
+    self.camera = camera
+    self.pointradius = 0.02
+    self.lineradius = 0.01
+  }
+
+  // [Compatibility shim] Copy old tracer camera fields onto camera.
+  _legacyCamera() {
+    var cam = self.camera
+    var used = false
+    for (k in ["viewpoint", "viewangle", "look_at", "sky", "light", "width", "height", "antialias"]) {
+      if (self.has(k)) { cam[k] = self[k]; used = true }
+    }
+    if (used && !_warnedLegacyCam) {
+      _warnedLegacyCam = true
+      _PovLegacyCam.warning("Deprecated POVRaytracer.viewpoint (and related fields). Use pov.camera.viewpoint instead.")
+    }
+    return cam
+  }
+
+  _serializer(out) { // Serializer for this output
+    return POVSerializer(self.graphic, out, camera=self.camera,
+                         pointradius=self.pointradius, lineradius=self.lineradius)
+  }
+
+  write(file, transparent=false, shadowless=false) { // Write a .pov file
+    self._legacyCamera()
+    var out = File(file, "write")
+    self._serializer(out).serialize(transparent=transparent, shadowless=shadowless)
     out.close()
     return out.relativepath()
   }
 
-  render(file, quiet=false, display=true, shadowless=false, transparent=false) {
-    self.shadowless = shadowless // Sets the attribute to be used in the write method
-    self.transparent = transparent // Sets the attribute to be used in the write method and in the command line argument for povray
-    var path = self.write(file)
-    var silent = ""
-    if (quiet) silent = "> /dev/null 2>&1"
-    var disp = ""
-    if (!display) disp = "-D"
-    var ua = "+A"
-    if (self.transparent) ua = "+UA" // Sets alpha output on 
-    system("povray \"${path}\" ${disp} ${ua} +W${self.width} +H${self.height} ${silent}")
-    var out = self._slice(path, 0, path.count()-4)
-    if (!quiet && display) system("open ${out}.png")
+  _openImage(png) { // Open the PNG
+    var p = System.platform()
+    var escaped = _shellQuote(png)
+    if (p == "macos") system("open \"${escaped}\"")
+    else if (p == "windows") system("powershell -Command \"Start-Process '${escaped}'\"")
+    else system("xdg-open \"${escaped}\"")
   }
-  /*
-  private method: slice a string given a start and an end
-  @param string: string to be slice
-  @param start: starting index
-  @param end: ending index(exclusive)
-  */
-  _slice(string, start, end) {
-    var s = ""
-    for (i in start...end) {
-      s += string[i]
+
+  _renderFlags(transparent, display) { // Flags for the povray command
+    var cam = self.camera
+    var flags = "+W${cam.width} +H${cam.height}"
+    if (!display) flags += " -D"
+    if (cam.antialias) flags += " +A"
+    if (_povBackgroundAlpha(self.graphic, transparent) < _errOpaque) flags += " +UA"
+    return flags
+  }
+
+  render(file, quiet=false, display=true, shadowless=false, transparent=false) { // Write and run povray
+    var path = self.write(file, transparent=transparent, shadowless=shadowless)
+    var flags = self._renderFlags(transparent, display)
+    var result
+    try {
+      result = System.subprocess("povray \"${_shellQuote(path)}\" ${flags}")
+    } catch {
+      "SystmPOpnFld": _PovExecErr.throw()
     }
-    return s
+    if (!quiet && !isnil(result["stdout"])) print result["stdout"]
+    if (result["exitstatus"] != 0) _PovExecErr.warning()
+    if (!quiet && display) self._openImage(_pngPath(path))
   }
 }

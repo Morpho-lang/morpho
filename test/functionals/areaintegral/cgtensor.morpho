@@ -1,6 +1,5 @@
 // Cauchy-Green tensor in integrals 
 
-import constants
 import meshtools
 
 var mb = MeshBuilder() 

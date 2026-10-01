@@ -45,3 +45,18 @@ The split method splits a String into a list of substrings. It takes one argumen
 gives
 
     [ 1, 2, 3 ]
+
+## join
+[tagjoin]: # (join)
+
+Joins the elements of a `List` into a single `String`, converting each element to a `String` as it goes:
+
+    print String.join([1, 2, 3]) // 123
+
+A separator can be given that is inserted between elements:
+
+    print String.join([1, 2, 3], ", ") // 1, 2, 3
+
+When called on a `String` object, that string is prepended:
+
+    print "id=".join([1, 2], ",") // id=1,2

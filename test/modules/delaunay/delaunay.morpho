@@ -2,7 +2,7 @@
 
 import delaunay
 
-var N = 100 // Number of points 
+var N = 100 // Number of points
 
 // Explicitly check that all triangles have the property that no other point is in their circumcircle
 fn checkTriangulation(pts, tri, quiet=false) {
@@ -15,14 +15,25 @@ fn checkTriangulation(pts, tri, quiet=false) {
 
             if (sph.pointinsphere(pts[i])) {
                 if (!quiet) print "Point ${i} is in triangle ${k}."
-                success=false; 
+                success=false;
             }
         }
     }
     return success
 }
 
-// 2D random point distribution 
+fn canon(tri) {
+    var s = []
+    for (t in tri) {
+        var u = t.clone()
+        u.sort()
+        s.append("${u}")
+    }
+    s.sort()
+    return "${s}"
+}
+
+// 2D random point distribution
 var a = []
 for (i in 1..N) a.append(Matrix([2*random()-1, 2*(2*random()-1)]))
 
@@ -32,7 +43,14 @@ var tri = del.triangulate() // Returns a list of triangles [ [i, j, k], ... ]
 print checkTriangulation(a, tri)
 // expect: true
 
-// 3D random point distribution 
+print del.pts.count() == N
+// expect: true
+
+var tri2 = del.triangulate()
+print del.pts.count() == N && canon(tri) == canon(tri2)
+// expect: true
+
+// 3D random point distribution
 var b = []
 for (i in 1..N) b.append(Matrix([2*random()-1, 2*(2*random()-1), 2*random()-1]))
 
@@ -40,4 +58,68 @@ del = Delaunay(b)
 tri = del.triangulate()
 
 print checkTriangulation(b, tri)
+// expect: true
+
+// Cocircular square: either diagonal is valid Delaunay
+var sq = [Matrix([0,0]), Matrix([1,0]), Matrix([1,1]), Matrix([0,1])]
+del = Delaunay(sq)
+tri = del.triangulate()
+print tri.count() == 2 && checkTriangulation(sq, tri)
+// expect: true
+
+// Regular tetrahedron
+var tet = [Matrix([0,0,0]), Matrix([1,0,0]), Matrix([0,1,0]), Matrix([0,0,1])]
+del = Delaunay(tet)
+tri = del.triangulate()
+print tri.count() == 1 && checkTriangulation(tet, tri)
+// expect: true
+
+// 1D: adjacent segments of the sorted points
+var line = [Matrix([0]), Matrix([1]), Matrix([0.5]), Matrix([2])]
+del = Delaunay(line)
+tri = del.triangulate()
+print tri.count() == 3 && checkTriangulation(line, tri)
+// expect: true
+
+print Delaunay((Matrix([0,0]), Matrix([1,0]), Matrix([0,1]))).triangulate().count() == 1
+// expect: true
+
+try {
+    Circumsphere([Matrix([0,0]), Matrix([1,0]), Matrix([2,0])], [0,1,2])
+    print false
+} catch {
+    "DlnyDegenerate": print true
+}
+// expect: true
+
+try {
+    Delaunay([])
+    print false
+} catch {
+    "DlnyInit": print true
+}
+// expect: true
+
+try {
+    Delaunay(1)
+    print false
+} catch {
+    "MltplDsptchFld": print true
+}
+// expect: true
+
+try {
+    Delaunay([Matrix([0,0]), Matrix([1,0])])
+    print false
+} catch {
+    "DlnyDim": print true
+}
+// expect: true
+
+try {
+    Delaunay([Matrix([0,0]), Matrix([1,0]), Matrix([0,1,0])])
+    print false
+} catch {
+    "DlnyDim": print true
+}
 // expect: true

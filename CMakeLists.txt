@@ -25,6 +25,12 @@ set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 add_library(morpho SHARED "")
 
+# Detect platform-native shared library extension and set MORPHO_DYLIBEXTENSION to it
+if(NOT MORPHO_DYLIBEXTENSION)
+    string(REGEX REPLACE "^\\." "" MORPHO_DYLIBEXTENSION "${CMAKE_SHARED_LIBRARY_SUFFIX}")
+endif()
+target_compile_definitions(morpho PUBLIC MORPHO_DYLIBEXTENSION=\"${MORPHO_DYLIBEXTENSION}\")
+
 #-------------------------------------------------------------------------------
 # Release LTO
 #-------------------------------------------------------------------------------

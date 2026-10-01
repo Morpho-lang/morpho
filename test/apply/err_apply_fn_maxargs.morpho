@@ -1,0 +1,8 @@
+// Morpho functions cannot be applied with more than MORPHO_MAXARGS (255) arguments
+
+fn f(...xs) { return xs.count() }
+
+var a = []
+for (i in 0...256) a.append(1)
+print apply(f, a)
+// expect error 'TooMnyArg'

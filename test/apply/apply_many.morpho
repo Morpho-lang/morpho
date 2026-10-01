@@ -1,0 +1,6 @@
+// apply can unpack more arguments than a compiled call (MORPHO_MAXARGS is 255)
+
+var a = []
+for (i in 0...256) a.append("x")
+print apply(String, a).count()
+// expect: 256

@@ -1,7 +1,6 @@
 // Nematic-Electric coupling
 
 import meshtools
-import plot
 import "../numericalderivatives.morpho"
 
 var L = 1

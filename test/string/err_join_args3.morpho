@@ -1,0 +1,2 @@
+print String.join([1, 2], 3)
+// expect error 'MltplDsptchFld'

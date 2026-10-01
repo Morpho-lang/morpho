@@ -2,7 +2,6 @@
 // https://people.sc.fsu.edu/~jburkardt/data/vtk/vtk.html
 
 import vtk
-import plot 
 
 var vtkI = VTKImporter("rbc_001.vtk")
 

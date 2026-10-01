@@ -1,4 +1,3 @@
-import meshtools
 import vtk 
 
 var m = Mesh("square.mesh")

@@ -2,6 +2,7 @@
 import constants
 import color
 import plot
+import morphoview
 import povray
 
 var icos = [[-0.688191, 0, 0.131433], [0.688191,
@@ -26,7 +27,7 @@ var faces = [[14, 9, 8, 13, 0], [1, 5, 11, 10, 4], [4, 10, 6, 2, 18], [10, 11, 7
 fn demo() {
   var p=PolyhedronMesh(icos, faces)
   var f=Field(p, fn (x,y,z) x)
-  var g = plotfield(f, style="interpolate")
+  var g = Plot(f, style="interpolate")
 
   for (i in 0...30) {
     var xx = Matrix([2*(random()-1/2), 2*(random()-1/2), 2*(random()-1/2)])

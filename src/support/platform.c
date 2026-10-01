@@ -173,9 +173,31 @@ bool platform_isdirectory(const char *path) {
     return (attributes & FILE_ATTRIBUTE_DIRECTORY);
 #else
    struct stat statbuf;
-   if (stat(path, &statbuf) != 0)
-       return 0;
+   if (stat(path, &statbuf) != 0) return 0;
    return (bool) S_ISDIR(statbuf.st_mode);
+#endif
+}
+
+/** Tests if an object at path corresponds to a regular file */
+bool platform_isfile(const char *path) {
+#ifdef _WIN32
+    DWORD attributes = GetFileAttributes(path);
+    if (attributes==INVALID_FILE_ATTRIBUTES) return false;
+    return (attributes & FILE_ATTRIBUTE_DIRECTORY)==0;
+#else
+   struct stat statbuf;
+   if (stat(path, &statbuf) != 0) return false;
+   return (bool) S_ISREG(statbuf.st_mode);
+#endif
+}
+
+/** Tests if a path exists */
+bool platform_exists(const char *path) {
+#ifdef _WIN32
+    return GetFileAttributes(path)!=INVALID_FILE_ATTRIBUTES;
+#else
+    struct stat statbuf;
+    return stat(path, &statbuf)==0;
 #endif
 }
 
@@ -347,7 +369,11 @@ bool platform_directorycontents(MorphoDirContents *contents, char *buffer, size_
 /** Opens a dynamic library, returning a handle for future use */
 MorphoDLHandle platform_dlopen(const char *path) {
 #ifdef _WIN32
-    return LoadLibrary((LPCSTR) path);
+    /* Search the plugin folder for dependent DLLs, then the usual locations including PATH. */
+    char tmp[MAX_PATH];
+    DWORD needed = GetFullPathNameA(path, MAX_PATH, tmp, NULL);
+    if (needed == 0 || needed >= MAX_PATH) return NULL;
+    return LoadLibraryExA(tmp, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
 #else
     return dlopen(path, RTLD_LAZY);
 #endif

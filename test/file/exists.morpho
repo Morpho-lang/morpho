@@ -1,0 +1,12 @@
+/*
+ * File.exists
+ */
+
+print File.exists("folder/file1.txt")
+// expect: true
+
+print File.exists("folder")
+// expect: true
+
+print File.exists("folder/missing.txt")
+// expect: false

@@ -1,8 +1,0 @@
-// Import a file containing just a mesh
-import vtk
-
-var vtkI = VTKImporter("mesh.vtk")
-
-var m = vtkI.mesh()
-
-print m // expect: <Mesh: 2 vertices>

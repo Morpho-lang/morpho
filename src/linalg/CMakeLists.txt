@@ -5,14 +5,3 @@ target_sources(morpho
         matrix.c  matrix.h
         sparse.c  sparse.h
 )
-
-target_sources(morpho
-    INTERFACE
-    FILE_SET public_headers
-    TYPE HEADERS
-    FILES
-        linalg.h
-        matrix.h
-        complexmatrix.h
-        sparse.h
-)

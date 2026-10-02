@@ -17,6 +17,8 @@ endif()
 
 project(morpho-libmorpho)
 
+include(GNUInstallDirs)
+
 #-------------------------------------------------------------------------------
 # Platform dependent options
 #-------------------------------------------------------------------------------
@@ -24,6 +26,7 @@ project(morpho-libmorpho)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 add_library(morpho SHARED "")
+add_library(morpho::morpho ALIAS morpho)
 
 # Detect platform-native shared library extension and set MORPHO_DYLIBEXTENSION to it
 if(NOT MORPHO_DYLIBEXTENSION)
@@ -39,9 +42,6 @@ include(CheckIPOSupported)
 check_ipo_supported(RESULT MORPHO_IPO_SUPPORTED OUTPUT MORPHO_IPO_OUTPUT LANGUAGES C)
 if(MORPHO_IPO_SUPPORTED)
     set_property(TARGET morpho PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-    if(CMAKE_BUILD_TYPE STREQUAL "Release")
-        set_property(TARGET morpho PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-    endif()
     message(STATUS "IPO/LTO enabled for Release")
 else()
     message(STATUS "IPO/LTO not enabled (${MORPHO_IPO_OUTPUT})")
@@ -127,13 +127,15 @@ find_path(CBLAS_INCLUDE cblas.h
           HINTS 
             "C:\\Program Files\\Morpho\\include\\openblas")
 
-# Add cblas headers to include folders
-target_include_directories(morpho PUBLIC ${CBLAS_INCLUDE})
+target_include_directories(morpho PUBLIC
+    $<BUILD_INTERFACE:${CBLAS_INCLUDE}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/openblas>
+)
 
 message(STATUS "Found cblas headers at ${CBLAS_INCLUDE}")
 
-target_link_libraries(morpho ${CBLAS_LIBRARY})
-target_link_libraries(morpho ${LAPACK_LIBRARY})
+target_link_libraries(morpho PRIVATE ${CBLAS_LIBRARY})
+target_link_libraries(morpho PRIVATE ${LAPACK_LIBRARY})
 
 target_compile_definitions(morpho PUBLIC MORPHO_INCLUDE_LINALG)
 
@@ -169,12 +171,12 @@ find_file(SUITESPARSE_HEADER cs.h
 get_filename_component(SUITESPARSE_INCLUDE ${SUITESPARSE_HEADER} DIRECTORY)
 
 # Add suitesparse headers to include folders
-target_include_directories(morpho PUBLIC ${SUITESPARSE_INCLUDE})
+target_include_directories(morpho PRIVATE ${SUITESPARSE_INCLUDE})
 message(STATUS "Found cs.h at ${SUITESPARSE_INCLUDE}")
 
 target_compile_definitions(morpho PUBLIC MORPHO_INCLUDE_SPARSE)
 
-target_link_libraries(morpho ${SUITESPARSE_LIBRARY})
+target_link_libraries(morpho PRIVATE ${SUITESPARSE_LIBRARY})
 endif()
 
 #-------------------------------------------------------------------------------
@@ -190,17 +192,20 @@ find_package(Threads REQUIRED)
 
 add_subdirectory(src)
 
-# Include morpho header files across the project 
-target_include_directories(morpho PUBLIC src 
-                                  src/builtin
-                                  src/classes
-                                  src/core
-                                  src/datastructures
-                                  src/debug
-                                  src/geometry
-                                  src/geometry/functionals
-                                  src/linalg
-                                  src/support )
+# Include morpho header files across the project
+target_include_directories(morpho PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/builtin>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/classes>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/core>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/datastructures>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/debug>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/geometry>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/geometry/functionals>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/linalg>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/support>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/morpho>
+)
 
 # Create source groups for IDE
 source_group("builtin" REGULAR_EXPRESSION src/builtin/.*\\.[ch])
@@ -213,30 +218,49 @@ source_group("geometry/functionals" REGULAR_EXPRESSION src/geometry/functionals/
 source_group("linalg" REGULAR_EXPRESSION src/linalg/.*\\.[ch])
 source_group("support" REGULAR_EXPRESSION src/support/.*\\.[ch])
 
-target_link_libraries(morpho ${CMAKE_DL_LIBS} Threads::Threads)
+target_link_libraries(morpho PRIVATE ${CMAKE_DL_LIBS} Threads::Threads)
 
 #-------------------------------------------------------------------------------
 # Install
 #-------------------------------------------------------------------------------
 
-# Install the resulting library
-install(TARGETS morpho)
+# Install the resulting library and its CMake package config.
+set(MORPHO_CMAKE_INSTALL_DIR
+    "${CMAKE_INSTALL_LIBDIR}/cmake/morpho"
+)
+
+install(TARGETS morpho
+    EXPORT morphoTargets
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(EXPORT morphoTargets
+    FILE morphoTargets.cmake
+    NAMESPACE morpho::
+    DESTINATION "${MORPHO_CMAKE_INSTALL_DIR}"
+)
+
+install(FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/morphoConfig.cmake"
+    DESTINATION "${MORPHO_CMAKE_INSTALL_DIR}"
+)
 
 # Install morpho header files
-# The below works in 3.23, which is too recent for Ubuntu
-# install(TARGETS morpho 
-#        FILE_SET public_headers 
-#        DESTINATION include/morpho
-#)
-
-# So we'll use a hacky way for now
 file(GLOB_RECURSE MORPHO_HEADER_FILES "src/*.h")
-install(FILES ${MORPHO_HEADER_FILES} DESTINATION include/morpho)
+install(FILES ${MORPHO_HEADER_FILES}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/morpho
+)
 
 # Similarly install morpho modules
 file(GLOB_RECURSE MORPHO_MODULES_FILES "modules/*.morpho")
-install(FILES ${MORPHO_MODULES_FILES} DESTINATION share/morpho/modules)
+install(FILES ${MORPHO_MODULES_FILES}
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/morpho/modules
+)
 
 # Similarly install morpho help files
 file(GLOB_RECURSE MORPHO_HELP_FILES "help/*.md")
-install(FILES ${MORPHO_HELP_FILES} DESTINATION share/morpho/help)
+install(FILES ${MORPHO_HELP_FILES}
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/morpho/help
+)

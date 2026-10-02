@@ -11,19 +11,4 @@ target_sources(morpho
         selection.c         selection.h
 )
 
-target_sources(morpho
-    INTERFACE
-    FILE_SET public_headers
-    TYPE HEADERS
-    FILES
-        fespace.h
-        elements.h
-        field.h
-        functional.h
-        geometry.h
-        integrate.h
-        mesh.h
-        selection.h
-)
-
 add_subdirectory(functionals)

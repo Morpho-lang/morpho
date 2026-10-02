@@ -25,32 +25,3 @@ target_sources(morpho
         tuple.c        tuple.h
         upvalue.c      upvalue.h
 )
-
-target_sources(morpho
-    INTERFACE
-    FILE_SET public_headers
-    TYPE HEADERS
-    FILES
-        classes.h
-        array.h
-        bool.h
-        cfunction.h 
-        closure.h
-        clss.h
-        cmplx.h
-        dict.h
-        err.h
-        file.h
-        floatveneer.h
-        function.h
-        instance.h
-        invocation.h
-        json.h
-        list.h
-        metafunction.h
-        nil.h
-        range.h
-        strng.h
-        system.h
-        upvalue.h
-)

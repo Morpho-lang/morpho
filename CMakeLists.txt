@@ -212,6 +212,7 @@ target_include_directories(morpho PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/geometry/functionals>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/linalg>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/support>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}> # enable use <morpho/___.h>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/morpho>
 )
 

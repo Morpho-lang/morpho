@@ -63,7 +63,7 @@ If you need to uninstall morpho, simply open a terminal and type `brew uninstall
 
 ### Install from source
 
-The second way to install morpho is by compiling the source code directly. Morpho now leverages the [Cmake](https://cmake.org) build system, which enables platform independent builds. Windows users must first install Windows Subsystem for Linux; some instructions to do so are found below.
+The second way to install morpho is by compiling the source code directly. Morpho now leverages the [Cmake](https://cmake.org) build system, which enables platform independent builds. Windows users may either run morpho through Windows Subsystem for Linux or natively; see below.
 
 #### Gather dependencies
 
@@ -73,7 +73,7 @@ Using homebrew (preferred on macOS):
 
 ```
 brew update
-brew install cmake glfw suite-sparse freetype povray libgrapheme
+brew install cmake suite-sparse
 ```
 
 Using apt (preferred on Ubuntu):
@@ -82,7 +82,7 @@ Using apt (preferred on Ubuntu):
 sudo apt update
 sudo apt upgrade
 sudo apt install build-essential cmake
-sudo apt install libglfw3-dev libsuitesparse-dev liblapacke-dev povray libfreetype6-dev libunistring-dev
+sudo apt install libsuitesparse-dev liblapacke-dev
 ```
 
 #### Build the morpho shared library
@@ -99,16 +99,15 @@ git clone https://github.com/Morpho-lang/morpho.git
 
 ```
 cd morpho
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-sudo make install
+cmake -S . -B build 
+cmake --build build --config Release 
+sudo cmake --install build --config Release
 ```
 
 3. Navigate back out of the morpho folder:
 
 ```
-cd ../../
+cd ../
 ```
 
 #### Build the morpho terminal app
@@ -125,10 +124,9 @@ git clone https://github.com/Morpho-lang/morpho-cli.git
 
 ```
 cd morpho-cli
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-sudo make install
+cmake -S . -B build 
+cmake --build build --config Release 
+sudo cmake --install build --config Release
 ```
 
 3. Check it works by typing:
@@ -140,49 +138,29 @@ morpho6
 4. Assuming that the morpho terminal app starts correctly, type `quit` to return to the shell and then
 
 ```
-cd ../../
+cd ../
 ```
 
 to navigate back out of the morph-cli folder.
 
-#### Build the morphoview viewer application
+#### Obtain the morpho package manager morphopm
 
-[Morphoview](https://github.com/Morpho-lang/morpho-morphoview) is a simple viewer application to visualize morpho results.
+Packages for morpho are available through the [morphopm](https://github.com/Morpho-lang/morpho-morphopm) package manager. See that repository for installation instructions. From `morphopm` you can install the `morphoview` viewer application and many other useful packages.
 
-1. Obtain the source by cloning the github public repository:
+### Windows support
 
-```
-git clone https://github.com/Morpho-lang/morpho-morphoview.git
-```
-
-2. Navigate to the morpho-cli folder and build the library:
-
-```
-cd morpho-morphoview
-mkdir build
-cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-sudo make install
-```
-
-3. Check it works by typing:
-
-```
-morphoview
-```
-
-which should simply run and quit normally. You can then type
-
-```
-cd ../../
-```
-
-to navigate back out of the morpho-morphoview folder.
-
-### Windows via Windows Subsystem for Linux (WSL2)
-
-Windows support is provided through Windows Subsystem for Linux (WSL), which is an environment that enables windows to run linux applications. We highly recommend using WSL2, which is the most recent version and provides better support for GUI applications; some instructions for WSL1 are provided [in the manual](https://github.com/Morpho-lang/morpho-manual/blob/main/manual.pdf). Detailed information on running GUI applications in WSL2 is found on the [Microsoft WSL support page](https://learn.microsoft.com/en-us/windows/wsl/tutorials/gui-apps).
+You may also run morpho through Windows Subsystem for Linux (WSL), which is an environment that enables windows to run linux applications. We highly recommend using WSL2; detailed information on WSL is found on the [Microsoft WSL support page](https://learn.microsoft.com/en-us/windows/wsl/tutorials/gui-apps).
 
 1. Begin by installing the [Ubuntu App](https://ubuntu.com/desktop/wsl) from the Microsoft store.
 
-2. Once the Ubuntu terminal is working in Windows, you can install morpho either through homebrew or by building from source.
+2. Once the Ubuntu terminal is working in Windows, you can install morpho either through homebrew or by building from source as for linux.
+
+Morpho can also be compiled and used natively on Windows using CMake and the ClangCL toolset. From the morpho source directory in PowerShell, install into `./dist`:
+
+```
+cmake -S . -B build -T ClangCL -DCMAKE_INSTALL_PREFIX="$PWD/dist" -DMORPHO_HELP_BASEDIR="$PWD/dist/share/morpho/help" -DMORPHO_MODULE_BASEDIR="$PWD/dist/share/morpho/modules"
+cmake --build build --config Release
+cmake --install build --config Release
+```
+
+Help files and modules are installed under `dist/share/morpho`; these can then be collected and installed elsewhere by a follow-on installer. The Windows native build is still experimental and we aim to improve it further. 

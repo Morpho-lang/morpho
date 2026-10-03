@@ -56,6 +56,10 @@ option(MORPHO_BUILD_LINALG "Builds with linear algebra" ON)
 option(MORPHO_BUILD_SPARSE "Builds with sparse matrix support" ON)
 option(MORPHO_BUILD_GEOMETRY "Builds with geometry library" ON)
 option(MORPHO_BUILD_PROFILER "Builds with profiler" ON)
+set(MORPHO_OPENBLAS_ROOT "" CACHE PATH
+    "OpenBLAS installation prefix")
+set(MORPHO_SUITESPARSE_ROOT "" CACHE PATH
+    "SuiteSparse installation prefix")
 
 #-------------------------------------------------------------------------------
 # Process options
@@ -109,12 +113,26 @@ if(APPLE)
     message(STATUS "Found Accelerate at ${ACCELERATE_FRAMEWORK}")
     target_link_libraries(morpho PRIVATE ${ACCELERATE_FRAMEWORK})
 else()
-    find_library(LAPACK_LIBRARY NAMES lapacke liblapacke openblas libopenblas)
-    find_library(CBLAS_LIBRARY NAMES cblas libcblas openblas libopenblas blas libblas)
-    find_path(CBLAS_INCLUDE NAMES cblas.h PATH_SUFFIXES openblas)
+    # Explicit root, otherwise the Windows OpenBLAS staging directory.
+    set(_MORPHO_OPENBLAS_HINTS "")
+    if(MORPHO_OPENBLAS_ROOT)
+        list(APPEND _MORPHO_OPENBLAS_HINTS "${MORPHO_OPENBLAS_ROOT}")
+    elseif(WIN32 AND EXISTS "C:/openblas-staging")
+        list(APPEND _MORPHO_OPENBLAS_HINTS "C:/openblas-staging")
+    endif()
+
+    find_library(LAPACK_LIBRARY NAMES lapacke liblapacke openblas libopenblas
+        HINTS ${_MORPHO_OPENBLAS_HINTS}
+        PATH_SUFFIXES lib)
+    find_library(CBLAS_LIBRARY NAMES cblas libcblas openblas libopenblas blas libblas
+        HINTS ${_MORPHO_OPENBLAS_HINTS}
+        PATH_SUFFIXES lib)
+    find_path(CBLAS_INCLUDE NAMES cblas.h
+        HINTS ${_MORPHO_OPENBLAS_HINTS}
+        PATH_SUFFIXES include include/openblas openblas)
     find_path(LAPACKE_INCLUDE NAMES lapacke.h
-              HINTS "${CBLAS_INCLUDE}"
-              PATH_SUFFIXES openblas)
+        HINTS ${_MORPHO_OPENBLAS_HINTS} "${CBLAS_INCLUDE}"
+        PATH_SUFFIXES include include/openblas openblas)
 
     if(NOT CBLAS_LIBRARY OR NOT LAPACK_LIBRARY OR NOT CBLAS_INCLUDE OR NOT LAPACKE_INCLUDE)
         message(FATAL_ERROR
@@ -143,8 +161,20 @@ endif()
 
 if (MORPHO_BUILD_SPARSE)
 message(STATUS "Searching for Suitesparse")
-find_library(SUITESPARSE_LIBRARY NAMES cxsparse libcxsparse)
-find_path(SUITESPARSE_INCLUDE NAMES cs.h PATH_SUFFIXES suitesparse)
+# Explicit root, otherwise the Windows SuiteSparse staging directory.
+set(_MORPHO_SUITESPARSE_HINTS "")
+if(MORPHO_SUITESPARSE_ROOT)
+    list(APPEND _MORPHO_SUITESPARSE_HINTS "${MORPHO_SUITESPARSE_ROOT}")
+elseif(WIN32 AND EXISTS "C:/suitesparse-staging")
+    list(APPEND _MORPHO_SUITESPARSE_HINTS "C:/suitesparse-staging")
+endif()
+
+find_library(SUITESPARSE_LIBRARY NAMES cxsparse libcxsparse
+    HINTS ${_MORPHO_SUITESPARSE_HINTS}
+    PATH_SUFFIXES lib)
+find_path(SUITESPARSE_INCLUDE NAMES cs.h
+    HINTS ${_MORPHO_SUITESPARSE_HINTS}
+    PATH_SUFFIXES include/suitesparse suitesparse)
 if(NOT SUITESPARSE_LIBRARY OR NOT SUITESPARSE_INCLUDE)
     message(FATAL_ERROR
         "Morpho sparse support requires CXSparse (cxsparse and cs.h).")

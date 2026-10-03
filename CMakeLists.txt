@@ -4,9 +4,7 @@
 
 cmake_minimum_required(VERSION 3.13)
 
-# Single-config generators (Unix Makefiles, Ninja) default to an empty
-# CMAKE_BUILD_TYPE, which means no -O3. Multi-config generators (Xcode, VS)
-# ignore CMAKE_BUILD_TYPE; --config selects the variant at build time.
+# Default to Release when no build type is set.
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     message(STATUS "CMAKE_BUILD_TYPE unset; defaulting to Release")
     set(CMAKE_BUILD_TYPE Release CACHE STRING
@@ -15,7 +13,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
         "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif()
 
-project(morpho-libmorpho)
+project(morpho-libmorpho LANGUAGES C)
 
 include(GNUInstallDirs)
 
@@ -23,16 +21,17 @@ include(GNUInstallDirs)
 # Platform dependent options
 #-------------------------------------------------------------------------------
 
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-
 add_library(morpho SHARED "")
+set_target_properties(morpho PROPERTIES
+    WINDOWS_EXPORT_ALL_SYMBOLS ON
+)
 add_library(morpho::morpho ALIAS morpho)
 
 # Detect platform-native shared library extension and set MORPHO_DYLIBEXTENSION to it
 if(NOT MORPHO_DYLIBEXTENSION)
     string(REGEX REPLACE "^\\." "" MORPHO_DYLIBEXTENSION "${CMAKE_SHARED_LIBRARY_SUFFIX}")
 endif()
-target_compile_definitions(morpho PUBLIC MORPHO_DYLIBEXTENSION=\"${MORPHO_DYLIBEXTENSION}\")
+target_compile_definitions(morpho PRIVATE MORPHO_DYLIBEXTENSION=\"${MORPHO_DYLIBEXTENSION}\")
 
 #-------------------------------------------------------------------------------
 # Release LTO
@@ -47,7 +46,6 @@ else()
     message(STATUS "IPO/LTO not enabled (${MORPHO_IPO_OUTPUT})")
 endif()
  
-
 #-------------------------------------------------------------------------------
 # Options
 #-------------------------------------------------------------------------------
@@ -70,17 +68,18 @@ endif()
 
 # Option to stress test Garbage Collector
 if(MORPHO_GCSTRESSTEST)
-target_compile_definitions(morpho PUBLIC _DEBUG_STRESSGARBAGECOLLECTOR)
-endif() 
+target_compile_definitions(morpho PRIVATE _DEBUG_STRESSGARBAGECOLLECTOR)
+endif()
 
-# Set help directory
+# Optional overrides. Otherwise build.h supplies its defaults.
 if(MORPHO_HELP_BASEDIR)
-target_compile_definitions(morpho PUBLIC MORPHO_HELP_BASEDIR=\"${MORPHO_HELP_BASEDIR}\")
-endif() 
+    target_compile_definitions(morpho PRIVATE
+        MORPHO_HELP_BASEDIR=\"${MORPHO_HELP_BASEDIR}\")
+endif()
 
-# Set directory for modules supplied with morpho
 if(MORPHO_MODULE_BASEDIR)
-target_compile_definitions(morpho PUBLIC MORPHO_MODULE_BASEDIR=\"${MORPHO_MODULE_BASEDIR}\")
+    target_compile_definitions(morpho PRIVATE
+        MORPHO_MODULE_BASEDIR=\"${MORPHO_MODULE_BASEDIR}\")
 endif() 
 
 # Include geometry as part of the build
@@ -100,42 +99,39 @@ endif()
 if (MORPHO_BUILD_LINALG)
 
 message(STATUS "Searching for BLAS and LAPACK")
-# Locate a lapack version
-# Currently we prefer LAPACKE 
-# TODO: Fix morpho source to select between lapack and lapacke
-find_library(LAPACK_LIBRARY
-    NAMES lapacke liblapacke lapack liblapack openblas libopenblas 
-    HINTS 
-        "C:\\Program Files\\Morpho\\lib\\"
-)
-if (LAPACK_LIBRARY)
-message(STATUS "Found LAPACK at ${LAPACK_LIBRARY}")
+# linalg_includes.h uses Accelerate on Apple and LAPACKE elsewhere.
+if(APPLE)
+    find_library(ACCELERATE_FRAMEWORK Accelerate)
+    if(NOT ACCELERATE_FRAMEWORK)
+        message(FATAL_ERROR
+            "Morpho linear algebra requires the Accelerate framework.")
+    endif()
+    message(STATUS "Found Accelerate at ${ACCELERATE_FRAMEWORK}")
+    target_link_libraries(morpho PRIVATE ${ACCELERATE_FRAMEWORK})
+else()
+    find_library(LAPACK_LIBRARY NAMES lapacke liblapacke openblas libopenblas)
+    find_library(CBLAS_LIBRARY NAMES cblas libcblas openblas libopenblas blas libblas)
+    find_path(CBLAS_INCLUDE NAMES cblas.h PATH_SUFFIXES openblas)
+    find_path(LAPACKE_INCLUDE NAMES lapacke.h
+              HINTS "${CBLAS_INCLUDE}"
+              PATH_SUFFIXES openblas)
+
+    if(NOT CBLAS_LIBRARY OR NOT LAPACK_LIBRARY OR NOT CBLAS_INCLUDE OR NOT LAPACKE_INCLUDE)
+        message(FATAL_ERROR
+            "Morpho linear algebra requires CBLAS, LAPACKE, cblas.h, and lapacke.h.")
+    endif()
+
+    message(STATUS "Found LAPACK at ${LAPACK_LIBRARY}")
+    message(STATUS "Found BLAS at ${CBLAS_LIBRARY}")
+    message(STATUS "Found cblas.h at ${CBLAS_INCLUDE}")
+    message(STATUS "Found lapacke.h at ${LAPACKE_INCLUDE}")
+
+    target_include_directories(morpho PRIVATE ${CBLAS_INCLUDE})
+    if(NOT LAPACKE_INCLUDE STREQUAL CBLAS_INCLUDE)
+        target_include_directories(morpho PRIVATE ${LAPACKE_INCLUDE})
+    endif()
+    target_link_libraries(morpho PRIVATE ${CBLAS_LIBRARY} ${LAPACK_LIBRARY})
 endif()
-
-# Locate cblas
-find_library(CBLAS_LIBRARY
-    NAMES cblas libcblas blas libblas openblas libopenblas
-    HINTS
-        "C:\\Program Files\\Morpho\\lib\\"
-)
-if (CBLAS_LIBRARY)
-message(STATUS "Found blas at ${CBLAS_LIBRARY}")
-endif()
-
-# Find cblas.h header file 
-find_path(CBLAS_INCLUDE cblas.h 
-          HINTS 
-            "C:\\Program Files\\Morpho\\include\\openblas")
-
-target_include_directories(morpho PUBLIC
-    $<BUILD_INTERFACE:${CBLAS_INCLUDE}>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/openblas>
-)
-
-message(STATUS "Found cblas headers at ${CBLAS_INCLUDE}")
-
-target_link_libraries(morpho PRIVATE ${CBLAS_LIBRARY})
-target_link_libraries(morpho PRIVATE ${LAPACK_LIBRARY})
 
 target_compile_definitions(morpho PUBLIC MORPHO_INCLUDE_LINALG)
 
@@ -147,35 +143,17 @@ endif()
 
 if (MORPHO_BUILD_SPARSE)
 message(STATUS "Searching for Suitesparse")
-# Locate suitesparse
-find_library(SUITESPARSE_LIBRARY
-    NAMES cxsparse libcxsparse
-    HINTS 
-        "C:\\Program Files\\Morpho\\lib\\"
-)
-if (SUITESPARSE_LIBRARY)
-message(STATUS "Found suitesparse at ${SUITESPARSE_LIBRARY}")
+find_library(SUITESPARSE_LIBRARY NAMES cxsparse libcxsparse)
+find_path(SUITESPARSE_INCLUDE NAMES cs.h PATH_SUFFIXES suitesparse)
+if(NOT SUITESPARSE_LIBRARY OR NOT SUITESPARSE_INCLUDE)
+    message(FATAL_ERROR
+        "Morpho sparse support requires CXSparse (cxsparse and cs.h).")
 endif()
-
-# Find suitesparse cs.h header file 
-find_file(SUITESPARSE_HEADER cs.h 
-          HINTS 
-            /home/linuxbrew/.linuxbrew/include/suitesparse 
-            /usr/local/include
-            /usr/local/include/suitesparse
-            /opt/homebrew/include/suitesparse
-            /usr/include/suitesparse
-            "C:\\Program Files\\Morpho\\include\\suitesparse")
-
-# Identify folder that cs.h is located in from SUITESPARSE_HEADER and store in SUITESPARSE_INCLUDE
-get_filename_component(SUITESPARSE_INCLUDE ${SUITESPARSE_HEADER} DIRECTORY)
-
-# Add suitesparse headers to include folders
-target_include_directories(morpho PRIVATE ${SUITESPARSE_INCLUDE})
+message(STATUS "Found suitesparse at ${SUITESPARSE_LIBRARY}")
 message(STATUS "Found cs.h at ${SUITESPARSE_INCLUDE}")
 
+target_include_directories(morpho PRIVATE ${SUITESPARSE_INCLUDE})
 target_compile_definitions(morpho PUBLIC MORPHO_INCLUDE_SPARSE)
-
 target_link_libraries(morpho PRIVATE ${SUITESPARSE_LIBRARY})
 endif()
 
@@ -247,8 +225,9 @@ install(FILES
     DESTINATION "${MORPHO_CMAKE_INSTALL_DIR}"
 )
 
-# Install morpho header files
+# Install public headers. linalg_includes.h stays private.
 file(GLOB_RECURSE MORPHO_HEADER_FILES "src/*.h")
+list(FILTER MORPHO_HEADER_FILES EXCLUDE REGEX "/linalg_includes\\.h$")
 install(FILES ${MORPHO_HEADER_FILES}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/morpho
 )

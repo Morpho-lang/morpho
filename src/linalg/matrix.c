@@ -12,6 +12,7 @@
 #include "classes.h"
 
 #include "matrix.h"
+#include "linalg_includes.h"
 #include "sparse.h"
 #include "format.h"
 

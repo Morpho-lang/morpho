@@ -23,10 +23,10 @@
  * Matrix object type
  * ------------------------------------------------------- */
 
-extern objecttype objectmatrixtype;
+extern MORPHO_API objecttype objectmatrixtype;
 #define OBJECT_MATRIX objectmatrixtype
 
-extern objecttypedefn objectmatrixdefn;
+extern MORPHO_API objecttypedefn objectmatrixdefn;
 
 typedef int MatrixIdx_t; // Type used for matrix indices
 typedef size_t MatrixCount_t; // Type used to count total number of elements

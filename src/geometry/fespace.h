@@ -66,7 +66,7 @@ typedef struct sfespace {
  * fespace object type
  * ------------------------------------------------------- */
 
-extern objecttype objectfespacetype;
+extern MORPHO_API objecttype objectfespacetype;
 #define OBJECT_FESPACE objectfespacetype
 
 typedef struct {

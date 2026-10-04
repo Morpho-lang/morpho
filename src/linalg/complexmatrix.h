@@ -17,7 +17,7 @@
 
 #define COMPLEXMATRIX_CONJTRANSPOSE_METHOD        "conjTranspose"
 
-extern objecttype objectcomplexmatrixtype;
+extern MORPHO_API objecttype objectcomplexmatrixtype;
 #define OBJECT_COMPLEXMATRIX objectcomplexmatrixtype
 
 typedef objectmatrix objectcomplexmatrix;

@@ -56,8 +56,8 @@
  * Functional types
  * ------------------------------------------------------- */
 
-extern value functional_gradeproperty;
-extern value functional_fieldproperty;
+extern MORPHO_API value functional_gradeproperty;
+extern MORPHO_API value functional_fieldproperty;
 
 /** Symmetry behaviors */
 typedef enum {

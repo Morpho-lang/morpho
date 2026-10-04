@@ -32,7 +32,7 @@ DECLARE_VARRAY(varray_upvalue, varray_upvalue)
  * Upvalue objects
  * --------------------------- */
 
-extern objecttype objectupvaluetype;
+extern MORPHO_API objecttype objectupvaluetype;
 #define OBJECT_UPVALUE objectupvaluetype
 
 typedef struct sobjectupvalue {

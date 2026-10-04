@@ -137,7 +137,7 @@ typedef struct {
     objectmatrix *xgeom;
 } objectintegralelementref;
 
-extern objecttype objectintegralelementreftype;
+extern MORPHO_API objecttype objectintegralelementreftype;
 #define OBJECT_INTEGRALELEMENTREF objectintegralelementreftype
 #define MORPHO_ISINTEGRALELEMENTREF(val) object_istype(val, OBJECT_INTEGRALELEMENTREF)
 #define MORPHO_GETINTEGRALELEMENTREF(val) ((objectintegralelementref *) MORPHO_GETOBJECT(val))

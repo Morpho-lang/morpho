@@ -13,7 +13,7 @@
  * Array object type
  * ------------------------------------------------------- */
 
-extern objecttype objectarraytype;
+extern MORPHO_API objecttype objectarraytype;
 #define OBJECT_ARRAY objectarraytype
 
 typedef struct {

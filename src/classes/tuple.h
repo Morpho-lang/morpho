@@ -13,7 +13,7 @@
  * Tuple object type
  * ------------------------------------------------------- */
 
-extern objecttype objecttupletype;
+extern MORPHO_API objecttype objecttupletype;
 #define OBJECT_TUPLE objecttupletype
 
 /** A string object */

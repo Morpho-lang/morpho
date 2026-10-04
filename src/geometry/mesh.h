@@ -17,7 +17,7 @@
  * Mesh object
  * ------------------------------------------------------- */
 
-extern objecttype objectmeshtype;
+extern MORPHO_API objecttype objectmeshtype;
 #define OBJECT_MESH objectmeshtype
 
 typedef struct {

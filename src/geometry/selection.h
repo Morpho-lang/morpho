@@ -16,7 +16,7 @@
  * Selection objects
  * ------------------------------------------------------- */
 
-extern objecttype objectselectiontype;
+extern MORPHO_API objecttype objectselectiontype;
 #define OBJECT_SELECTION objectselectiontype
 
 typedef struct {

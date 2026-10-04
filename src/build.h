@@ -23,6 +23,23 @@
     MORPHO_STRINGIFY(MORPHO_VERSION_PATCH)
 
 /* **********************************************************************
+ * Shared library import/export
+ * ********************************************************************** */
+
+/** Mark public data exported from the Morpho shared library. */
+#ifndef MORPHO_API
+#  ifdef _WIN32
+#    ifdef morpho_EXPORTS
+#      define MORPHO_API __declspec(dllexport)
+#    else
+#      define MORPHO_API __declspec(dllimport)
+#    endif
+#  else
+#    define MORPHO_API
+#  endif
+#endif
+
+/* **********************************************************************
  * Paths and file system
  * ********************************************************************** */
 

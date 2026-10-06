@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Simple automated testing
-# T J Atherton Sept 2020
+# T J Atherton Sept 2020-26
 #
 # Each input file is supplied to a test command, the results
 # are piped to a file and the output is compared with expectations

@@ -13,7 +13,7 @@
  * Closure objects
  * ------------------------------------------------------- */
 
-extern objecttype objectclosuretype;
+extern MORPHO_API objecttype objectclosuretype;
 #define OBJECT_CLOSURE objectclosuretype
 
 typedef struct {

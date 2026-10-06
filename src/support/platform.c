@@ -13,15 +13,18 @@
 
 #define _GNU_SOURCE
 
-#ifdef _WIN32
-    #include <windows.h>
-    #include <wincrypt.h>
-#else
-    #ifndef __APPLE__ // _POSIX_C_SOURCE Causes problems with qsort_r on apple
+#ifndef _WIN32
+    #ifndef __APPLE__
         #define _POSIX_C_SOURCE 199309L
     #endif
+#endif
+
+#include "platform.h"
+
+#ifdef _WIN32
+    #include <wincrypt.h>
+#else
     #include <unistd.h>
-    #include <dirent.h>
     #include <sys/stat.h>
     #include <sys/types.h>
     #include <sys/time.h>
@@ -38,7 +41,6 @@
 #include <float.h>
 #include <math.h>
 #include "build.h"
-#include "platform.h"
 #include "error.h"
 
 /* **********************************************************************

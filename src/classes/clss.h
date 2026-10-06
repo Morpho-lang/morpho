@@ -13,7 +13,7 @@
  * Class objects
  * ------------------------------------------------------- */
 
-extern objecttype objectclasstype;
+extern MORPHO_API objecttype objectclasstype;
 #define OBJECT_CLASS objectclasstype
 
 typedef struct sobjectclass {

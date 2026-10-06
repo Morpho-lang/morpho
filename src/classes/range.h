@@ -13,7 +13,7 @@
  * Range objects
  * ------------------------------------------------------- */
 
-extern objecttype objectrangetype;
+extern MORPHO_API objecttype objectrangetype;
 #define OBJECT_RANGE objectrangetype
 
 typedef struct {

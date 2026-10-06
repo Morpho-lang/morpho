@@ -23,6 +23,32 @@
     MORPHO_STRINGIFY(MORPHO_VERSION_PATCH)
 
 /* **********************************************************************
+ * Manage import and export of symbols
+ * ********************************************************************** */
+
+/** Mark public data exported from the Morpho shared library. */
+#ifndef MORPHO_API
+#  ifdef _WIN32
+#    ifdef morpho_EXPORTS
+#      define MORPHO_API __declspec(dllexport)
+#    else
+#      define MORPHO_API __declspec(dllimport)
+#    endif
+#  else
+#    define MORPHO_API
+#  endif
+#endif
+
+/* Macro to denote symbols that are exported from an extension. */
+#ifndef MORPHO_EXTENSION_EXPORT
+#  ifdef _WIN32
+#    define MORPHO_EXTENSION_EXPORT __declspec(dllexport)
+#  else
+#    define MORPHO_EXTENSION_EXPORT
+#  endif
+#endif
+
+/* **********************************************************************
  * Paths and file system
  * ********************************************************************** */
 

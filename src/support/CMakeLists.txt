@@ -12,20 +12,3 @@ target_sources(morpho
         resources.c   resources.h
         threadpool.c  threadpool.h
 )
-
-target_sources(morpho
-    INTERFACE
-    FILE_SET public_headers
-    TYPE HEADERS
-    FILES
-        common.h
-        extensions.h
-        format.h
-        help.h
-        lex.h
-        memory.h
-        parse.h
-        random.h
-        resources.h
-        threadpool.h
-)

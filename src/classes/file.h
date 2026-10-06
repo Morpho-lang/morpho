@@ -15,7 +15,7 @@
  * File objects
  * ------------------------------------------------------- */
 
-extern objecttype objectfiletype;
+extern MORPHO_API objecttype objectfiletype;
 #define OBJECT_FILE objectfiletype
 
 typedef struct {

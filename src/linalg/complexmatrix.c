@@ -7,6 +7,7 @@
 #include <platform.h>
 
 #include "linalg.h"
+#include "linalg_includes.h"
 #include "format.h"
 #include "cmplx.h"
 

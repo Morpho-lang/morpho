@@ -78,23 +78,23 @@ typedef void compiler;
 #define MORPHO_THROW_METHOD "throw"
 #define MORPHO_WARNING_METHOD "warning"
 
-extern value initselector;
-extern value indexselector;
-extern value setindexselector;
-extern value addselector;
-extern value addrselector;
-extern value subselector;
-extern value subrselector;
-extern value mulselector;
-extern value mulrselector;
-extern value divselector;
-extern value divrselector;
-extern value powselector;
-extern value powrselector;
-extern value printselector;
-extern value enumerateselector;
-extern value countselector;
-extern value cloneselector;
+extern MORPHO_API value initselector;
+extern MORPHO_API value indexselector;
+extern MORPHO_API value setindexselector;
+extern MORPHO_API value addselector;
+extern MORPHO_API value addrselector;
+extern MORPHO_API value subselector;
+extern MORPHO_API value subrselector;
+extern MORPHO_API value mulselector;
+extern MORPHO_API value mulrselector;
+extern MORPHO_API value divselector;
+extern MORPHO_API value divrselector;
+extern MORPHO_API value powselector;
+extern MORPHO_API value powrselector;
+extern MORPHO_API value printselector;
+extern MORPHO_API value enumerateselector;
+extern MORPHO_API value countselector;
+extern MORPHO_API value cloneselector;
 
 /* **********************************************************************
 * Public interfaces

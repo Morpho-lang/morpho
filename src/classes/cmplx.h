@@ -15,7 +15,7 @@
  * Complex objects
  * ------------------------------------------------------- */
 
-extern objecttype objectcomplextype;
+extern MORPHO_API objecttype objectcomplextype;
 #define OBJECT_COMPLEX objectcomplextype
 
 typedef struct {

@@ -19,11 +19,11 @@
  * Field objects
  * ------------------------------------------------------- */
 
-extern objecttype objectfieldtype;
-extern objecttype objectscalarfieldtype;
-extern objecttype objectmatrixfieldtype;
-extern objecttype objectcomplexfieldtype;
-extern objecttype objectcomplexmatrixfieldtype;
+extern MORPHO_API objecttype objectfieldtype;
+extern MORPHO_API objecttype objectscalarfieldtype;
+extern MORPHO_API objecttype objectmatrixfieldtype;
+extern MORPHO_API objecttype objectcomplexfieldtype;
+extern MORPHO_API objecttype objectcomplexmatrixfieldtype;
 #define OBJECT_FIELD objectfieldtype
 #define OBJECT_SCALARFIELD objectscalarfieldtype
 #define OBJECT_MATRIXFIELD objectmatrixfieldtype
@@ -114,7 +114,7 @@ typedef struct {
  * Field class
  * ------------------------------------------------------- */
 
-extern value field_gradeoption;
+extern MORPHO_API value field_gradeoption;
 
 #define FIELD_CLASSNAME "Field"
 #define SCALARFIELD_CLASSNAME "ScalarField"

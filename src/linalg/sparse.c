@@ -15,6 +15,7 @@
 
 #include "sparse.h"
 #include "linalg.h"
+#include "linalg_includes.h"
 
 /* ***************************************
  * Compatibility with Sparse libraries

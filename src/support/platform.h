@@ -14,10 +14,18 @@
 #include "varray.h"
 
 #ifdef _WIN32
-#include <windows.h>
+    #ifndef WIN32_LEAN_AND_MEAN // Avoid unnecessary headers
+        #define WIN32_LEAN_AND_MEAN 
+    #endif
+
+    #ifndef NOMINMAX // Prevent windows min/max definitions
+        #define NOMINMAX 
+    #endif
+
+    #include <windows.h>
 #else
-#include <dirent.h>
-#include <pthread.h>
+    #include <dirent.h>
+    #include <pthread.h>
 #endif
 
 /* -------------------------------------------------------

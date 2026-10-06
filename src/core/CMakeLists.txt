@@ -7,16 +7,3 @@ target_sources(morpho
         core.h
         opcodes.h
 )
-
-target_sources(morpho
-    INTERFACE
-    FILE_SET public_headers
-    TYPE HEADERS
-    FILES
-        compile.h
-        gc.h
-        optimize.h
-        vm.h
-        core.h
-        opcodes.h
-)

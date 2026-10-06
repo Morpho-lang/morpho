@@ -43,7 +43,7 @@ typedef struct {
     int qinterpcapacity;
 } objectjumpinterfaceref;
 
-extern objecttype objectjumpinterfacereftype;
+extern MORPHO_API objecttype objectjumpinterfacereftype;
 #define OBJECT_JUMPINTERFACEREF objectjumpinterfacereftype
 #define MORPHO_ISJUMPINTERFACEREF(val) object_istype(val, OBJECT_JUMPINTERFACEREF)
 #define MORPHO_GETJUMPINTERFACEREF(val) ((objectjumpinterfaceref *) MORPHO_GETOBJECT(val))

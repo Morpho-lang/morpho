@@ -15,7 +15,7 @@
  * Function objects
  * ------------------------------------------------------- */
 
-extern objecttype objectfunctiontype;
+extern MORPHO_API objecttype objectfunctiontype;
 #define OBJECT_FUNCTION objectfunctiontype
 
 typedef struct {

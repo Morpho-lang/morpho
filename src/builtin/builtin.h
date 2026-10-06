@@ -59,7 +59,7 @@ typedef unsigned int builtinfunctionflags;
 typedef value (*builtinfunction) (vm *v, int nargs, value *args);
 
 /** Object type for built in function */
-extern objecttype objectbuiltinfunctiontype;
+extern MORPHO_API objecttype objectbuiltinfunctiontype;
 #define OBJECT_BUILTINFUNCTION objectbuiltinfunctiontype
 
 /** A built in function object */

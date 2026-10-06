@@ -12,6 +12,7 @@
 #include "classes.h"
 #include "common.h"
 #include "linalg.h"
+#include "linalg_includes.h"
 #include "cmplx.h"
 #include "sparse.h"
 #include "geometry.h"

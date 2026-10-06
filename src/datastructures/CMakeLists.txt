@@ -12,21 +12,3 @@ target_sources(morpho
         varray.c            varray.h
         version.c           version.h
 )
-
-target_sources(morpho
-    INTERFACE
-    FILE_SET public_headers
-    TYPE HEADERS
-    FILES
-        dictionary.h
-        debugannotation.h
-        error.h
-        object.h
-        objectpool.h
-        program.h
-        signature.h
-        syntaxtree.h
-        value.h
-        varray.h
-        version.h
-)

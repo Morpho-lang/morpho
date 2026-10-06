@@ -22,7 +22,7 @@
  * Invocation objects
  * ------------------------------------------------------- */
 
-extern objecttype objectinvocationtype;
+extern MORPHO_API objecttype objectinvocationtype;
 #define OBJECT_INVOCATION objectinvocationtype
 
 typedef struct {

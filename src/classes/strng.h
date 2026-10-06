@@ -14,7 +14,7 @@
  * String object type
  * ------------------------------------------------------- */
 
-extern objecttype objectstringtype;
+extern MORPHO_API objecttype objectstringtype;
 #define OBJECT_STRING objectstringtype
 
 /** A string object */

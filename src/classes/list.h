@@ -13,7 +13,7 @@
  * List object type
  * ------------------------------------------------------- */
 
-extern objecttype objectlisttype;
+extern MORPHO_API objecttype objectlisttype;
 #define OBJECT_LIST objectlisttype
 
 typedef struct {

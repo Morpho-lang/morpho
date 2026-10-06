@@ -11,7 +11,9 @@
  * ---------------------------------------------------------------- */
 
 // Constants
-var _epsDlny = 1e-8 // Tolerance for in-sphere tests
+var _epsDlny = 1e-8 // Sweep-closure tolerance
+var _machineEpsilon = 2.220446049250313e-16 // Machine epsilon
+var _roundDlny = 32*_machineEpsilon // tolerance for a pt outside the circumsphere
 
 // Error messages
 var _DlnyInitErr = Error("DlnyInit", "You must initialize Delaunay with a list of points to triangulate.")
@@ -53,10 +55,25 @@ class Circumsphere {
     self.indices = indx.clone()
     self.radius = xc.norm()
     self.center = xc+x0
+    self._origin = x0
+    self._offset = xc
   }
 
   pointinsphere(pt) {
     return (pt-self.center).norm() < self.radius
+  }
+
+  _outside(pt) { // True when the point is outside the circumsphere
+    var u = pt-self._origin
+    var power = 0.0, scale = 0.0
+
+    for (i in 0...u.count()) {
+      var a = u[i], b = 2*self._offset[i]
+      power += a*(a-b)
+      scale += abs(a)*(abs(a)+abs(b))
+    }
+
+    return power > _roundDlny*scale
   }
 }
 
@@ -70,7 +87,7 @@ class Circumsphere {
  *   triangulate() -> List  simplices as lists of vertex indices
  *
  *   dim, pts, sscale, eps  dimension, point cloud, supersimplex
- *                          scale (default 1), in-sphere tolerance
+ *                          scale (default 1), sweep-closure tolerance
  * ---------------------------------------------------------------- */
 
 class Delaunay {
@@ -164,8 +181,8 @@ class Delaunay {
   triangulate() { // Create Delaunay triangulation
     var sweep = self._sweepAxis() // Pick sweep dimension
 
-    var pts = self.pts.clone()
     var n = self.n
+    var pts = self.pts.clone() // Supersimplex vertices are appended to this copy
     var indices = List(0...n) // Create an array of indices into the vertex array
 
     // Sort points along sweep axis
@@ -193,18 +210,16 @@ class Delaunay {
       var newopen = []
       for (smplx in open) {
         var dx = pts[ix][sweep]-smplx.center[sweep]
+        var tol = (smplx.radius > 1) ? self.eps*smplx.radius : self.eps
 
-        // If this point is to the right of this simplex's circumcircle,
-        // then this simplex shouldn't get checked again. Add it to the
-        // closed list and don't retain.
-        if (dx > 0.0 && dx > smplx.radius) {
+        // Finalize a simplex once the point is past its circumsphere.
+        if (dx > 0.0 && dx > smplx.radius + tol) {
           closed.append(smplx)
           continue
         }
 
-        // If we're outside the circumsphere, skip this simplex.
-        var tol = (smplx.radius > 1) ? self.eps*smplx.radius : self.eps
-        if ((pts[ix]-smplx.center).norm() - smplx.radius > tol) {
+        // Skip this simplex when the point is outside.
+        if (smplx._outside(pts[ix])) {
           newopen.append(smplx)
           continue
         }

@@ -1,6 +1,7 @@
 // Demonstrate use of the povray module to raytrace graphics
 import constants
 import color
+import meshtools
 import plot
 import morphoview
 import povray

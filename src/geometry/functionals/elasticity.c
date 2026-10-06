@@ -40,7 +40,7 @@ typedef struct {
 void linearelasticity_calculategram(objectmatrix *vert, int dim, int nv, int *vid, objectmatrix *gram) {
     int gdim=nv-1; // Dimension of Gram matrix
     double *x[nv], // Positions of vertices
-            s[gdim][nv]; // Side vectors
+            s[gdim][dim]; // Side vectors
 
     for (int j=0; j<nv; j++) matrix_getcolumnptr(vert, vid[j], &x[j]); // Get vertices
     for (int j=1; j<nv; j++) functional_vecsub(dim, x[j], x[0], s[j-1]); // u_i = X_i - X_0

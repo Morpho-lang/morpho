@@ -1,37 +1,9 @@
 // Demonstrate use of the Delaunay module
 
 import delaunay
+import "check.xmorpho"
 
 var N = 100 // Number of points
-
-// Explicitly check that all triangles have the property that no other point is in their circumcircle
-fn checkTriangulation(pts, tri, quiet=false) {
-    var success = true
-    for (t, k in tri) {
-        var sph = Circumsphere(pts, t)
-
-        for (i in 0...pts.count()) {
-            if (t.ismember(i)) continue // Skip the vertices of the triangle
-
-            if (sph.pointinsphere(pts[i])) {
-                if (!quiet) print "Point ${i} is in triangle ${k}."
-                success=false;
-            }
-        }
-    }
-    return success
-}
-
-fn canon(tri) {
-    var s = []
-    for (t in tri) {
-        var u = t.clone()
-        u.sort()
-        s.append("${u}")
-    }
-    s.sort()
-    return "${s}"
-}
 
 // 2D random point distribution
 var a = []
@@ -64,7 +36,7 @@ print checkTriangulation(b, tri)
 var sq = [Matrix([0,0]), Matrix([1,0]), Matrix([1,1]), Matrix([0,1])]
 del = Delaunay(sq)
 tri = del.triangulate()
-print tri.count() == 2 && checkTriangulation(sq, tri)
+print tri.count() == 2 && checkTriangulation(sq, tri) && conforming(sq, tri)
 // expect: true
 
 // Regular tetrahedron
@@ -122,4 +94,15 @@ try {
 } catch {
     "DlnyDim": print true
 }
+// expect: true
+
+// Ellipsoidal shell
+import meshgen
+var dh = 0.2
+var e0 = Domain(fn (x) -((x[0]/2)^2+x[1]^2+x[2]^2-1))
+var e1 = Domain(fn (x) -((x[0]/2)^2+x[1]^2+x[2]^2-(0.5)^2))
+var e2 = HalfSpaceDomain(Matrix([0.25,0,0]), Matrix([1,0,0]))
+var dom = (e0.difference(e1)).intersection(e2)
+var m = MeshGen(dom, [-2..2:dh, -1.2..1.2:dh, -1.2..1.2:dh], quiet=true).build()
+print !isnil(m)
 // expect: true

@@ -4,6 +4,13 @@
  * Serialize Graphics to POV-Ray SDL and optionally render.
  **************************************************************** */
 
+Error("PkgMoved",
+"The povray module has been moved to a morphopm package. Install it by running:
+
+   morphopm install povray
+
+in the terminal. This version is deprecated and will be removed in the future.").warning()
+
 import constants
 import graphics
 import color

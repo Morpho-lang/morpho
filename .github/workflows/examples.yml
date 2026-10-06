@@ -15,15 +15,9 @@ jobs:
     - uses: actions/checkout@v7
     - name: configure
       run:  |
-        sudo apt update
-        sudo apt install libczmq-dev
-        sudo apt install libglfw3-dev 
-        sudo apt install povray
-        sudo apt install libfreetype6-dev
-        sudo apt install fonts-freefont-ttf
-        sudo apt install libsuitesparse-dev
-        sudo apt install liblapacke-dev
-        sudo apt install libunistring-dev
+        echo 'APT::Get::Assume-Yes "true";' | sudo tee /etc/apt/apt.conf.d/90ci >/dev/null
+        sudo apt-get update
+        sudo apt-get install unzip libsuitesparse-dev liblapacke-dev libunistring-dev fonts-freefont-ttf
         python -m pip install --upgrade pip
         python -m pip install regex colored
     - name: make
@@ -36,27 +30,19 @@ jobs:
     - name: getcli
       run: |
         git clone https://github.com/Morpho-lang/morpho-cli.git
-        cd morpho-cli 
+        cd morpho-cli
         mkdir build
         cd build
         cmake ..
         sudo make install
-    - name: morphoview
-      run: |
-        git clone --branch dev --single-branch https://github.com/morpho-lang/morpho-morphoview.git
-        cd morpho-morphoview
-        mkdir build
-        cd build
-        cmake -DMORPHOVIEW_LOCAL_INSTALL=ON ..
-        sudo make install
-        echo "${GITHUB_WORKSPACE}/morpho-morphoview" >> "${HOME}/.morphopackages"
-    - name: morphopm 
+    - name: morphopm
       run: |
         git clone https://github.com/Morpho-lang/morpho-morphopm.git
-        cd morpho-morphopm 
-        ./morphopm install optimize4
-        ./morphopm install zeromq 
-    - name: test 
+        sudo mkdir -p /usr/local/share/morphopm
+        sudo cp -a morpho-morphopm/packages/. /usr/local/share/morphopm/
+        sudo install -m 755 morpho-morphopm/morphopm /usr/local/bin/morphopm
+        morphopm install morphoview povray optimize4
+    - name: test
       run: |
         cd examples
         python3 examples.py -c

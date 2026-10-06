@@ -3,7 +3,7 @@
 # runs all the example for morpho
 # reporting any errors found
 
-import os, glob, sys
+import os, glob, sys, signal
 from queue import Empty
 import regex as rx
 from functools import reduce
@@ -64,6 +64,26 @@ def getoutput(filepath):
     # and remove them
     return list(filter(lambda x: x!=stk, lines))
 
+# Fatal signals. A Morpho error exits normally and is still judged from the output.
+_CRASH_SIGNALS = {}
+for _sig, _name in (
+    ("SIGSEGV", "SIGSEGV"),
+    ("SIGABRT", "SIGABRT"),
+    ("SIGBUS", "SIGBUS"),
+    ("SIGILL", "SIGILL"),
+    ("SIGFPE", "SIGFPE"),
+    ("SIGSYS", "SIGSYS"),
+    ("SIGTRAP", "SIGTRAP"),
+):
+    _num = getattr(signal, _sig, None)
+    if _num is not None:
+        _CRASH_SIGNALS[_num] = _name
+
+def crash_name(status):
+    if os.name=="posix" and os.WIFSIGNALED(status):
+        return _CRASH_SIGNALS.get(os.WTERMSIG(status))
+    return None
+
 def run(file,testLog,CI):
     ret = 1
     print(file+":", end=" ")
@@ -72,7 +92,20 @@ def run(file,testLog,CI):
     tmp = file + '.out'
 
     # Run the test
-    os.system(command + ' ' +file + ' > ' + tmp)
+    status = os.system(command + ' ' +file + ' > ' + tmp)
+    crash = crash_name(status)
+    if crash:
+        if CI:
+            print("::error file = {",file,"}::{",file," Crashed: ", crash, "}")
+        else:
+            print("Failed")
+        print(file+":", end=" ", file = testLog)
+        print("Failed", end=" ", file = testLog)
+        print("crashed with "+ crash, file = testLog)
+        print("\n",file = testLog)
+        if os.path.exists(tmp):
+            os.system('rm ' + tmp)
+        return 0
 
     # If we produced output
     if os.path.exists(tmp):

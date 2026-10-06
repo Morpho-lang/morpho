@@ -2,6 +2,7 @@
 
 import meshtools
 import plot
+import morphoview
 import meshslice
 
 // We'll create a spherical example mesh 
@@ -30,13 +31,15 @@ var slc3 = slice.slice([0,0,0], [0,0,1])
 var sphi3 = slice.slicefield(phi) 
 
 // Visualization 1: Show the three slices 
-Show(plotmesh(slc, grade=[0,1,2])+plotmesh(slc2, grade=[0,1,2])+plotmesh(slc3, grade=[0,1,2]))
+Show(Plot(slc, grade=[0,1,2], style=["shaded", "thick"])+
+     Plot(slc2, grade=[0,1,2], style=["shaded", "thick"])+
+     Plot(slc3, grade=[0,1,2], style=["shaded", "thick"]))
 
 // Visualization 2: show the original mesh, plus three slices 
-Show(plotmesh(m, grade=[1])+
-     plotfield(sphi, style="interpolate")+
-     plotfield(sphi2, style="interpolate")+
-     plotfield(sphi3, style="interpolate"))
+Show(Plot(m, grade=[1], style="thick")+
+     Plot(sphi, style="interpolate")+
+     Plot(sphi2, style="interpolate")+
+     Plot(sphi3, style="interpolate"))
 
 // Helper function to visualize a unit vector field as cylinders 
 fn visualizedirector(m, nn, dl) {
@@ -44,12 +47,12 @@ fn visualizedirector(m, nn, dl) {
   var g = Graphics()
   for (i in 0...m.count()) {
     var x = v.column(i)
-    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.3))
+    g.display(Cylinder(x-nn[i]*dl, x+nn[i]*dl, aspectratio=0.15))
   }
   return g
 }
 
 // Visualization 3: Show a sliced mesh, plus the vector field nn 
-Show(plotmesh(slc, grade=[1,2])+
+Show(Plot(slc, grade=[1,2], style=["shaded", "thick"])+
      visualizedirector(slc, snn, 0.1))
      

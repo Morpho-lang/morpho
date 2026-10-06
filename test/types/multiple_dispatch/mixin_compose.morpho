@@ -1,0 +1,23 @@
+// Sibling mixins contribute distinct overloads of the same selector
+
+class A {
+    f(Int x) {
+        return "int"
+    }
+}
+
+class B {
+    f(String x) {
+        return "string"
+    }
+}
+
+class C with A, B { }
+
+var c = C()
+
+print c.f(1)
+// expect: int
+
+print c.f("hi")
+// expect: string

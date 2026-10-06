@@ -1,7 +1,6 @@
 // Line curvature Sq gradient
 import constants
 import meshtools
-import plot
 import symmetry
 
 var np=10

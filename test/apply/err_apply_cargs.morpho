@@ -1,0 +1,6 @@
+// apply refuses to unpack more than MORPHO_MAXCARGS (4096) arguments
+
+var a = []
+for (i in 0...4097) a.append(1)
+print apply(String, a)
+// expect error 'TooMnyArg'

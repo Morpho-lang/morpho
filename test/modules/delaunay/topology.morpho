@@ -1,0 +1,72 @@
+// Topology of Delaunay triangulations
+
+import delaunay
+import "check.xmorpho"
+
+// Point in the interior of a tetrahedron face splits that face
+var slab = [Matrix([0,0,0]), Matrix([1,0,0]), Matrix([0,1,0]), Matrix([0,0,1]), Matrix([0.2,0.2,0])]
+var tri = Delaunay(slab).triangulate()
+print tri.count() == 3 && conforming(slab, tri)
+// expect: true
+
+// An exact duplicate keeps the later index
+var dup = [Matrix([0,0]), Matrix([1,0]), Matrix([0,1]), Matrix([1,1]), Matrix([0,0])]
+tri = Delaunay(dup).triangulate()
+var used = Dictionary()
+for (t in tri) for (i in t) used[i] = true
+print tri.count() == 2 && conforming(dup, tri) && !used.contains(0) && used.contains(4)
+// expect: true
+
+// A wholly collinear cloud has no full-dimensional simplices
+var col = [Matrix([0,0,0]), Matrix([1,0,0]), Matrix([2,0,0]), Matrix([3,0,0])]
+tri = Delaunay(col).triangulate()
+print tri.count() == 0 && conforming(col, tri)
+// expect: true
+
+var col2 = [Matrix([0,0]), Matrix([1,0]), Matrix([2,0]), Matrix([3,0])]
+print Delaunay(col2).triangulate().count() == 0
+// expect: true
+
+// Point just past an existing vertex
+var P = [Matrix([0,0]), Matrix([1,0]), Matrix([0,1]), Matrix([0,-100]), Matrix([-1000,0]), Matrix([1+1e-7, 0])]
+print conforming(P, Delaunay(P).triangulate())
+// expect: true
+
+var Pperm = [P[1], P[0], P[2], P[3], P[4], P[5]]
+print conforming(Pperm, Delaunay(Pperm).triangulate())
+// expect: true
+
+var Pshift = mapPts(P, fn (p) p+Matrix([10,-4]))
+print conforming(Pshift, Delaunay(Pshift).triangulate())
+// expect: true
+
+var Pscale = mapPts(P, fn (p) p*1e3)
+print conforming(Pscale, Delaunay(Pscale).triangulate())
+// expect: true
+
+var P11 = [Matrix([0,0]), Matrix([1,0]), Matrix([0,1]), Matrix([0,-100]), Matrix([-1000,0]), Matrix([1+1e-11, 0])]
+var t11 = Delaunay(P11).triangulate()
+print conforming(P11, t11) && represented(P11, t11)
+// expect: true
+
+var Psmall = mapPts(P, fn (p) p*1e-6)
+var tsmall = Delaunay(Psmall).triangulate()
+print conforming(Psmall, tsmall) && represented(Psmall, tsmall)
+// expect: true
+
+// A thin triangle is kept under either vertex order
+fn thinKept(order) {
+    var raw = [Matrix([0,0]), Matrix([1,0]), Matrix([1, 1e-9])]
+    var pts = []
+    for (i in order) pts.append(raw[i])
+    var thin = Delaunay(pts).triangulate()
+    return thin.count()==1 && conforming(pts, thin)
+}
+print thinKept([0,1,2]) && thinKept([1,0,2])
+// expect: true
+
+// Midpoint of an existing edge splits that edge
+var mid = [Matrix([0,0]), Matrix([1,0]), Matrix([1,1]), Matrix([0,1]), Matrix([0.5,0])]
+var midtri = Delaunay(mid).triangulate()
+print midtri.count()==3 && conforming(mid, midtri)
+// expect: true

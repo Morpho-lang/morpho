@@ -2,7 +2,6 @@
 import constants
 import meshtools
 import symmetry
-import plot
 
 var np=1000
 var R=1

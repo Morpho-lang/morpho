@@ -1,0 +1,27 @@
+// Child overrides one inherited signature and keeps the others
+
+class A {
+    f(Int x) {
+        return "int"
+    }
+}
+
+class B {
+    f(String x) {
+        return "string"
+    }
+}
+
+class C with A, B {
+    f(Int x) {
+        return "child-int"
+    }
+}
+
+var c = C()
+
+print c.f(1)
+// expect: child-int
+
+print c.f("hi")
+// expect: string

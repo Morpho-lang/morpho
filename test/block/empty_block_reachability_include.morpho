@@ -1,6 +1,5 @@
 // Reachability of empty block after include
 
-import meshtools
 
 var refine_adaptively = false // Flag to turn mesh-refinement on/off
 var refine_iters = 1 // Number of iterations of refimenent

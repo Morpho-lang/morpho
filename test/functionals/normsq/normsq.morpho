@@ -1,6 +1,5 @@
 // Test norm sq
 
-import meshtools
 
 var m = Mesh("triangle.mesh")
 

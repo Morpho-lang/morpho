@@ -1,7 +1,5 @@
 // Test nematic
 
-import meshtools
-import optimize
 
 var m = Mesh("square.mesh")
 

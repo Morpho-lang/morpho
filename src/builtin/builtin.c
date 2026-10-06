@@ -29,8 +29,8 @@ dictionary builtin_functiontable;
 /** A table of built in classes */
 dictionary builtin_classtable;
 
-/** A table of symbols used by built in classes */
-dictionary builtin_symboltable;
+/** Global symbol table. Owns every interned selector string for the process. */
+dictionary globalsymboltable;
 
 /** Maintain a list of objects created by builtin */
 object *builtin_objects;
@@ -249,7 +249,7 @@ objectclass *builtin_getparentclass(value fn) {
 bool builtin_addfunctiontodict(dictionary *dict, value name, value fn, bool forcewrap, value *out) {
     bool success=false;
     value entry=MORPHO_NIL, prev=MORPHO_NIL, incoming=fn;
-    value selector = dictionary_intern(&builtin_symboltable, name); // Use interned name
+    value selector = builtin_internsymbol(name); // Use interned name
     objectclass *klass = builtin_getparentclass(fn);
 
     if (dictionary_get(dict, selector, &prev) && klass != builtin_getparentclass(prev)) { // Override superclass methods for now
@@ -303,7 +303,7 @@ bool morpho_addfunction(char *name, char *signature, builtinfunction func, built
     // Parse function signature if provided
     if (signature) builtin_addparsesignature(signature, &new->sig);
 
-    value selector = dictionary_intern(&builtin_symboltable, new->name);
+    value selector = builtin_internsymbol(new->name);
     if (MORPHO_ISNIL(selector)) goto morpho_addfunction_cleanup;
     if (!MORPHO_ISSAME(selector, new->name)) morpho_freeobject(new->name);
     new->name=selector;
@@ -394,7 +394,7 @@ bool morpho_addclass(char *name, builtinclassentry desc[], int nparents, value *
             newmethod->flags=desc[i].flags;
             if (desc[i].signature) builtin_addparsesignature(desc[i].signature, &newmethod->sig);
             
-            value selector = dictionary_intern(&builtin_symboltable, newmethod->name);
+            value selector = builtin_internsymbol(newmethod->name);
             if (MORPHO_ISNIL(selector)) {
                 object_free((object *) newmethod);
                 success=false;
@@ -440,28 +440,41 @@ value builtin_findclassfromcstring(char *label) {
     return builtin_findclass(MORPHO_OBJECT(&objname));
 }
 
-/** Copies the built in symbol table into a new dictionary */
+/** Copies the global symbol table into a new dictionary */
 void builtin_copysymboltable(dictionary *out) {
-    dictionary_copy(&builtin_symboltable, out);
+    dictionary_copy(&globalsymboltable, out);
 }
 
-/** Interns a given symbol. */
+/** Interns a symbol into the global symbol table.
+ *  @details The table owns the stored string. A new name is cloned so the
+ *           caller's object (an AST node, a static string, or a temporary)
+ *           is never retained. An existing name returns that stored object. */
 value builtin_internsymbol(value symbol) {
-    return dictionary_intern(&builtin_symboltable, symbol);
+    value existing = dictionary_getkey(&globalsymboltable, symbol, NULL);
+    if (!MORPHO_ISNIL(existing)) return existing;
+
+    value copy = object_clonestring(symbol);
+    if (MORPHO_ISNIL(copy)) return MORPHO_NIL;
+
+    value out = dictionary_intern(&globalsymboltable, copy);
+    if (MORPHO_ISNIL(out)) {
+        morpho_freeobject(copy);
+        return MORPHO_NIL;
+    }
+    builtin_bindobject(MORPHO_GETOBJECT(out));
+    return out;
 }
 
 /** Interns a symbol given as a C string. */
 value builtin_internsymbolascstring(char *symbol) {
-    value selector = object_stringfromcstring(symbol, strlen(symbol));
-    builtin_bindobject(MORPHO_GETOBJECT(selector));
-    value internselector = builtin_internsymbol(selector);
-    return internselector;
+    objectstring selector = MORPHO_STATICSTRING(symbol);
+    return builtin_internsymbol(MORPHO_OBJECT(&selector));
 }
 
 /** Checks if a symbol exists in the global symbol table */
 bool builtin_checksymbol(value symbol) {
     value val;
-    return dictionary_get(&builtin_symboltable, symbol, &val);
+    return dictionary_get(&globalsymboltable, symbol, &val);
 }
 
 /* **********************************************************************
@@ -476,7 +489,7 @@ objecttype objectbuiltinfunctiontype;
 void builtin_initialize(void) {
     dictionary_init(&builtin_functiontable);
     dictionary_init(&builtin_classtable);
-    dictionary_init(&builtin_symboltable);
+    dictionary_init(&globalsymboltable);
     builtin_objects=NULL;
     
     builtin_setfunctiontable(&builtin_functiontable);
@@ -555,5 +568,5 @@ void builtin_finalize(void) {
     
     dictionary_clear(&builtin_functiontable);
     dictionary_clear(&builtin_classtable);
-    dictionary_clear(&builtin_symboltable);
+    dictionary_clear(&globalsymboltable);
 }

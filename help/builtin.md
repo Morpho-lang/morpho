@@ -162,6 +162,8 @@ There is one edge case that occurs when you want to call a function that accepts
 
     apply(f, [[1,2]]) // equivalent to f([1,2])
 
+`apply` unpacks at most 4096 arguments from a `List` or `Tuple` (see `MORPHO_MAXCARGS`). Larger collections should be passed in another way, e.g. `String.join`.
+
 ## Abs
 [tagabs]: # (abs)
 

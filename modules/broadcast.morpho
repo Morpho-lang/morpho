@@ -1,0 +1,134 @@
+/* ***************************************************************
+ * Broadcast
+ * =========
+ * Notify listeners of events.
+ **************************************************************** */
+
+/* ----------------------------------------------------------------
+ * BroadcastEvent
+ *
+ * Optional merge for events in a batch.
+ *   batchKey()      -> value|nil   nil = do not merge
+ *   coalesce(prev)                 combine with the previous same-key event
+ * Default does not merge. Override batchKey to opt in.
+ * ---------------------------------------------------------------- */
+
+class BroadcastEvent {
+  batchKey() { return nil }
+  coalesce(prev) { }
+}
+
+/* ----------------------------------------------------------------
+ * Broadcaster
+ *
+ * Sends events to listeners.
+ *
+ *    class Sender with Broadcaster { ... }
+ *    class Receiver with Listener { ... }
+ *
+ *    receiver.listen(sender)
+ *    sender.notify(event)       // → receiver.receive(sender, event)
+ *    receiver.ignore(sender)
+ *
+ * Batches delay delivery until endBatch. Same-key events merge
+ * (see BroadcastEvent):
+ *
+ *    sender.beginBatch()
+ *    sender.notify(ev1)
+ *    sender.notify(ev2)
+ *    sender.endBatch()          // flush once
+ *
+ *   subscribe(listener) / unsubscribe(listener)
+ *   notify(event)               deliver now, or queue inside a batch
+ *   beginBatch() / endBatch()
+ * ---------------------------------------------------------------- */
+
+class Broadcaster {
+  _broadcasterInit() {
+    self.listeners = []
+    self._batchDepth = 0
+    self._pending = []                 // events waiting to be delivered
+    self._pendingByKey = Dictionary()  // batchKey → event
+  }
+
+  subscribe(listener) {
+    if (!self.listeners.contains(listener)) self.listeners.append(listener)
+  }
+
+  unsubscribe(listener) {
+    self.listeners.remove(listener)
+  }
+
+  beginBatch() {
+    self._batchDepth += 1
+  }
+
+  // Deliver queued events when the outermost batch ends.
+  endBatch() {
+    if (self._batchDepth <= 0) return
+    self._batchDepth -= 1
+    if (self._batchDepth > 0) return
+    while (self._pending.count() > 0) {
+      var pending = self._pending
+      self._pending = []
+      self._pendingByKey = Dictionary()
+      self._batchDepth += 1
+      for (event in pending) {
+        self._deliver(event)
+      }
+      self._batchDepth -= 1
+    }
+  }
+
+  notify(event) {
+    if (self._batchDepth > 0) {
+      var key = event.batchKey()
+      if (isnil(key)) {
+        self._pending.append(event)
+      } else if (self._pendingByKey.contains(key)) {
+        var prev = self._pendingByKey[key]
+        event.coalesce(prev)
+        self._pendingByKey[key] = event
+        for (i in 0...self._pending.count()) {
+          if (self._pending[i] == prev) {
+            self._pending[i] = event
+            break
+          }
+        }
+      } else {
+        self._pendingByKey[key] = event
+        self._pending.append(event)
+      }
+    } else {
+      self._deliver(event)
+    }
+  }
+
+  // Clone the list so receive may subscribe or unsubscribe.
+  _deliver(event) {
+    var ls = self.listeners.clone()
+    for (l in ls) {
+      l.receive(self, event)
+    }
+  }
+}
+
+/* ----------------------------------------------------------------
+ * Listener
+ *
+ * Receives events from a Broadcaster.
+ *   listen(sender) / ignore(sender)
+ *   receive(sender, event)     override; default does nothing
+ * ---------------------------------------------------------------- */
+
+class Listener {
+  listen(broadcaster) {
+    broadcaster.subscribe(self)
+  }
+
+  ignore(broadcaster) {
+    broadcaster.unsubscribe(self)
+  }
+
+  receive(broadcaster, event) { }
+}

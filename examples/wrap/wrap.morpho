@@ -4,6 +4,7 @@ This models a fluid interface between two colloidal particles, for example */
 import graphics
 import meshtools
 import plot
+import morphoview
 import optimize
 
 // Create a initial cube
@@ -96,4 +97,5 @@ for (refine in 1..3) {
   m = refmap[m]
 }
 
-Show(plotmesh(m, grade=2))
+m.addgrade(1)
+Show(Plot(m, grade=[1,2], style=["shaded", "thick"]))

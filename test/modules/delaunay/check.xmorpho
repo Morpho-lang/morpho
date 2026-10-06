@@ -1,0 +1,87 @@
+// Checks shared by the Delaunay tests
+
+fn checkTriangulation(pts, tri, quiet=false) {
+    var success = true
+    for (t, k in tri) {
+        var sph = Circumsphere(pts, t)
+        for (i in 0...pts.count()) {
+            if (t.ismember(i)) continue
+            if (sph.pointinsphere(pts[i])) {
+                if (!quiet) print "Point ${i} is in triangle ${k}."
+                success = false
+            }
+        }
+    }
+    return success
+}
+
+fn canon(tri) {
+    var s = []
+    for (t in tri) {
+        var u = t.clone()
+        u.sort()
+        s.append("${u}")
+    }
+    s.sort()
+    return "${s}"
+}
+
+fn volume(pts, t) {
+    var a = pts[t[0]]
+    var dim = a.count()
+    if (dim==1) return abs(pts[t[1]][0]-a[0])
+    if (dim==2) {
+        var u = pts[t[1]]-a, v = pts[t[2]]-a
+        return abs(u[0]*v[1]-u[1]*v[0])
+    }
+    var u = pts[t[1]]-a, v = pts[t[2]]-a, w = pts[t[3]]-a
+    return abs(u[0]*(v[1]*w[2]-v[2]*w[1]) - u[1]*(v[0]*w[2]-v[2]*w[0]) + u[2]*(v[0]*w[1]-v[1]*w[0]))
+}
+
+// Distinct vertices, nonzero volume, and no point in an edge interior
+fn conforming(pts, tri) {
+    for (t in tri) {
+        for (var i=0; i<t.count(); i+=1) {
+            for (var j=i+1; j<t.count(); j+=1) if (t[i]==t[j]) return false
+        }
+        if (volume(pts, t)==0) return false
+        for (var i=0; i<t.count(); i+=1) {
+            for (var j=i+1; j<t.count(); j+=1) {
+                var a = pts[t[i]], b = pts[t[j]]
+                var ab = b-a
+                var lab2 = ab.inner(ab)
+                if (lab2==0) return false
+                var lab = sqrt(lab2)
+                for (k in 0...pts.count()) {
+                    if (k==t[i] || k==t[j]) continue
+                    var ap = pts[k]-a
+                    var dist = (ap-ab*(ap.inner(ab)/lab2)).norm()
+                    if (dist > 1e-12*lab) continue
+                    var tpar = ap.inner(ab)/lab2
+                    if (tpar>1e-9 && tpar<1-1e-9) return false
+                }
+            }
+        }
+    }
+    return true
+}
+
+// Every distinct location appears as some simplex vertex
+fn represented(pts, tri) {
+    var used = Dictionary()
+    for (t in tri) for (i in t) used[i] = true
+    for (i in 0...pts.count()) {
+        var seen = false
+        for (j in 0...pts.count()) {
+            if ((pts[i]-pts[j]).norm()==0 && used.contains(j)) seen = true
+        }
+        if (!seen) return false
+    }
+    return true
+}
+
+fn mapPts(pts, func) {
+    var out = []
+    for (p in pts) out.append(func(p))
+    return out
+}

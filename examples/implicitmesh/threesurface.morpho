@@ -1,6 +1,7 @@
 
 import implicitmesh
 import plot
+import morphoview
 
 // 3-surface
 var rx=6
@@ -13,7 +14,7 @@ var impl = ImplicitMeshBuilder(fn (x,y,z) rz^4*z^2 - (1-(x/rx)^2-(y/ry)^2)*((x-x
 var mesh = impl.build(start=Matrix([0,3,0]), stepsize=0.3, maxiterations=4000)
 
 mesh.addgrade(1)
-var g=plotmesh(mesh, grade=[1,2])
+var g=Plot(mesh, grade=[1,2], style=["shaded", "thick"])
 Show(g)
 
 import color

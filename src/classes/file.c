@@ -390,6 +390,28 @@ value File_filename(vm *v, int nargs, value *args) {
     return MORPHO_GETFILE(MORPHO_SELF(args))->filename;
 }
 
+/** Resolve a path argument and apply a filesystem test */
+static value _pathtest(value *args, bool (*test)(const char *path)) {
+    value ret = MORPHO_FALSE;
+    varray_char name;
+    varray_charinit(&name);
+    file_relativepath(MORPHO_GETCSTRING(MORPHO_GETARG(args, 0)), &name);
+
+    if (test(name.data)) ret=MORPHO_TRUE;
+    varray_charclear(&name);
+    return ret;
+}
+
+/** Detect whether a path refers to a regular file */
+value File_isfile__string(vm *v, int nargs, value *args) {
+    return _pathtest(args, platform_isfile);
+}
+
+/** Detect whether a path exists */
+value File_exists__string(vm *v, int nargs, value *args) {
+    return _pathtest(args, platform_exists);
+}
+
 /** Detects whether we're at the end of the file  */
 value File_eof(vm *v, int nargs, value *args) {
     FILE *f=file_getfile(MORPHO_SELF(args));
@@ -406,7 +428,9 @@ MORPHO_METHOD(FILE_READCHAR, File_readchar, MORPHO_FN_IO|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD(FILE_WRITE, File_write, MORPHO_FN_IO|MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD(FILE_RELATIVEPATH, File_relativepath, MORPHO_FN_IO|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD(FILE_FILENAME, File_filename, MORPHO_FN_NONE),
-MORPHO_METHOD(FILE_EOF, File_eof, MORPHO_FN_IO)
+MORPHO_METHOD(FILE_EOF, File_eof, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(FILE_ISFILE, "Bool (String)", File_isfile__string, MORPHO_FN_IO),
+MORPHO_METHOD_SIGNATURE(FILE_EXISTS, "Bool (String)", File_exists__string, MORPHO_FN_IO)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

@@ -12,6 +12,13 @@ a "_" are helper functions and are not meant to be used by the end user.
 
 Contact: chaitanya.joshi@tufts.edu */
 
+Error("PkgMoved",
+"The VTK module has been moved to a morphopm package. Install it by running:
+
+   morphopm install vtk
+
+in the terminal. This version is deprecated and will be removed in the future.").warning()
+
 import meshtools 
 import parser
 

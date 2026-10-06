@@ -1,4 +1,3 @@
-import meshtools
 
 var m = Mesh("square.mesh")
 var a = Area()

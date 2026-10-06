@@ -3990,9 +3990,9 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     /* Remember the last argument */
     registerindx lastarg=compiler_regtop(c);
 
-    /* Check we don't have too many arguments */
+    /* Check we don't have too many parameters */
     if (lastarg-func.dest>MORPHO_MAXARGS) {
-        compiler_error(c, node, COMPILE_TOOMANYARGS);
+        compiler_error(c, node, COMPILE_TOOMANYPARAMS);
         return CODEINFO_EMPTY;
     }
 
@@ -4109,9 +4109,9 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     // Remember the last argument
     registerindx lastarg=compiler_regtop(c);
 
-    // Check we don't have too many arguments
+    // Check we don't have too many parameters
     if (lastarg-rSel>MORPHO_MAXARGS) {
-        compiler_error(c, node, COMPILE_TOOMANYARGS);
+        compiler_error(c, node, COMPILE_TOOMANYPARAMS);
         return CODEINFO_EMPTY;
     }
 
@@ -4196,10 +4196,26 @@ static objectclass *compiler_implementationclass(value fn) {
     return NULL;
 }
 
-/** Overrides or adds to an existing method implementation */
-void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *method, value prev) {
-    value symbol = method->name;
-    objectclass *klass=compiler_getcurrentclass(c);
+/** Adds one method implementation to a class.
+ * @param[in] local  true if declared in this class body; false if inherited/composed.
+ * Duplicate signatures error only when local and this class already defined that signature.
+ * Builtin methods replace the selector rather than composing into a metafunction. */
+static void compiler_addmethodimplementation(compiler *c, syntaxtreenode *node, objectclass *klass, value symbol, value implementation, bool local) {
+    value prev=MORPHO_NIL;
+    dictionary_get(&klass->methods, symbol, &prev);
+    
+    if (MORPHO_ISNIL(prev)) {
+        dictionary_insert(&klass->methods, symbol, implementation);
+        return;
+    }
+    
+    if (MORPHO_ISBUILTINFUNCTION(prev) ||
+        (!local && MORPHO_ISBUILTINFUNCTION(implementation))) {
+        dictionary_insert(&klass->methods, symbol, implementation);
+        return;
+    }
+    
+    signature *news=metafunction_getsignature(implementation);
     
     if (MORPHO_ISMETAFUNCTION(prev)) {
         objectmetafunction *f = MORPHO_GETMETAFUNCTION(prev);
@@ -4207,52 +4223,87 @@ void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *
            child adds any overload, f->klass == klass, but parent impls remain. */
         if (f->klass!=klass) {
             f=metafunction_clone(f);
-            if (f) program_bindobject(c->out, (object *) f);
+            if (!f) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return; }
+            program_bindobject(c->out, (object *) f);
         }
         
-        if (f) {
-            metafunction_setclass(f, klass);
-            dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
-            
+        metafunction_setclass(f, klass);
+        dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
+        
+        if (news) {
             for (int i=0; i<f->fns.count; i++) { // Check if this overrides
                 signature *sig = metafunction_getsignature(f->fns.data[i]);
-                if (sig && signature_isequal(sig, &method->sig)) {
+                if (sig && signature_isequal(sig, news)) {
                     /* Duplicate only if this class already defined that signature;
                        inherited impls (other klass) are replaced. */
-                    if (compiler_implementationclass(f->fns.data[i]) == klass) {
+                    if (local && compiler_implementationclass(f->fns.data[i])==klass) {
                         compiler_error(c, node, COMPILE_CLSSDPLCTIMPL, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(klass->name));
                         return;
                     }
-                    f->fns.data[i] = MORPHO_OBJECT(method);
+                    f->fns.data[i] = implementation;
                     return;
                 }
             }
-            
-            metafunction_add(f, MORPHO_OBJECT(method));
         }
         
-    } else if (MORPHO_ISFUNCTION(prev)) {
-        objectfunction *prevmethod = MORPHO_GETFUNCTION(prev);
+        metafunction_add(f, implementation);
         
-        if (signature_isequal(&prevmethod->sig, &method->sig)) { // Does the method overshadow an old one?
-            if (prevmethod->klass!=klass) { // If so, is the old one in the parent or ancestor class?
-                dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(method));
-            } else { // It's a redefinition
+    } else if (MORPHO_ISFUNCTION(prev)) {
+        signature *prevs=metafunction_getsignature(prev);
+        
+        if (news && prevs && signature_isequal(prevs, news)) { // Does the method overshadow an old one?
+            if (local && compiler_implementationclass(prev)==klass) { // Redefinition in this class
                 compiler_error(c, node, COMPILE_CLSSDPLCTIMPL, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(klass->name));
+            } else {
+                dictionary_insert(&klass->methods, symbol, implementation);
             }
         } else { // It doesn't override the old definition so wrap in a metafunction
             objectmetafunction *f = object_newmetafunction(symbol);
+            if (!f) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return; }
             
-            if (f) {
-                metafunction_add(f, prev);
-                metafunction_add(f, MORPHO_OBJECT(method));
-                metafunction_setclass(f, klass);
-                dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
-                program_bindobject(c->out, (object *) f);
-            }
+            metafunction_add(f, prev);
+            metafunction_add(f, implementation);
+            metafunction_setclass(f, klass);
+            dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
+            program_bindobject(c->out, (object *) f);
         }
-    } else if (MORPHO_ISBUILTINFUNCTION(prev)) { // A builtin function can only come from a parent class, so overwrite it
-        dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(method));
+    } else {
+        dictionary_insert(&klass->methods, symbol, implementation);
+    }
+}
+
+/** Inherit methods from a parent/mixin, composing distinct signatures. */
+static void compiler_inheritmethods(compiler *c, syntaxtreenode *node, objectclass *klass, objectclass *superclass) {
+    dictionary *src=&superclass->methods;
+    if (!src->contents) return;
+    
+    for (unsigned int i=0; i<src->capacity; i++) {
+        dictionaryentry *e=&src->contents[i];
+        if (MORPHO_ISNIL(e->key)) continue;
+        
+        value prev=MORPHO_NIL;
+        if (!dictionary_get(&klass->methods, e->key, &prev) || MORPHO_ISNIL(prev)) {
+            dictionary_insert(&klass->methods, e->key, e->val);
+            continue;
+        }
+        
+        if (MORPHO_ISMETAFUNCTION(e->val)) {
+            objectmetafunction *mf=MORPHO_GETMETAFUNCTION(e->val);
+            bool hasbuiltin=false;
+            for (int j=0; j<mf->fns.count; j++) {
+                if (MORPHO_ISBUILTINFUNCTION(mf->fns.data[j])) { hasbuiltin=true; break; }
+            }
+            
+            if (hasbuiltin) {
+                dictionary_insert(&klass->methods, e->key, e->val);
+            } else {
+                for (int j=0; j<mf->fns.count; j++) {
+                    compiler_addmethodimplementation(c, node, klass, e->key, mf->fns.data[j], false);
+                }
+            }
+        } else {
+            compiler_addmethodimplementation(c, node, klass, e->key, e->val, false);
+        }
     }
 }
 
@@ -4296,15 +4347,8 @@ static codeinfo compiler_classbody(compiler *c, syntaxtreeindx startindx, regist
             // Insert the compiled function into the method dictionary, making sure the method name is interned
             objectfunction *method = compiler_getpreviousfunction(c);
             if (method) {
-                value omethod = MORPHO_OBJECT(method);
-                value symbol = program_internsymbol(c->out, node->content),
-                      prev=MORPHO_NIL;
-                
-                dictionary_get(&klass->methods, symbol, &prev);
-                
-                if (MORPHO_ISNIL(prev)) { // Just insert if we don't have any definition
-                    dictionary_insert(&klass->methods, symbol, omethod);
-                } else compiler_overridemethod(c, node, method, prev); // Override or create a metafunction
+                value symbol = program_internsymbol(c->out, node->content);
+                compiler_addmethodimplementation(c, node, klass, symbol, MORPHO_OBJECT(method), true);
             }
         }
     }
@@ -4374,7 +4418,7 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
                 if (superclass!=klass) {
                     if (!klass->superclass) klass->superclass=superclass; // Only the first class is the super class, all others are mixins.
                     compiler_addparent(c, klass, superclass);
-                    dictionary_copy(&superclass->methods, &klass->methods); // TODO: Need clearer inheritance rule for metamethods
+                    compiler_inheritmethods(c, snode, klass, superclass);
                 } else {
                     compiler_error(c, snode, COMPILE_CLASSINHERITSELF);
                 }
@@ -5312,7 +5356,6 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_NOSUPER, ERROR_COMPILE, COMPILE_NOSUPER_MSG);
     morpho_defineerror(COMPILE_INVALIDASSIGNMENT, ERROR_COMPILE, COMPILE_INVALIDASSIGNMENT_MSG);
     morpho_defineerror(COMPILE_CLASSINHERITSELF, ERROR_COMPILE, COMPILE_CLASSINHERITSELF_MSG);
-    morpho_defineerror(COMPILE_TOOMANYARGS, ERROR_COMPILE, COMPILE_TOOMANYARGS_MSG);
     morpho_defineerror(COMPILE_TOOMANYPARAMS, ERROR_COMPILE, COMPILE_TOOMANYPARAMS_MSG);
     morpho_defineerror(COMPILE_VARALREADYDECLARED, ERROR_COMPILE, COMPILE_VARALREADYDECLARED_MSG);
     morpho_defineerror(COMPILE_FILENOTFOUND, ERROR_COMPILE, COMPILE_FILENOTFOUND_MSG);

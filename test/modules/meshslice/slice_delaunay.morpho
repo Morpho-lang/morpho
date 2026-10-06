@@ -1,6 +1,4 @@
-import delaunay
 import meshtools 
-import plot 
 import meshslice
 
 var pts = [ Matrix([0,0,0]),

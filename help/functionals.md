@@ -352,7 +352,7 @@ These are stored as properties of the object and can be retrieved as follows:
 See the `Functionals` entry for general information about functionals.
 
 ## NematicElectric
-[tagnematic]: # (nematic)
+[tagnematicelectric]: # (nematicelectric)
 
 The `NematicElectric` functional measures the integral of a nematic and electric coupling term integral((n.E)^2) where the electric field E may be computed from a scalar potential or supplied as a vector.
 

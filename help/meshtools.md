@@ -185,16 +185,18 @@ Methods mutate the builder and return it, so they can be chained. Call `build` t
 
     var s = SelectionBuilder(mesh).boundary().star().build()
 
-Missing intermediate grades — for example edges on a mesh that only stores faces — are added to the mesh automatically.
+Missing intermediate grades, for example edges on a mesh that only stores faces, are added to the mesh automatically.
 
-## Closure
+[showsubtopics]: # (subtopics)
+
+### Closure
 [tagclosure]: # (closure)
 
 Adds every lower-grade face of the currently selected elements, keeping the original selection. For a selected facet this adds its edges and vertices:
 
     var s = SelectionBuilder(sel).closure().build()
 
-## Star
+### Star
 [tagstar]: # (star)
 
 Adds every higher-grade coface of the currently selected elements, keeping the original selection. For a selected vertex this adds incident edges, faces and volumes:
@@ -203,15 +205,15 @@ Adds every higher-grade coface of the currently selected elements, keeping the o
 
 The closed star is the composition `.star().closure()`.
 
-## Link
+### Link
 [taglink]: # (link)
 
 Replaces the selection with its link, `Cl(St(S)) − St(Cl(S))`. For a vertex in a triangle mesh this is the opposite edges and vertices of the incident faces (the 1-ring, without the vertex itself). For an interior edge it is the two opposite vertices:
 
     var s = SelectionBuilder(sel).link().build()
 
-## Boundary
-[tagslboundary]: # (selectionbuilder boundary)
+### Boundary
+[tagboundary]: # (boundary)
 
 Replaces the selection with its boundary as a pure simplicial complex: the closure of every `(k-1)`-face that belongs to exactly one selected `k`-simplex, where `k` is the highest selected grade. An empty builder is treated as the whole mesh, so
 
@@ -223,7 +225,7 @@ is the mesh boundary, including intermediate grades (edges of a volume mesh, for
 
 A selection that contains only vertices has empty boundary. Use `Selection(mesh, boundary=true)` if you want the built-in constructor, which selects boundary facets and vertices but does not add intermediate grades.
 
-## Interior
+### Interior
 [taginterior]: # (interior)
 
 Replaces the selection with its interior, `K' − bd(K')`. An empty builder is treated as the whole mesh:
@@ -234,7 +236,7 @@ On a square of two triangles this is the two faces and the shared diagonal. The 
 
     var s = SelectionBuilder(sel).interior().build()
 
-## SelectAll
+### SelectAll
 [tagselectall]: # (selectall)
 
 Selects every element of every grade currently present on the mesh:
@@ -245,8 +247,8 @@ You can also select every element of a single grade:
 
     var edges = SelectionBuilder(mesh).selectAll(1).build()
 
-## Build
-[tagslbuild]: # (selectionbuilder build)
+### Build
+[tagbuild]: # (build)
 
 Returns the `Selection` constructed by the builder:
 

@@ -34,7 +34,7 @@ The two Selections must refer to the same Mesh.
 To add additional grades, use the addgrade method. For example, to add areas:
     s.addgrade(2)
 
-[showsubtopics]: # subtopics
+[showsubtopics]: # (subtopics)
 
 ## union
 [tagunion]: # (union)

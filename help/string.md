@@ -33,7 +33,7 @@ Note that strings are immutable, and hence
 
 raises an error.
 
-[showsubtopics]: #
+[showsubtopics]: # (subtopics)
 
 ## split
 [tagsplit]: # (split)

@@ -62,8 +62,6 @@ Morpho
    meshtools
    optimize
    plot
-   povray
-   vtk
 
 .. toctree::
    :caption: Error messages

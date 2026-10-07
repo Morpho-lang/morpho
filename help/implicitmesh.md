@@ -10,11 +10,13 @@ To use the module, first import it:
 
     import implicitmesh
 
-To create a sphere, first create an ImplicitMeshBuilder object with the implict function you'd like to use:
+To create a sphere, first create an `ImplicitMeshBuilder` with the implicit function you would like to use:
 
     var impl = ImplicitMeshBuilder(fn (x,y,z) x^2+y^2+z^2-1)
 
-You can use an existing function (or method) as well as an anonymous function as above.
+You can use an existing function, or pass a second function that returns the gradient:
+
+    var impl = ImplicitMeshBuilder(fn (x,y,z) x^2+y^2+z^2-1, fn (x,y,z) Matrix([2*x, 2*y, 2*z]))
 
 Then build the mesh,
 

@@ -170,6 +170,19 @@ See the thomson example for use of this technique.
 
 See the `Functionals` entry for general information about functionals.
 
+## PairwisePotential
+[tagpairwisepotential]: # (pairwisepotential)
+
+`PairwisePotential` is an energy between pairs of vertices. Supply the potential and its derivative with respect to the separation `r`:
+
+    var lv = PairwisePotential(fn (r) 1/r, fn (r) -1/r^2)
+
+Optional parameter `cutoff` ignores pairs farther apart than that distance:
+
+    var lv = PairwisePotential(fn (r) 1/r, fn (r) -1/r^2, cutoff=0.5)
+
+See the `Functionals` entry for general information about functionals.
+
 ## LinearElasticity
 [taglinearelasticity]: # (linearelasticity)
 
@@ -204,10 +217,31 @@ where mu and lambda are the Lamé parameters. The total energy is found by multi
 
 See the `Functionals` entry for general information about functionals.
 
+## HookeElasticity
+[taghookeelasticity]: # (hookeelasticity)
+
+`HookeElasticity` is a spring energy on line elements. You can provide a grade-1 `Field` of rest lengths. The default stiffness is 1 on each edge.
+
+    var len0 = Field(mesh, 1, grade=1)
+    var he = HookeElasticity(len0)
+
+Pass a stiffness as a number or as another grade-1 `Field`:
+
+    var he = HookeElasticity(len0, 2)
+
+## OneSidedHookeElasticity
+[tagonesidedhookeelasticity]: # (onesidedhookeelasticity)
+
+`OneSidedHookeElasticity` is the same spring energy, counted only when an edge is shorter than its rest length.
+
+    var he = OneSidedHookeElasticity(len0, 2)
+
+See the `Functionals` entry for general information about functionals.
+
 ## EquiElement
 [tagequielement]: # (equielement)
 
-The `EquiElement` functional measures the discrepency between the size of elements adjacent to each vertex. It can be used to equalize elements for regularization purposes.
+The `EquiElement` functional measures the discrepancy between the size of elements adjacent to each vertex. It can be used to equalize elements for regularization purposes.
 
 Optionally weight elements with a scalar `Field` on the functional's grade, or a row `Matrix` with one entry per element:
 
@@ -318,7 +352,7 @@ These are stored as properties of the object and can be retrieved as follows:
 See the `Functionals` entry for general information about functionals.
 
 ## NematicElectric
-[tagnematic]: # (nematic)
+[tagnematicelectric]: # (nematicelectric)
 
 The `NematicElectric` functional measures the integral of a nematic and electric coupling term integral((n.E)^2) where the electric field E may be computed from a scalar potential or supplied as a vector.
 

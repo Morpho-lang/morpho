@@ -20,7 +20,7 @@ or use one of the functions available in `meshtools` or `implicitmesh` packages.
 
 Each type of element is referred to as belonging to a different `grade`. Point-like elements (vertices) are *grade 0*; line-like elements (edges) are *grade 1*; area-like elements (facets; triangles) are *grade 2* etc.
 
-The `plot` package includes functions to visualize meshes.
+Draw a mesh with `Plot` from the `plot` module.
 
 [showsubtopics]: # (subtopics)
 

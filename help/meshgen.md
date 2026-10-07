@@ -4,7 +4,7 @@
 # Meshgen
 [tagmeshgen]: # (meshgen)
 
-The `meshgen` module is used to create `Mesh` objects corresponding to a specified domain. It provides the `MeshGen` class to perform the meshing, which are created with the following arguments:
+The `meshgen` module is used to create `Mesh` objects corresponding to a specified domain. It provides the `MeshGen` class, created with the following arguments:
 
     MeshGen(domain, boundingbox)
 
@@ -69,7 +69,7 @@ You can combine `Domain` objects using set operations `union`, `intersection` an
 ## CircularDomain
 [tagcirculardomain]: # (circulardomain)
 
-Conveniently constructs a `Domain` object correspondiong to a disk. Requires the position of the center and a radius as arguments. 
+Conveniently constructs a `Domain` object corresponding to a disk. Requires the position of the center and a radius as arguments. 
 
 Create a domain corresponding to the unit disk: 
 
@@ -85,9 +85,9 @@ Create a square `Domain`:
     var c = RectangularDomain([-1..1, -1..1])
 
 ## HalfSpaceDomain
-[halfspacedomain]: # (halfspacedomain)
+[taghalfspacedomain]: # (halfspacedomain)
 
-Conveniently constructs a `Domain` object correspondiong to a half space defined by a plane at `x0` and a normal `n`:
+Conveniently constructs a `Domain` object corresponding to a half space defined by a plane at `x0` and a normal `n`:
 
     var hs = HalfSpaceDomain(x0, n)
 
@@ -108,6 +108,6 @@ Create half a disk by cutting a `HalfSpaceDomain` from a `CircularDomain`:
     var m = mg.build()
 
 ## MshGnDim
-[mshgndim]: # (mshgndim)
+[tagmshgndim]: # (mshgndim)
 
 The `MeshGen` module currently supports 2 and 3 dimensional meshes. Higher dimensional meshing will be available in a future release; please contact the developer if you are interested in this functionality.

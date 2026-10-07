@@ -217,6 +217,7 @@ class Opacity is ColorDelegate {
  *
  *   rgb(i)   -> Tuple
  *   color(i) -> Color
+ *   ct[i]    -> Color   via index(i)
  *   count()  -> Int     number of colors
  * ---------------------------------------------------------------- */
 
@@ -244,6 +245,9 @@ class ColorTable is Coloring {
     return (t[0], t[1], t[2], self.alpha(i))
   }
   color(Int i) { return Color(self.rgba(i)) }
+
+  // ct[i] returns the Color for column i
+  index(Int i) { return self.color(i) }
 
   rgb(x) { return self.rgb(Int(x)) }
   alpha(x) { return self.alpha(Int(x)) }

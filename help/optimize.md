@@ -4,7 +4,11 @@
 # Optimize
 [tagoptimize]: # (optimize)
 
-The `optimize` package contains a number of functions and classes to perform shape optimization.
+The `optimize` module minimizes an energy defined on a `Mesh` or a `Field`.
+
+Note that this module will be deprecated in future; it is recommended to migrate code to the new and much more powerful `optimize4` module. You can install that module with `morphopm`: 
+
+    morphopm install optimize4
 
 [showsubtopics]: # (subtopics)
 

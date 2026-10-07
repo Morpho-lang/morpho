@@ -13,7 +13,7 @@
  * Metafunction objects
  * ------------------------------------------------------- */
 
-extern objecttype objectmetafunctiontype;
+extern MORPHO_API objecttype objectmetafunctiontype;
 #define OBJECT_METAFUNCTION objectmetafunctiontype
 
 /** Index type for metafunction resolver */

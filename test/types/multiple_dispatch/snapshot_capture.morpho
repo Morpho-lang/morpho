@@ -1,0 +1,19 @@
+// Capturing f as a value keeps the snapshot visible at that point
+
+fn f(String x) { return "A" }
+
+var oldf = f
+
+fn f(Int x) { return "B" }
+
+print f("Hi")
+// expect: A
+
+print f(1)
+// expect: B
+
+print oldf("Hi")
+// expect: A
+
+oldf(1)
+// expect error 'MltplDsptchFld'

@@ -1,0 +1,8 @@
+// class after fn occupies the name; callable metadata must not hide the class
+
+fn Foo() { return "fn" }
+
+class Foo { }
+
+print Foo()
+// expect: <Foo>

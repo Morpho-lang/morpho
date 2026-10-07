@@ -20,4 +20,4 @@ var ropt = ShapeOptimizer(reg, m)
 	
 // Must ensure boundary remains correctly fixed
 ropt.fix(Selection(bndCirc, boundary=true))	
-// expect error 'SlNoMsh'
+// expect error 'MltplDsptchFld'

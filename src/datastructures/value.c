@@ -151,6 +151,14 @@ bool morpho_valuetofloat(value v, double *out) {
     return false;
 }
 
+/** Convert a list of values to floats */
+bool morpho_valuestofloat(unsigned int n, value *v, double *out) {
+    for (unsigned int i=0; i<n; i++) {
+        if (!morpho_valuetofloat(v[i], &out[i])) return false;
+    }
+    return true;
+}
+
 /* **********************************************************************
 * Utility functions
 * ********************************************************************** */

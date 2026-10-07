@@ -1,0 +1,7 @@
+// Ordinary global then callable rebind establishes callable metadata
+
+import "mf_data.m" for f
+import "mf_provider.m" for f
+
+print f("Hi")
+// expect: string

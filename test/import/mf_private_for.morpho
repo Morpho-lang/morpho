@@ -1,0 +1,6 @@
+// Explicit for can import an underscore-prefixed free function
+
+import "mf_provider.m" for _privateFn
+
+print _privateFn()
+// expect: secret

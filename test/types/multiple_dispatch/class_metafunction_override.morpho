@@ -1,0 +1,24 @@
+// Inheritance may override a signature from a parent metafunction
+
+class A {
+    foo(x) {
+        return "parent-one"
+    }
+
+    foo(x, y) {
+        return "parent-two"
+    }
+}
+
+class B is A {
+    foo(x) {
+        return "child-one"
+    }
+}
+
+var b = B()
+print b.foo(1)
+// expect: child-one
+
+print b.foo(1, 2)
+// expect: parent-two

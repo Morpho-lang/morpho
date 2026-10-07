@@ -25,3 +25,8 @@ var val = g.evalElement(0, [1/2,1/4,1/4])
 
 print (val - Matrix([[1/4,1/4],[-1/4,1/4]])).norm() < 1e-10
 // expect: true
+
+var c = Field(m, fn (x,y) x + y*im)
+var ceval = c.evalElement(0, [1/3,1/3,1/3])
+print (ceval - (1/3 + 1/3*im)).abs() < 1e-10
+// expect: true

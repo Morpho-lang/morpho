@@ -1,0 +1,66 @@
+// Variadic constructors and single-impl metafunctions must resolve with nargs > nparams
+// (metafunction_reduce / filterbyknowntypes path used at compile time).
+
+print Tuple()
+// expect: ()
+
+print Tuple(0)
+// expect: (0)
+
+print Tuple(0, 1)
+// expect: (0, 1)
+
+print Tuple(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+// expect: (0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+
+print String("a", "b")
+// expect: ab
+
+print Range(0, 1)
+// expect: 0...1
+
+fn foo(...xs) {
+    return xs.count()
+}
+
+print foo()
+// expect: 0
+
+print foo(1)
+// expect: 1
+
+print foo(1, 2)
+// expect: 2
+
+print foo(1, 2, 3, 4, 5)
+// expect: 5
+
+// Fixed-arity overload remains preferred over variadic when arity matches
+fn bar(Int a, Int b) {
+    return "fixed"
+}
+
+fn bar(...xs) {
+    return "varg"
+}
+
+print bar(1, 2)
+// expect: fixed
+
+print bar(1, 2, 3)
+// expect: varg
+
+// Ambiguous typed overloads must not collapse incorrectly
+fn baz(Int x) {
+    return "Int"
+}
+
+fn baz(Float x) {
+    return "Float"
+}
+
+print baz(1)
+// expect: Int
+
+print baz(1.5)
+// expect: Float

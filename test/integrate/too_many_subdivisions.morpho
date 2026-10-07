@@ -9,5 +9,5 @@ mb.addvertex([1])
 mb.addedge([0,1])
 var m = mb.build()
 
-print LineIntegral(fn (x) 1/x[0], method={ } ).total(m)
+print LineIntegral(fn (x) 1/x[0]).total(m)
 // expect error 'IntgrtrSbdvns' 

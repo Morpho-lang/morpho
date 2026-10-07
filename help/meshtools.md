@@ -96,7 +96,7 @@ The `DelaunayMesh` constructor function creates a `Mesh` object directly from a 
     var pts = []
     for (i in 0...100) pts.append(Matrix([random(), random()]))
     var m=DelaunayMesh(pts)
-    Show(plotmesh(m))
+    Show(Plot(m))
 
 You can control the output dimension of the mesh (e.g. to create a 2D mesh embedded in 3D space) using the optional `outputdim` property. 
 
@@ -172,6 +172,87 @@ This error is produced if you try to add an element to a `MeshBuilder` object bu
     mb.addedge([0,1]) // No vertices have been added 
 
 To fix this add the vertices first.
+
+## SelectionBuilder
+[tagselectionbuilder]: # (selectionbuilder)
+
+The `SelectionBuilder` class constructs a `Selection` using topological operations on a mesh. Create a builder from a `Mesh` (starting empty) or from an existing `Selection` (which is cloned so the original is not modified):
+
+    var sb = SelectionBuilder(mesh)
+    var sb = SelectionBuilder(sel)
+
+Methods mutate the builder and return it, so they can be chained. Call `build` to obtain the `Selection`:
+
+    var s = SelectionBuilder(mesh).boundary().star().build()
+
+Missing intermediate grades, for example edges on a mesh that only stores faces, are added to the mesh automatically.
+
+[showsubtopics]: # (subtopics)
+
+### Closure
+[tagclosure]: # (closure)
+
+Adds every lower-grade face of the currently selected elements, keeping the original selection. For a selected facet this adds its edges and vertices:
+
+    var s = SelectionBuilder(sel).closure().build()
+
+### Star
+[tagstar]: # (star)
+
+Adds every higher-grade coface of the currently selected elements, keeping the original selection. For a selected vertex this adds incident edges, faces and volumes:
+
+    var s = SelectionBuilder(sel).star().build()
+
+The closed star is the composition `.star().closure()`.
+
+### Link
+[taglink]: # (link)
+
+Replaces the selection with its link, `Cl(St(S)) − St(Cl(S))`. For a vertex in a triangle mesh this is the opposite edges and vertices of the incident faces (the 1-ring, without the vertex itself). For an interior edge it is the two opposite vertices:
+
+    var s = SelectionBuilder(sel).link().build()
+
+### Boundary
+[tagboundary]: # (boundary)
+
+Replaces the selection with its boundary as a pure simplicial complex: the closure of every `(k-1)`-face that belongs to exactly one selected `k`-simplex, where `k` is the highest selected grade. An empty builder is treated as the whole mesh, so
+
+    var s = SelectionBuilder(mesh).boundary().build()
+
+is the mesh boundary, including intermediate grades (edges of a volume mesh, for example). The boundary of a selected region is the same operator:
+
+    var s = SelectionBuilder(sel).boundary().build()
+
+A selection that contains only vertices has empty boundary. Use `Selection(mesh, boundary=true)` if you want the built-in constructor, which selects boundary facets and vertices but does not add intermediate grades.
+
+### Interior
+[taginterior]: # (interior)
+
+Replaces the selection with its interior, `K' − bd(K')`. An empty builder is treated as the whole mesh:
+
+    var s = SelectionBuilder(mesh).interior().build()
+
+On a square of two triangles this is the two faces and the shared diagonal. The interior of a closed region (after `closure()`) is the same operator:
+
+    var s = SelectionBuilder(sel).interior().build()
+
+### SelectAll
+[tagselectall]: # (selectall)
+
+Selects every element of every grade currently present on the mesh:
+
+    var s = SelectionBuilder(mesh).selectAll().build()
+
+You can also select every element of a single grade:
+
+    var edges = SelectionBuilder(mesh).selectAll(1).build()
+
+### Build
+[tagbuild]: # (build)
+
+Returns the `Selection` constructed by the builder:
+
+    var s = sb.build()
 
 ## MeshRefiner
 [tagmeshrefiner]: # (meshrefiner)

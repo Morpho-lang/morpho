@@ -1,0 +1,18 @@
+// Lexical parameters and locals shadow the imported callable
+
+import "mf_provider.m" for f
+
+fn g(f) {
+    return f
+}
+
+print g("param")
+// expect: param
+
+fn h() {
+    var f = "local"
+    return f
+}
+
+print h()
+// expect: local

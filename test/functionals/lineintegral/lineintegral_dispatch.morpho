@@ -1,0 +1,22 @@
+// Shared Integral_* map wrappers; init is varg and raises IntgrlArgs
+import meshtools
+
+var m = LineMesh(fn (t) [t, 0, 0], 0..1:0.1)
+var lc = LineIntegral(fn (x) (x[0]*(1-x[0]))^2)
+
+print lc.grade
+// expect: 1
+
+print abs(lc.integrand(m, 0) - 0.000285333) < 1e-8
+// expect: true
+
+print abs(lc.total(m) - 0.0333333) < 1e-6
+// expect: true
+
+var s = Selection(m, fn (x, y, z) x<=0.5)
+s.addgrade(1)
+print lc.total(m, s) < lc.total(m)
+// expect: true
+
+print lc.integrand()
+// expect error 'MltplDsptchFld'

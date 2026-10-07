@@ -1,0 +1,11 @@
+// Same-module recursion after import still dispatches
+
+import "mf_provider.m" for f
+
+fn rec(List x) {
+    if (x.count()==0) return "done"
+    return rec([])
+}
+
+print rec([1])
+// expect: done

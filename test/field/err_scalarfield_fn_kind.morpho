@@ -1,0 +1,3 @@
+var m = Mesh("square.mesh")
+ScalarField(m, fn (x, y, z) Matrix([1, 0]))
+// expect error 'FldKind'

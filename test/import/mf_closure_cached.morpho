@@ -1,0 +1,13 @@
+// Cached unqualified and qualified imports of a closure-bearing export
+
+import "mf_closure_provider.m" as Cache
+
+import "mf_closure_provider.m" for isEven
+
+print isEven(4)
+// expect: true
+
+import "mf_closure_provider.m" as P
+
+print P.isEven(3)
+// expect: true

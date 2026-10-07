@@ -20,5 +20,5 @@ fn integrand(x, q) {
 }
 
 var f = Field(m, fn (x,y) x^3 + y^3, finiteelementspace=l)
-print abs(AreaIntegral(integrand, f, method={ }).total(m) - 18/5) < 1e-8
+print abs(AreaIntegral(integrand, f).total(m) - 18/5) < 1e-8
 // expect: true

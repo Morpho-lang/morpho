@@ -2,6 +2,8 @@
  * Shape optimization
  ************************************** */
 
+Error("Deprecated", "The shapeopt module is deprecated and will be removed in a future release.").warning()
+
 // Minimize a 1-d function by Brent's algorithm
 fn brent(bracket, func, tol, itermax) {
   var zeps = 1e-10, cgold = 0.3819660
@@ -368,7 +370,7 @@ class ShapeOptimizer {
         for (k in 0...nv) {
           // Find the discrepencies of each force at the vertex
           var vv = Matrix(nc)
-          for (i in 0...nc) vv[i] = -dv[i][0,k] // Note minus sign
+          for (i in 0...nc) vv[i] = -dv[i][k] // Note minus sign
 
           if (vv.norm()>self.ctol) {
             // Identify constraints active on this vertex

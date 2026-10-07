@@ -14,7 +14,7 @@
  * Dictionary objects
  * ------------------------------------------------------- */
 
-extern objecttype objectdictionarytype;
+extern MORPHO_API objecttype objectdictionarytype;
 #define OBJECT_DICTIONARY objectdictionarytype
 
 typedef struct {

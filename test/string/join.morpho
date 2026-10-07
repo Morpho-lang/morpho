@@ -1,0 +1,68 @@
+// String.join concatenates list elements
+
+print String.join([1, 2, 3])
+// expect: 123
+
+print String.join(["Hello", "World"])
+// expect: HelloWorld
+
+print String.join([1, 2, 3], ", ")
+// expect: 1, 2, 3
+
+print String.join(["a", "b", "c"], "")
+// expect: abc
+
+print String.join([])
+// expect: 
+
+print String.join([], ", ")
+// expect: 
+
+print String.join([42])
+// expect: 42
+
+print String.join([42], ", ")
+// expect: 42
+
+print String.join([1, true, nil, "x"])
+// expect: 1truenilx
+
+print String.join([[1, 2], [3]])
+// expect: [ 1, 2 ][ 3 ]
+
+print "id=".join([1, 2, 3])
+// expect: id=123
+
+print "id=".join([1, 2, 3], ",")
+// expect: id=1,2,3
+
+print "".join([1, 2, 3], ", ")
+// expect: 1, 2, 3
+
+print "prefix".join([])
+// expect: prefix
+
+print "prefix".join([], ", ")
+// expect: prefix
+
+print "prefix".join(["only"])
+// expect: prefixonly
+
+print "prefix".join(["only"], ", ")
+// expect: prefixonly
+
+class Named {
+  init(name) { self.name = name }
+  tostring() { return "<${self.name}>" }
+}
+
+print String.join([Named("a"), Named("b")], " + ")
+// expect: <a> + <b>
+
+var parts = []
+for (i in 0...300) parts.append("a")
+print String.join(parts).count()
+// expect: 300
+
+print String.join(parts, "-").count()
+// expect: 599

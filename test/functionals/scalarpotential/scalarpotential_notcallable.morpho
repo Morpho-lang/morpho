@@ -1,4 +1,7 @@
-// Err. when a level set function isn't callable
+// Stored function is not callable
+var m = Mesh("tetrahedron.mesh")
+var a = ScalarPotential()
+a.function = 0.4
 
-var a = ScalarPotential(0.4)
-// expect Error 'SclrPtFnCllbl'
+print a.integrand(m)
+// expect error 'SclrPtFnCllbl'

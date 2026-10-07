@@ -1,0 +1,21 @@
+// Fast resolver must enforce variadic minarity (not resolve then InvldArgs)
+
+fn f(a, b, ...xs) {
+    return "long"
+}
+
+fn f(Int x) {
+    return "int"
+}
+
+print f(1)
+// expect: int
+
+print f(1, 2)
+// expect: long
+
+print f(1, 2, 3)
+// expect: long
+
+print f()
+// expect error 'MltplDsptchFld'

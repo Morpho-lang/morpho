@@ -13,7 +13,7 @@
  * Instance objects
  * ------------------------------------------------------- */
 
-extern objecttype objectinstancetype;
+extern MORPHO_API objecttype objectinstancetype;
 #define OBJECT_INSTANCE objectinstancetype
 
 typedef struct {

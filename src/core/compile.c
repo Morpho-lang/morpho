@@ -1399,6 +1399,107 @@ codeinfo compiler_addvariable(compiler *c, syntaxtreenode *node, value symbol) {
 }
 
 /* ------------------------------------------
+ * Top-level callable bindings
+ * ------------------------------------------- */
+
+/** True if a callable snapshot must be loaded from the global slot because
+    it includes a closure implementation. Top-level named exports are closures
+    when they capture a forward reference (e.g. mutual recursion); those
+    references LGL the runtime closure rather than LCT the prototype. */
+static bool compiler_snapshotneedsglobal(value snapshot) {
+    if (MORPHO_ISFUNCTION(snapshot) && function_isclosure(MORPHO_GETFUNCTION(snapshot))) return true;
+    if (MORPHO_ISMETAFUNCTION(snapshot)) {
+        objectmetafunction *mf = MORPHO_GETMETAFUNCTION(snapshot);
+        for (int i=0; i<mf->fns.count; i++) {
+            if (MORPHO_ISFUNCTION(mf->fns.data[i]) &&
+                function_isclosure(MORPHO_GETFUNCTION(mf->fns.data[i]))) return true;
+        }
+    }
+    return false;
+}
+
+/** True if a value is a free-function export (not a class). */
+static bool compiler_isfunctionexport(value v) {
+    return (MORPHO_ISFUNCTION(v) ||
+            MORPHO_ISMETAFUNCTION(v) ||
+            MORPHO_ISBUILTINFUNCTION(v));
+}
+
+/** Reads the compiler-local callable binding for a name. */
+static bool compiler_getcallablebinding(compiler *c, value name, value *snapshot, value *origin) {
+    value snap = MORPHO_NIL, orig = MORPHO_NIL;
+    bool found = dictionary_get(&c->callables, name, &snap);
+    dictionary_get(&c->origins, name, &orig);
+    if (snapshot) *snapshot = snap;
+    if (origin) *origin = orig;
+    return found;
+}
+
+/** Writes the compiler-local callable binding for a name. */
+static void compiler_setcallablebinding(compiler *c, value name, value snapshot, value origin) {
+    value key = program_internsymbol(c->out, name);
+    dictionary_insert(&c->callables, key, snapshot);
+    dictionary_insert(&c->origins, key, origin);
+}
+
+/** Clears callable metadata for a name, leaving any global index in place. */
+static void compiler_clearcallablebinding(compiler *c, value name) {
+    dictionary_remove(&c->callables, name);
+    dictionary_remove(&c->origins, name);
+}
+
+/** Clears callable metadata when a top-level source binding occupies a name
+    with a non-callable. No-op inside nested functions. */
+static void compiler_cleartoplevelcallable(compiler *c, value name) {
+    if (compiler_checkglobal(c)) compiler_clearcallablebinding(c, name);
+}
+
+/** Builds a new callable snapshot from an existing binding and an incoming implementation.
+ *  Clones an existing metafunction before merging so escaped snapshots stay immutable. */
+static bool compiler_newcallablesnapshot(compiler *c, syntaxtreenode *node, value name, value prev, value incoming, value *out) {
+    value dest = prev;
+
+    if (MORPHO_ISMETAFUNCTION(prev)) {
+        objectmetafunction *clone = metafunction_clone(MORPHO_GETMETAFUNCTION(prev));
+        if (!clone) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return false; }
+        program_bindobject(c->out, (object *) clone);
+        dest = MORPHO_OBJECT(clone);
+    }
+
+    if (MORPHO_ISNIL(dest)) {
+        if (MORPHO_ISFUNCTION(incoming) && function_hastypedparameters(MORPHO_GETFUNCTION(incoming))) {
+            if (!metafunction_wrap(name, incoming, out)) {
+                compiler_error(c, node, ERROR_ALLOCATIONFAILED);
+                return false;
+            }
+            program_bindobject(c->out, MORPHO_GETOBJECT(*out));
+            return true;
+        }
+        *out = incoming;
+        return true;
+    }
+
+    if (!metafunction_merge(name, dest, incoming, NULL, out)) {
+        compiler_error(c, node, ERROR_ALLOCATIONFAILED);
+        return false;
+    }
+    if (MORPHO_ISMETAFUNCTION(*out) && !MORPHO_ISSAME(*out, dest)) {
+        program_bindobject(c->out, MORPHO_GETOBJECT(*out));
+    }
+    return true;
+}
+
+/** Origin-aware import of a callable export E. Globals are already copied. */
+static void compiler_bindimportedcallable(compiler *c, value name, value export) {
+    value snapshot = MORPHO_NIL, origin = MORPHO_NIL;
+    bool has = compiler_getcallablebinding(c, name, &snapshot, &origin);
+
+    if (has && MORPHO_ISSAME(origin, export)) return;
+
+    compiler_setcallablebinding(c, name, export, export);
+}
+
+/* ------------------------------------------
  * Upvalues
  * ------------------------------------------- */
 
@@ -1650,6 +1751,7 @@ static bool _checkduplicateref(varray_functionref *refs, functionref *match) {
 /** Collects function implementations that match a given symbol */
 static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray_value *out) {
     bool closure=false;
+    bool halted=false;
     
     varray_functionref refs;
     varray_functionrefinit(&refs);
@@ -1671,6 +1773,7 @@ static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray
         if (rsym>=0 &&
             compiler_regcurrenttype(c, rsym, &type) &&
             !MORPHO_ISEQUAL(type, _closuretype)) {
+            halted=true;
             break; // If there is, then we halt the search
         }
     }
@@ -1678,6 +1781,38 @@ static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray
     // Return the collected implementations
     for (int i=0; i<refs.count; i++) {
         varray_valuewrite(out, MORPHO_OBJECT(refs.data[i].function));
+    }
+
+    /* Nested overloads union with the top-level callable snapshot, matching
+       previous functionref-across-scopes behavior. Only when nested refs exist;
+       otherwise compiler_symbol LCTs the snapshot directly. */
+    value snapshot = MORPHO_NIL;
+    if (!halted && refs.count>0 &&
+        compiler_getcallablebinding(c, symbol, &snapshot, NULL) &&
+        !MORPHO_ISNIL(snapshot)) {
+        varray_value extras;
+        varray_valueinit(&extras);
+        if (MORPHO_ISMETAFUNCTION(snapshot)) {
+            objectmetafunction *mf = MORPHO_GETMETAFUNCTION(snapshot);
+            varray_valueadd(&extras, mf->fns.data, mf->fns.count);
+        } else if (compiler_isfunctionexport(snapshot)) {
+            varray_valuewrite(&extras, snapshot);
+        }
+        for (int i=0; i<extras.count; i++) {
+            signature *sig = metafunction_getsignature(extras.data[i]);
+            bool dup=false;
+            if (sig) {
+                for (int j=0; j<refs.count; j++) {
+                    if (signature_isequal(&refs.data[j].function->sig, sig)) { dup=true; break; }
+                }
+            }
+            if (!dup) {
+                if (MORPHO_ISFUNCTION(extras.data[i]) &&
+                    function_isclosure(MORPHO_GETFUNCTION(extras.data[i]))) closure=true;
+                varray_valuewrite(out, extras.data[i]);
+            }
+        }
+        varray_valueclear(&extras);
     }
     
     varray_functionrefclear(&refs);
@@ -3270,6 +3405,7 @@ static codeinfo compiler_declaration(compiler *c, syntaxtreenode *node, register
     if (!MORPHO_ISNIL(var)) {
         /* Create the variable */
         codeinfo vloc = compiler_addvariable(c, varnode, var);
+        compiler_cleartoplevelcallable(c, var);
         codeinfo array = CODEINFO_EMPTY;
 
         if (vloc.returntype==REGISTER) {
@@ -3478,8 +3614,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     /* Add the function as a constant */
     kindx=compiler_addconstant(c, node, MORPHO_OBJECT(func), false, false);
     
-    /* Keep a reference to the function */
-    if (!ismethod) compiler_addfunctionref(c, func);
+    /* Top-level functions use callable bindings; nested/local keep functionref */
+    bool isglobalfn = !ismethod && !isanonymous && compiler_checkglobal(c);
+    if (!ismethod && !isglobalfn) compiler_addfunctionref(c, func);
 
     /* Begin the new function definition, finding whether the current function
        is a regular function or a method declaration by looking at currentmethod */
@@ -3497,7 +3634,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     /* -- Compile the parameters -- */
     compiler_functionparameters(c, node->left);
     
-    value signature[function_countpositionalargs(func)];
+    value signature[function_countpositionalargs(func)+1];
     for (int i=0; i<func->nargs; i++) compiler_regtype(c, i+1, &signature[i]);
     if (function_hasvargs(func)) signature[func->nargs]=MORPHO_NIL;
     function_setsignature(func, signature);
@@ -3509,8 +3646,24 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         return CODEINFO_EMPTY;
     }
 
+    /* Install the top-level callable snapshot before the body so recursive
+       references LCT the new overload set. Preserve import origin on extend. */
+    value snapshot = MORPHO_OBJECT(func);
+    if (isglobalfn && !compiler_haserror(c)) {
+        value prev = MORPHO_NIL, origin = MORPHO_NIL;
+        compiler_getcallablebinding(c, func->name, &prev, &origin);
+        if (compiler_newcallablesnapshot(c, node, func->name, prev, MORPHO_OBJECT(func), &snapshot)) {
+            if (MORPHO_ISMETAFUNCTION(snapshot)) {
+                metafunction_finalize(MORPHO_GETMETAFUNCTION(snapshot), &c->err);
+            }
+            if (!compiler_haserror(c)) {
+                compiler_setcallablebinding(c, func->name, snapshot, origin);
+            }
+        }
+    }
+
     /* -- Compile the body -- */
-    if (body!=REGISTER_UNALLOCATED) bodyinfo=compiler_nodetobytecode(c, body, REGISTER_UNALLOCATED);
+    if (!compiler_haserror(c) && body!=REGISTER_UNALLOCATED) bodyinfo=compiler_nodetobytecode(c, body, REGISTER_UNALLOCATED);
     ninstructions+=bodyinfo.ninstructions;
 
     /* Add a return instruction if necessary */
@@ -3534,6 +3687,8 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 
     /* Resolve the return type*/
     compiler_resolvereturntype(c);
+
+    func->end=func->entry+ninstructions;
     
     /* Restore the old function */
     compiler_endfunction(c);
@@ -3544,14 +3699,21 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 
         /* Allocate a variable to refer to the function definition, but only in global
            context */
-        /* TODO: Do we need to do this now functionstates capture function info? */
         codeinfo fvar=CODEINFO_EMPTY;
+        codeinfo gvar=CODEINFO_EMPTY;
         fvar.dest=compiler_regtemp(c, reqout);
         fvar.returntype=REGISTER;
+        bool resolvedfwd=false;
         
         if (!isanonymous) {
-            if (!compiler_resolveforwardreference(c, func->name, &fvar) &&
-                compiler_checkglobal(c)) {
+            resolvedfwd=compiler_resolveforwardreference(c, func->name, &fvar);
+            if (isglobalfn) {
+                /* Always publish a global slot so importers can bind the name,
+                   even when a forward reference already claimed a register. */
+                if (!resolvedfwd) compiler_regfreetemp(c, fvar.dest);
+                gvar=compiler_addvariable(c, node, node->content);
+                if (!resolvedfwd) fvar=gvar;
+            } else if (!resolvedfwd && compiler_checkglobal(c)) {
                 compiler_regfreetemp(c, fvar.dest);
                 fvar=compiler_addvariable(c, node, node->content);
             }
@@ -3561,8 +3723,13 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
         /* If it's not in a register, allocate a temporary register */
         if (fvar.returntype!=REGISTER) reg=compiler_regtemp(c, REGISTER_UNALLOCATED);
 
-        /* Move function into register */
-        compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, kindx), node);
+        /* Load the callable snapshot, or the raw function when wrapping a
+           closure (OP_CLOSURE cannot be applied to a metafunction). */
+        registerindx loadk = kindx;
+        if (isglobalfn && closure==REGISTER_UNALLOCATED) {
+            loadk = compiler_addconstant(c, node, snapshot, true, false);
+        }
+        compiler_addinstruction(c, ENCODE_LONG(OP_LCT, reg, loadk), node);
         ninstructions++;
 
         /* Wrap in a closure if necessary */
@@ -3581,6 +3748,9 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
             codeinfo mv=compiler_movefromregister(c, node, fvar, reg);
             ninstructions+=mv.ninstructions;
             compiler_regfreetemp(c, reg);
+        } else if (isglobalfn && gvar.returntype==GLOBAL) {
+            codeinfo mv=compiler_movefromregister(c, node, gvar, reg);
+            ninstructions+=mv.ninstructions;
         }
     }
 
@@ -3715,7 +3885,7 @@ static bool compiler_specializemetafunctioncall(compiler *c, syntaxtreenode *nod
     if (metafunction->state!=METAFUNCTION_FROZEN ||
         compiler_metafunctionhasrecursiveimplementation(metafunction)) return false;
 
-    value argtypes[nargs];
+    value argtypes[nargs+1];
     for (int i=0; i<nargs; i++) {
         value type = MORPHO_NIL;
         argtypes[i] = (compiler_regcurrenttype(c, func->dest+i+1, &type) && compiler_typeisexact(type)) ? type : MORPHO_NIL;
@@ -3820,9 +3990,9 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     /* Remember the last argument */
     registerindx lastarg=compiler_regtop(c);
 
-    /* Check we don't have too many arguments */
+    /* Check we don't have too many parameters */
     if (lastarg-func.dest>MORPHO_MAXARGS) {
-        compiler_error(c, node, COMPILE_TOOMANYARGS);
+        compiler_error(c, node, COMPILE_TOOMANYPARAMS);
         return CODEINFO_EMPTY;
     }
 
@@ -3939,9 +4109,9 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     // Remember the last argument
     registerindx lastarg=compiler_regtop(c);
 
-    // Check we don't have too many arguments
+    // Check we don't have too many parameters
     if (lastarg-rSel>MORPHO_MAXARGS) {
-        compiler_error(c, node, COMPILE_TOOMANYARGS);
+        compiler_error(c, node, COMPILE_TOOMANYPARAMS);
         return CODEINFO_EMPTY;
     }
 
@@ -4019,56 +4189,121 @@ static codeinfo compiler_return(compiler *c, syntaxtreenode *node, registerindx 
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
 
-/** Overrides or adds to an existing method implementation */
-void compiler_overridemethod(compiler *c, syntaxtreenode *node, objectfunction *method, value prev) {
-    value symbol = method->name;
-    objectclass *klass=compiler_getcurrentclass(c);
+/** Defining class of a method implementation (function or builtin), or NULL. */
+static objectclass *compiler_implementationclass(value fn) {
+    if (MORPHO_ISFUNCTION(fn)) return MORPHO_GETFUNCTION(fn)->klass;
+    if (MORPHO_ISBUILTINFUNCTION(fn)) return MORPHO_GETBUILTINFUNCTION(fn)->klass;
+    return NULL;
+}
+
+/** Adds one method implementation to a class.
+ * @param[in] local  true if declared in this class body; false if inherited/composed.
+ * Duplicate signatures error only when local and this class already defined that signature.
+ * Builtin methods replace the selector rather than composing into a metafunction. */
+static void compiler_addmethodimplementation(compiler *c, syntaxtreenode *node, objectclass *klass, value symbol, value implementation, bool local) {
+    value prev=MORPHO_NIL;
+    dictionary_get(&klass->methods, symbol, &prev);
+    
+    if (MORPHO_ISNIL(prev)) {
+        dictionary_insert(&klass->methods, symbol, implementation);
+        return;
+    }
+    
+    if (MORPHO_ISBUILTINFUNCTION(prev) ||
+        (!local && MORPHO_ISBUILTINFUNCTION(implementation))) {
+        dictionary_insert(&klass->methods, symbol, implementation);
+        return;
+    }
+    
+    signature *news=metafunction_getsignature(implementation);
     
     if (MORPHO_ISMETAFUNCTION(prev)) {
         objectmetafunction *f = MORPHO_GETMETAFUNCTION(prev);
+        /* Clone when the metafunction still belongs to a parent/mixin. After the
+           child adds any overload, f->klass == klass, but parent impls remain. */
         if (f->klass!=klass) {
             f=metafunction_clone(f);
-            if (f) program_bindobject(c->out, (object *) f);
+            if (!f) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return; }
+            program_bindobject(c->out, (object *) f);
         }
         
-        if (f) {
-            metafunction_setclass(f, klass);
-            dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
-            
+        metafunction_setclass(f, klass);
+        dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
+        
+        if (news) {
             for (int i=0; i<f->fns.count; i++) { // Check if this overrides
                 signature *sig = metafunction_getsignature(f->fns.data[i]);
-                if (sig && signature_isequal(sig, &method->sig)) {
-                    // TODO: Should check for duplicate implementation here
-                    f->fns.data[i] = MORPHO_OBJECT(method);
+                if (sig && signature_isequal(sig, news)) {
+                    /* Duplicate only if this class already defined that signature;
+                       inherited impls (other klass) are replaced. */
+                    if (local && compiler_implementationclass(f->fns.data[i])==klass) {
+                        compiler_error(c, node, COMPILE_CLSSDPLCTIMPL, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(klass->name));
+                        return;
+                    }
+                    f->fns.data[i] = implementation;
                     return;
                 }
             }
-            
-            metafunction_add(f, MORPHO_OBJECT(method));
         }
         
-    } else if (MORPHO_ISFUNCTION(prev)) {
-        objectfunction *prevmethod = MORPHO_GETFUNCTION(prev);
+        metafunction_add(f, implementation);
         
-        if (signature_isequal(&prevmethod->sig, &method->sig)) { // Does the method overshadow an old one?
-            if (prevmethod->klass!=klass) { // If so, is the old one in the parent or ancestor class?
-                dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(method));
-            } else { // It's a redefinition
+    } else if (MORPHO_ISFUNCTION(prev)) {
+        signature *prevs=metafunction_getsignature(prev);
+        
+        if (news && prevs && signature_isequal(prevs, news)) { // Does the method overshadow an old one?
+            if (local && compiler_implementationclass(prev)==klass) { // Redefinition in this class
                 compiler_error(c, node, COMPILE_CLSSDPLCTIMPL, MORPHO_GETCSTRING(symbol), MORPHO_GETCSTRING(klass->name));
+            } else {
+                dictionary_insert(&klass->methods, symbol, implementation);
             }
         } else { // It doesn't override the old definition so wrap in a metafunction
             objectmetafunction *f = object_newmetafunction(symbol);
+            if (!f) { compiler_error(c, node, ERROR_ALLOCATIONFAILED); return; }
             
-            if (f) {
-                metafunction_add(f, prev);
-                metafunction_add(f, MORPHO_OBJECT(method));
-                metafunction_setclass(f, klass);
-                dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
-                program_bindobject(c->out, (object *) f);
-            }
+            metafunction_add(f, prev);
+            metafunction_add(f, implementation);
+            metafunction_setclass(f, klass);
+            dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(f));
+            program_bindobject(c->out, (object *) f);
         }
-    } else if (MORPHO_ISBUILTINFUNCTION(prev)) { // A builtin function can only come from a parent class, so overwrite it
-        dictionary_insert(&klass->methods, symbol, MORPHO_OBJECT(method));
+    } else {
+        dictionary_insert(&klass->methods, symbol, implementation);
+    }
+}
+
+/** Inherit methods from a parent/mixin, composing distinct signatures. */
+static void compiler_inheritmethods(compiler *c, syntaxtreenode *node, objectclass *klass, objectclass *superclass) {
+    dictionary *src=&superclass->methods;
+    if (!src->contents) return;
+    
+    for (unsigned int i=0; i<src->capacity; i++) {
+        dictionaryentry *e=&src->contents[i];
+        if (MORPHO_ISNIL(e->key)) continue;
+        
+        value prev=MORPHO_NIL;
+        if (!dictionary_get(&klass->methods, e->key, &prev) || MORPHO_ISNIL(prev)) {
+            dictionary_insert(&klass->methods, e->key, e->val);
+            continue;
+        }
+        
+        if (MORPHO_ISMETAFUNCTION(e->val)) {
+            objectmetafunction *mf=MORPHO_GETMETAFUNCTION(e->val);
+            bool hasbuiltin=false;
+            for (int j=0; j<mf->fns.count; j++) {
+                if (MORPHO_ISBUILTINFUNCTION(mf->fns.data[j])) { hasbuiltin=true; break; }
+            }
+            
+            if (hasbuiltin) {
+                dictionary_insert(&klass->methods, e->key, e->val);
+            } else {
+                for (int j=0; j<mf->fns.count; j++) {
+                    compiler_addmethodimplementation(c, node, klass, e->key, mf->fns.data[j], false);
+                }
+            }
+        } else {
+            compiler_addmethodimplementation(c, node, klass, e->key, e->val, false);
+        }
     }
 }
 
@@ -4112,15 +4347,8 @@ static codeinfo compiler_classbody(compiler *c, syntaxtreeindx startindx, regist
             // Insert the compiled function into the method dictionary, making sure the method name is interned
             objectfunction *method = compiler_getpreviousfunction(c);
             if (method) {
-                value omethod = MORPHO_OBJECT(method);
-                value symbol = program_internsymbol(c->out, node->content),
-                      prev=MORPHO_NIL;
-                
-                dictionary_get(&klass->methods, symbol, &prev);
-                
-                if (MORPHO_ISNIL(prev)) { // Just insert if we don't have any definition
-                    dictionary_insert(&klass->methods, symbol, omethod);
-                } else compiler_overridemethod(c, node, method, prev); // Override or create a metafunction
+                value symbol = program_internsymbol(c->out, node->content);
+                compiler_addmethodimplementation(c, node, klass, symbol, MORPHO_OBJECT(method), true);
             }
         }
     }
@@ -4190,7 +4418,7 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
                 if (superclass!=klass) {
                     if (!klass->superclass) klass->superclass=superclass; // Only the first class is the super class, all others are mixins.
                     compiler_addparent(c, klass, superclass);
-                    dictionary_copy(&superclass->methods, &klass->methods); // TODO: Need clearer inheritance rule for metamethods
+                    compiler_inheritmethods(c, snode, klass, superclass);
                 } else {
                     compiler_error(c, snode, COMPILE_CLASSINHERITSELF);
                 }
@@ -4225,6 +4453,7 @@ static codeinfo compiler_class(compiler *c, syntaxtreenode *node, registerindx r
     
     /* Allocate a variable to refer to the class definition */
     codeinfo cvar=compiler_addvariable(c, node, node->content);
+    compiler_cleartoplevelcallable(c, node->content);
     registerindx reg=cvar.dest;
 
     /* If it's not in a register, allocate a temporary register */
@@ -4304,7 +4533,7 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
         return ret;
     }
     
-    /* Is it (unambiguously) a reference to a function? */
+    /* Is it (unambiguously) a nested/local function? */
     if (compiler_resolvefunctionref(c, node, node->content, &ret)) {
         return ret;
     }
@@ -4313,6 +4542,17 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
     ret.dest = compiler_resolveupvalue(c, node->content);
     if (ret.dest!=REGISTER_UNALLOCATED) {
         ret.returntype=UPVALUE;
+        return ret;
+    }
+
+    /* Is it a known top-level callable snapshot? Closures must be loaded from
+       the global slot because the snapshot is the function, not the closure. */
+    value snapshot = MORPHO_NIL;
+    if (compiler_getcallablebinding(c, node->content, &snapshot, NULL) &&
+        !MORPHO_ISNIL(snapshot) &&
+        !compiler_snapshotneedsglobal(snapshot)) {
+        ret.returntype=CONSTANT;
+        ret.dest=compiler_addconstant(c, node, snapshot, true, false);
         return ret;
     }
     
@@ -4358,7 +4598,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
     codeinfo ret, right=CODEINFO_EMPTY;
     value var=MORPHO_NIL;
     registerindx reg=REGISTER_UNALLOCATED, istart=0, iend=0, tmp=REGISTER_UNALLOCATED;
-    enum { ASSIGN_VAR, ASSIGN_UPVALUE, ASSIGN_OBJ, ASSIGN_GLBL, ASSIGN_INDEX, ASSIGN_UPINDEX } mode=ASSIGN_VAR;
+    enum { ASSIGN_VAR, ASSIGN_UPVALUE, ASSIGN_OBJ, ASSIGN_GLBL, ASSIGN_INDEX } mode=ASSIGN_VAR;
     unsigned int ninstructions = 0;
 
     /* Find the symbol or check if it's an object */
@@ -4389,7 +4629,16 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
             /* Perhaps it's an upvalue? */
             if (reg==REGISTER_UNALLOCATED) {
                 reg=compiler_resolveupvalue(c, var);
-                if (reg!=REGISTER_UNALLOCATED) mode=(mode==ASSIGN_INDEX ? ASSIGN_UPINDEX : ASSIGN_UPVALUE);
+                if (reg!=REGISTER_UNALLOCATED) {
+                    if (indxnode) {
+                        /* Indexed upvalue: LUP into a register, then SIX (same as globals) */
+                        tmp=compiler_regalloctop(c);
+                        codeinfo mv=compiler_movetoregister(c, node, CODEINFO(UPVALUE, reg, 0), tmp);
+                        ninstructions+=mv.ninstructions;
+                        reg=tmp;
+                        mode=ASSIGN_INDEX;
+                    } else mode=ASSIGN_UPVALUE;
+                }
             }
 
             /* .. or a global? */
@@ -4438,6 +4687,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
                 ninstructions+=ret.ninstructions;
                 break;
             case ASSIGN_GLBL:
+                compiler_cleartoplevelcallable(c, var);
                 ret=compiler_movetoglobal(c, node, right, reg);
                 ninstructions+=ret.ninstructions;
                 break;
@@ -4457,9 +4707,6 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
                 compiler_addinstruction(c, ENCODE(OP_SIX, reg, istart, right.dest), node);
                 ninstructions++;
             }
-                break;
-            case ASSIGN_UPINDEX:
-                UNREACHABLE("Assign to indexed upvalue not implemented.");
                 break;
         }
     } else {
@@ -4647,6 +4894,13 @@ void compiler_stripend(compiler *c) {
     }
 }
 
+/** True if a module symbol should be copied into an importer.
+    Underscore names are private unless explicitly selected with for. */
+static bool compiler_exportselected(value key, dictionary *compare) {
+    if (compare) return dictionary_get(compare, key, NULL);
+    return !(MORPHO_ISSTRING(key) && MORPHO_GETCSTRING(key)[0]=='_');
+}
+
 /** Copies the globals across from one compiler to another. The globals dictionary maps keys to global numbers
  * @param[in] src source dictionary
  * @param[in] dest destination dictionary
@@ -4654,54 +4908,108 @@ void compiler_stripend(compiler *c) {
 void compiler_copysymbols(dictionary *src, dictionary *dest, dictionary *compare) {
     for (unsigned int i=0; i<src->capacity; i++) {
         value key = src->contents[i].key;
-        if (!MORPHO_ISNIL(key)) {
-            if (compare && !dictionary_get(compare, key, NULL)) continue;
-            
-            if (MORPHO_ISSTRING(key) &&
-                MORPHO_GETCSTRING(key)[0]=='_') continue;
-
+        if (!MORPHO_ISNIL(key) && compiler_exportselected(key, compare)) {
             dictionary_insert(dest, key, src->contents[i].val);
         }
     }
 }
 
-/** Copies the global function ref into the destination compiler's current function ref */
-void compiler_copyfunctionref(compiler *src, compiler *dest, dictionary *fordict) {
-    functionstate *in=compiler_currentfunctionstate(src);
-    functionstate *out=compiler_currentfunctionstate(dest);
-    
-    if (fordict) {
-        for (int i=0; i<in->functionref.count; i++) {
-            functionref *ref=&in->functionref.data[i];
-            if (!dictionary_get(fordict, ref->function->name, NULL)) continue;
-            
-            varray_functionrefwrite(&out->functionref, in->functionref.data[i]);
-        }
-    } else varray_functionrefadd(&out->functionref, in->functionref.data, in->functionref.count);
+#define MODULE_CACHE_GLOBALS   "globals"
+#define MODULE_CACHE_CALLABLES "callables"
+#define MODULE_CACHE_CLASSES   "classes"
+
+/** Interns a module-cache section key. */
+static value compiler_modulecachekey(compiler *c, const char *name) {
+    objectstring str = MORPHO_STATICSTRING(name);
+    return program_internsymbol(c->out, MORPHO_OBJECT(&str));
 }
 
-/** Copies the global function ref into the designated namespace, checking whether the functions are present in the dictionary, and creating metafunctions where necessary */
-void compiler_copyfunctionreftonamespace(compiler *src, namespc *dest, dictionary *fordict) {
-    functionstate *f=compiler_currentfunctionstate(src);
-    
-    dictionary symbols;
-    dictionary_init(&symbols);
-    
-    for (int i=0; i<f->functionref.count; i++) {
-        functionref *ref=&f->functionref.data[i];
-        // Skip if not in the fordict
-        if (fordict && !dictionary_get(fordict, ref->function->name, NULL)) continue;
-        
-        value fn=MORPHO_OBJECT(ref->function);
-        if (dictionary_get(&symbols, ref->function->name, &fn)) {
-            // If the function already exists, wrap in a metafunction
-            _addmatchingfunctionref(src, ref->function->name, MORPHO_OBJECT(ref->function), &fn);
-        }
-        dictionary_insert(&symbols, ref->function->name, fn);
+/** Returns a section dictionary from a completed-module cache wrapper. */
+static dictionary *compiler_modulecachesection(compiler *c, objectdictionary *cache, const char *name) {
+    value val;
+    if (dictionary_get(&cache->dict, compiler_modulecachekey(c, name), &val) &&
+        MORPHO_ISDICTIONARY(val)) {
+        return MORPHO_GETDICTIONARYSTRUCT(val);
     }
-    
-    compiler_copysymbols(&symbols, &dest->symbols, NULL);
-    dictionary_clear(&symbols);
+    return NULL;
+}
+
+/** Namespace entry for a cached name: snapshot, class, or global index.
+    Closure-bearing snapshots load from the global slot, matching compiler_symbol. */
+static value compiler_namespaceentry(dictionary *globals, dictionary *callables, dictionary *classes, value key) {
+    value snap = MORPHO_NIL, entry = MORPHO_NIL;
+
+    if (dictionary_get(callables, key, &snap) && compiler_isfunctionexport(snap)) {
+        if (!compiler_snapshotneedsglobal(snap)) return snap;
+        if (dictionary_get(globals, key, &entry)) return entry;
+        return MORPHO_NIL;
+    }
+    if (dictionary_get(classes, key, &entry)) return entry;
+    if (dictionary_get(globals, key, &entry)) return entry;
+    return MORPHO_NIL;
+}
+
+/** Builds namespace.symbols from the cached compiler tables. */
+static void compiler_fillnamespace(dictionary *globals, dictionary *callables, dictionary *classes, dictionary *dest, dictionary *fordict) {
+    for (unsigned int i=0; i<globals->capacity; i++) {
+        value key = globals->contents[i].key;
+        if (MORPHO_ISNIL(key) || !compiler_exportselected(key, fordict)) continue;
+
+        value entry = compiler_namespaceentry(globals, callables, classes, key);
+        if (!MORPHO_ISNIL(entry)) dictionary_insert(dest, key, entry);
+    }
+}
+
+/** Builds an immutable completed-module cache entry. */
+static objectdictionary *compiler_newmodulecache(compiler *c, compiler *module) {
+    objectdictionary *cache = object_newdictionary();
+    objectdictionary *globals = object_newdictionary();
+    objectdictionary *callables = object_newdictionary();
+    objectdictionary *classes = object_newdictionary();
+    if (!cache || !globals || !callables || !classes) return NULL;
+
+    dictionary_copy(&module->globals, &globals->dict);
+    dictionary_copy(&module->callables, &callables->dict);
+    dictionary_copy(&module->classes, &classes->dict);
+
+    dictionary_insert(&cache->dict, compiler_modulecachekey(c, MODULE_CACHE_GLOBALS), MORPHO_OBJECT(globals));
+    dictionary_insert(&cache->dict, compiler_modulecachekey(c, MODULE_CACHE_CALLABLES), MORPHO_OBJECT(callables));
+    dictionary_insert(&cache->dict, compiler_modulecachekey(c, MODULE_CACHE_CLASSES), MORPHO_OBJECT(classes));
+
+    program_bindobject(c->out, (object *) cache);
+    program_bindobject(c->out, (object *) globals);
+    program_bindobject(c->out, (object *) callables);
+    program_bindobject(c->out, (object *) classes);
+    return cache;
+}
+
+/** Applies a completed-module cache to the importing compiler (fresh and cached paths). */
+static void compiler_applymoduleexports(compiler *c, objectdictionary *cache, dictionary *fordict, namespc *nmspace) {
+    dictionary *globals = compiler_modulecachesection(c, cache, MODULE_CACHE_GLOBALS);
+    dictionary *callables = compiler_modulecachesection(c, cache, MODULE_CACHE_CALLABLES);
+    dictionary *classes = compiler_modulecachesection(c, cache, MODULE_CACHE_CLASSES);
+    if (!globals || !callables || !classes) return;
+
+    if (nmspace) {
+        compiler_fillnamespace(globals, callables, classes, &nmspace->symbols, fordict);
+        compiler_copysymbols(classes, &nmspace->classes, fordict);
+        return;
+    }
+
+    compiler_copysymbols(globals, &c->globals, fordict);
+    compiler_copysymbols(classes, &c->classes, fordict);
+
+    for (unsigned int i=0; i<globals->capacity; i++) {
+        value key = globals->contents[i].key;
+        if (MORPHO_ISNIL(key) || !compiler_exportselected(key, fordict)) continue;
+
+        value export = MORPHO_NIL;
+        if (dictionary_get(callables, key, &export) && compiler_isfunctionexport(export)) {
+            compiler_bindimportedcallable(c, key, export);
+        } else {
+            compiler_clearcallablebinding(c, key);
+        }
+    }
 }
 
 /** Searches for a module with given name, returns the file name for inclusion. */
@@ -4783,8 +5091,9 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             value symboldict=MORPHO_NIL;
             
             if (dictionary_get(&root->modules, MORPHO_OBJECT(&chkmodname), &symboldict)) {
-                // If so, copy its symbols into the compiler
-                compiler_copysymbols(MORPHO_GETDICTIONARYSTRUCT(symboldict), (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
+                if (MORPHO_ISDICTIONARY(symboldict)) {
+                    compiler_applymoduleexports(c, MORPHO_GETDICTIONARY(symboldict), (fordict.count>0 ? &fordict : NULL), nmspace);
+                }
                 
                 goto compiler_import_cleanup;
             }
@@ -4813,6 +5122,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             varray_charinit(&fpath);
             varray_charadd(&fpath, wrkdir.data, wrkdir.count-1);
             varray_charadd(&fpath, fname, (int) strlen(fname));
+            varray_charwrite(&fpath, '\0'); // Must null terminate
             file_setworkingdirectory(fpath.data);
 
             /* Remember the initial position of the code */
@@ -4829,19 +5139,10 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
 
             if (ERROR_SUCCEEDED(c->err)) {
                 compiler_stripend(c);
-                compiler_copysymbols(&cc.globals, (nmspace ? &nmspace->symbols: &c->globals), (fordict.count>0 ? &fordict : NULL));
-                if (nmspace) { // If we're in a namespace, copy the class table into that
-                    compiler_copysymbols(&cc.classes, &nmspace->classes, (fordict.count>0 ? &fordict : NULL));
-                    compiler_copyfunctionreftonamespace(&cc, nmspace, (fordict.count>0 ? &fordict : NULL));
-                } else { // Otherwise just put it into the parent compiler's class table
-                    compiler_copysymbols(&cc.classes, &c->classes, (fordict.count>0 ? &fordict : NULL));
-                    compiler_copyfunctionref(&cc, c, (fordict.count>0 ? &fordict : NULL));
-                }
-                
-                objectdictionary *dict = object_newdictionary(); // Preserve all symbols for further imports
-                if (dict) {
-                    compiler_copysymbols(&cc.globals, &dict->dict, NULL);
-                    symboldict = MORPHO_OBJECT(dict);
+                objectdictionary *cache = compiler_newmodulecache(c, &cc);
+                if (cache) {
+                    compiler_applymoduleexports(c, cache, (fordict.count>0 ? &fordict : NULL), nmspace);
+                    symboldict = MORPHO_OBJECT(cache);
                 }
                 
             } else {
@@ -4902,6 +5203,8 @@ void compiler_init(const char *source, program *out, compiler *c) {
     parse_init(&c->parse, &c->lex, &c->err, &c->tree);
     compiler_fstackinit(c);
     dictionary_init(&c->globals);
+    dictionary_init(&c->callables);
+    dictionary_init(&c->origins);
     dictionary_init(&c->classes);
     dictionary_init(&c->modules);
     if (out) c->fstack[0].func=out->global; /* The global pseudofunction */
@@ -4924,7 +5227,9 @@ void compiler_clear(compiler *c) {
     syntaxtree_clear(&c->tree);
     compiler_clearnamespacelist(c);
     dictionary_clear(&c->globals); // Keys are bound to the program
-    dictionary_freecontents(&c->modules, true, true);
+    dictionary_clear(&c->callables);
+    dictionary_clear(&c->origins);
+    dictionary_freecontents(&c->modules, true, false); // Values are program-bound cache objects
     dictionary_clear(&c->modules);
     dictionary_clear(&c->classes);
 }
@@ -5051,7 +5356,6 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_NOSUPER, ERROR_COMPILE, COMPILE_NOSUPER_MSG);
     morpho_defineerror(COMPILE_INVALIDASSIGNMENT, ERROR_COMPILE, COMPILE_INVALIDASSIGNMENT_MSG);
     morpho_defineerror(COMPILE_CLASSINHERITSELF, ERROR_COMPILE, COMPILE_CLASSINHERITSELF_MSG);
-    morpho_defineerror(COMPILE_TOOMANYARGS, ERROR_COMPILE, COMPILE_TOOMANYARGS_MSG);
     morpho_defineerror(COMPILE_TOOMANYPARAMS, ERROR_COMPILE, COMPILE_TOOMANYPARAMS_MSG);
     morpho_defineerror(COMPILE_VARALREADYDECLARED, ERROR_COMPILE, COMPILE_VARALREADYDECLARED_MSG);
     morpho_defineerror(COMPILE_FILENOTFOUND, ERROR_COMPILE, COMPILE_FILENOTFOUND_MSG);

@@ -1,0 +1,5 @@
+var m = Mesh("tetrahedron.mesh")
+var a = VolumeEnclosed()
+
+print abs(a.integrand(m, 0) - 0.0294627) < 1e-5
+// expect: true

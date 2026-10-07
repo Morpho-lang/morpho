@@ -1,0 +1,7 @@
+// Characterization: assignment to an imported function name
+
+import "mf_provider.m" for f
+
+f = 1
+print f
+// expect: 1

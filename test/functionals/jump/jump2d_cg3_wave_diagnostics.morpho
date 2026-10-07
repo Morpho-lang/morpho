@@ -26,9 +26,9 @@ fn bulkintegrand(x, q) {
     return (hess(q)+q*target).norm()^2
 }
 
-var bulkWave = AreaIntegral(bulkintegrand, qwave, method={})
-var bulkPert = AreaIntegral(bulkintegrand, qpert, method={})
-var bulkMix = AreaIntegral(bulkintegrand, qmix, method={})
+var bulkWave = AreaIntegral(bulkintegrand, qwave)
+var bulkPert = AreaIntegral(bulkintegrand, qpert)
+var bulkMix = AreaIntegral(bulkintegrand, qmix)
 
 var jumpWave = Jump(fn (x, q) jumpdn(q)^2, qwave, method={ "strategy": "quadrature" })
 var jumpPert = Jump(fn (x, q) jumpdn(q)^2, qpert, method={ "strategy": "quadrature" })

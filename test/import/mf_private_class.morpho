@@ -1,0 +1,6 @@
+// Module-level _ classes are not imported
+
+import "mf_provider.m"
+
+_PrivateClass()
+// expect error 'SymblUndf'

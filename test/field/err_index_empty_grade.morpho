@@ -1,0 +1,4 @@
+var m = Mesh("square.mesh")
+var f = Field(m, grade=2)
+print f[1, 0]
+// expect error 'FldBnds'

@@ -1,0 +1,61 @@
+// CG2 edge orientation: adjacent elements that reverse a shared edge still share the same DOF
+
+import meshtools
+
+fn commongrade(d0, d1, g) {
+    var hits = 0
+    for (a in d0) {
+        if (a[0]==g) {
+            for (b in d1) {
+                if (b[0]==g && a[1]==b[1] && a[2]==b[2]) hits += 1
+            }
+        }
+    }
+    return hits
+}
+
+fn sameat(f, m, g, x, expected) {
+    var l0 = m.barycentric(g, 0, x)
+    var l1 = m.barycentric(g, 1, x)
+    return abs(f.evalElement(0, l0)-expected) < 1e-12 &&
+           abs(f.evalElement(1, l1)-expected) < 1e-12 &&
+           abs(f.evalElement(0, l0)-f.evalElement(1, l1)) < 1e-12
+}
+
+var mb2 = MeshBuilder()
+mb2.addvertex([0, 0])
+mb2.addvertex([1, 0])
+mb2.addvertex([0, 1])
+mb2.addvertex([1, 1])
+mb2.addface([0, 1, 2])
+mb2.addface([1, 3, 2])
+var m2 = mb2.build()
+m2.addgrade(1)
+
+var fe2 = FiniteElementSpace("CG2", grade=2)
+var f2 = Field(m2, fn (x, y) x^2, finiteelementspace=fe2)
+print commongrade(f2.elementDofs(0), f2.elementDofs(1), 1)==1
+// expect: true
+print sameat(f2, m2, 2, Matrix([0.5, 0.5]), 0.25)
+// expect: true
+
+var mb3 = MeshBuilder()
+mb3.addvertex([0, 0, 0])
+mb3.addvertex([1, 0, 0])
+mb3.addvertex([0, 1, 0])
+mb3.addvertex([0, 0, 1])
+mb3.addvertex([0, -1, 0])
+mb3.addvolume([0, 1, 2, 3])
+mb3.addvolume([1, 0, 4, 3])
+var m3 = mb3.build()
+m3.addgrade(1)
+m3.addgrade(2)
+
+var fe3 = FiniteElementSpace("CG2", grade=3)
+var f3 = Field(m3, fn (x, y, z) x^2, finiteelementspace=fe3)
+print commongrade(f3.elementDofs(0), f3.elementDofs(1), 1)>=1
+// expect: true
+print sameat(f3, m3, 3, Matrix([1/3, 0, 0]), (1/3)^2)
+// expect: true
+print sameat(f3, m3, 3, Matrix([2/3, 0, 0]), (2/3)^2)
+// expect: true

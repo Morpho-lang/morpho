@@ -1,0 +1,2 @@
+print Jump()
+// expect error 'IntgrlArgs'

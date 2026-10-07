@@ -1,0 +1,7 @@
+// Callable then ordinary-global rebind clears callable metadata
+
+import "mf_provider.m" for f
+import "mf_data.m" for f
+
+print f
+// expect: 42

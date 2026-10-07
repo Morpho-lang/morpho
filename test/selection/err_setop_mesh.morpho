@@ -1,0 +1,7 @@
+var m1 = Mesh("square.mesh")
+var m2 = Mesh("square.mesh")
+var s1 = Selection(m1)
+var s2 = Selection(m2)
+
+s1.union(s2)
+// expect error 'SlMsh'

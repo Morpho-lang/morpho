@@ -1,0 +1,17 @@
+// Imported metafunctions keep the full overload set, including on cached re-import
+
+import "mf_provider.m"
+
+print f("Hi")
+// expect: string
+
+print f(1)
+// expect: int
+
+import "mf_provider.m"
+
+print f("Hi")
+// expect: string
+
+print f(1)
+// expect: int

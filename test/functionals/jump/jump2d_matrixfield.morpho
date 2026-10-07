@@ -1,0 +1,24 @@
+// CG1 MatrixField as a Jump integrand quantity (plus-side interpolation)
+
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([1,1,0])
+mb.addface([0,1,2])
+mb.addface([1,3,2])
+
+var m = mb.build()
+m.addgrade(1)
+
+var fe = FiniteElementSpace("CG1", grade=2)
+var f = Field(m, fn (x,y,z) Matrix([x, y]), finiteelementspace=fe)
+
+// Shared-edge centroid is (0.5, 0.5); q[0]+q[1] = 1, length = sqrt(2)
+print abs(Jump(fn (x, q) q[0]+q[1], f, method={ "strategy": "centroid" }).total(m) - sqrt(2)) < 1e-8
+// expect: true
+
+print abs(Jump(fn (x, q) q[0]+q[1], f, method={ "strategy": "quadrature" }).total(m) - sqrt(2)) < 1e-8
+// expect: true

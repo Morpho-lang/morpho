@@ -10,11 +10,43 @@
  * Version
  * ********************************************************************** */
 
-#define MORPHO_VERSIONSTRING "0.6.4"
-
 #define MORPHO_VERSION_MAJOR 0
 #define MORPHO_VERSION_MINOR 6
-#define MORPHO_VERSION_PATCH 4
+#define MORPHO_VERSION_PATCH 5
+
+#define MORPHO_STRINGIFY_(x) #x
+#define MORPHO_STRINGIFY(x) MORPHO_STRINGIFY_(x)
+
+#define MORPHO_VERSIONSTRING \
+    MORPHO_STRINGIFY(MORPHO_VERSION_MAJOR) "." \
+    MORPHO_STRINGIFY(MORPHO_VERSION_MINOR) "." \
+    MORPHO_STRINGIFY(MORPHO_VERSION_PATCH)
+
+/* **********************************************************************
+ * Manage import and export of symbols
+ * ********************************************************************** */
+
+/** Mark public data exported from the Morpho shared library. */
+#ifndef MORPHO_API
+#  ifdef _WIN32
+#    ifdef morpho_EXPORTS
+#      define MORPHO_API __declspec(dllexport)
+#    else
+#      define MORPHO_API __declspec(dllimport)
+#    endif
+#  else
+#    define MORPHO_API
+#  endif
+#endif
+
+/* Macro to denote symbols that are exported from an extension. */
+#ifndef MORPHO_EXTENSION_EXPORT
+#  ifdef _WIN32
+#    define MORPHO_EXTENSION_EXPORT __declspec(dllexport)
+#  else
+#    define MORPHO_EXTENSION_EXPORT
+#  endif
+#endif
 
 /* **********************************************************************
  * Paths and file system
@@ -34,8 +66,9 @@
 
 #define MORPHO_EXTENSION "morpho"             // File extension for morpho files
 #define MORPHO_HELPEXTENSION "md"             // File extension for help files
+
 #ifndef MORPHO_DYLIBEXTENSION
-    #define MORPHO_DYLIBEXTENSION "dylib"     // File extension for extensions
+    #define MORPHO_DYLIBEXTENSION "dylib"     // File extension for extensions; typically overridden by CMake
 #endif
 
 #define MORPHO_DIRSEPARATOR '/'               // File directory separator
@@ -79,6 +112,9 @@
 
 /** @brief Maximum number of arguments */
 #define MORPHO_MAXARGS 255 /** @warning Note that this cannot easily be adjusted >255 without changing the instruction encoding */
+
+/** @brief Maximum number of arguments copied onto the C stack (e.g. by apply) */
+#define MORPHO_MAXCARGS 4096
 
 /** @brief Maximum number of constants */
 #define MORPHO_MAXCONSTANTS 65536 /** @warning Note that this cannot easily be adjusted >65536 without changing the instruction encoding */

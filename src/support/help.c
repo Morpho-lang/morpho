@@ -1315,13 +1315,13 @@ void help_queryhint(const char *query, varray_char *result) {
         int next = help_findchild(idx, parsed.segs[i]);
         if (next < 0) {
             const char *closest = help_findclosesttopic(parsed.segs[i], idx);
-            char suggest[MORPHO_MAX_HELPQUERY_LENGTH] = {0};
-            if (closest) {
-                int needed = path_len + 1 + (int) strlen(closest);
-                if (needed < (int) sizeof(suggest))
-                    snprintf(suggest, sizeof(suggest), "%s.%s", path, closest);
+            const char *suggest = NULL;
+            if (closest && path_len < (int) sizeof(path) - 1) {
+                size_t room = sizeof(path) - (size_t) path_len;
+                int n = snprintf(path + path_len, room, ".%s", closest);
+                if (n > 0 && n < (int) room) suggest = path;
             }
-            help_hintappend(result, query, suggest[0] ? suggest : NULL);
+            help_hintappend(result, query, suggest);
             varray_charwrite(result, '\0');
             return;
         }

@@ -1,0 +1,16 @@
+// Provider helper keeps the provider snapshot after the consumer extends f
+
+import "mf_provider.m"
+
+fn f(List x) {
+    return "list"
+}
+
+print helper("Hi")
+// expect: string
+
+print helper(1)
+// expect: int
+
+print f([])
+// expect: list

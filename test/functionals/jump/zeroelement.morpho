@@ -1,0 +1,15 @@
+import meshtools
+
+var mb = MeshBuilder()
+mb.addvertex([0, 0, 0])
+mb.addvertex([0, 0, 0])
+mb.addvertex([0, 1, 0])
+mb.addvertex([0, -1, 0])
+mb.addface([0, 1, 2])
+mb.addface([0, 1, 3])
+var m = mb.build()
+m.addgrade(1)
+
+print Jump(fn (x) 1).total(m)
+// expect: 0
+

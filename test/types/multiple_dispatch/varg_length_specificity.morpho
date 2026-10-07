@@ -1,0 +1,49 @@
+// Longer variadic signatures are more specific than shorter ones
+
+fn f(...xs) {
+    return "short"
+}
+
+fn f(a, Int b, ...xs) {
+    return "long"
+}
+
+print f("x", 1)
+// expect: long
+
+print f(1)
+// expect: short
+
+print f()
+// expect: short
+
+print f("x", 1, 2)
+// expect: long
+
+fn k(...xs) {
+    return "short"
+}
+
+fn k(a, b, ...xs) {
+    return "long"
+}
+
+print k(1, 2)
+// expect: long
+
+print k(1)
+// expect: short
+
+fn g(a, ...xs) {
+    return "mid"
+}
+
+fn g(a, Int b, ...xs) {
+    return "long"
+}
+
+print g("x", 1)
+// expect: long
+
+print g("x")
+// expect: mid

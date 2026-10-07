@@ -1,0 +1,43 @@
+// ProblemAdapter-style: parent init(target), child adds typed+variadic then
+// overrides the fallback init(target).
+
+class OptimizationProblem {
+    init() {
+        self.ok = true
+    }
+}
+
+class OptimizationAdapter {
+    init(target) {
+        self.target = target
+        self.kind = "parent"
+    }
+}
+
+class ProblemAdapter is OptimizationAdapter {
+    init(OptimizationProblem problem, ...target, mesh=nil) {
+        self.problem = problem
+        self.target = []
+        for (t in target) {
+            self.target.append(t)
+        }
+        self.kind = "variadic"
+    }
+
+    init(target) {
+        self.kind = "fallback"
+        self.target = target
+    }
+}
+
+var p = OptimizationProblem()
+var a = ProblemAdapter(p, "mesh")
+print a.kind
+// expect: variadic
+
+print a.target
+// expect: [ mesh ]
+
+var b = ProblemAdapter("oops")
+print b.kind
+// expect: fallback

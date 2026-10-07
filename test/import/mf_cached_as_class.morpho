@@ -1,0 +1,20 @@
+// Cached import as still provides class objects for inheritance
+
+import "mf_class_provider.m" as P
+
+class X is P.Foo {
+}
+
+print X()
+// expect: <X>
+
+import "mf_class_provider.m" as Q
+
+class Y is Q.Foo {
+}
+
+print Y()
+// expect: <Y>
+
+print P.value
+// expect: 7

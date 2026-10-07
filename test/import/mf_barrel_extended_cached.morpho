@@ -1,0 +1,12 @@
+// Cached extending barrel publishes a new origin and rebinds
+
+import "mf_barrel_extend.m" as BarrelCache
+
+import "mf_provider.m" for f
+import "mf_barrel_extend.m" for f
+
+print f([])
+// expect: list
+
+print f("Hi")
+// expect: string

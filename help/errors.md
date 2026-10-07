@@ -47,25 +47,24 @@ Displays an `Error` as a warning without interrupting execution:
 
 To see the full list of morpho errors, look at the `errorlist` help entry.
 
-# Error list
-[tagerrorrlist]: # (error list)
+## List
 [tagerrorlist]: # (errorlist)
 
 A list of morpho errors:
 
 [showsubtopics]: # (subtopics)
 
-## Alloc
+### Alloc
 [tagalloc]: # (alloc)
 
 This error may occur when creating new objects or resizing them. It typically indicates that the computer is under memory pressure.
 
-## Intrnl
+### Intrnl
 [tagintrnl]: # (intrnl)
 
 This error indicates an internal problem with morpho. Please contact the developers for support.
 
-## InvldOp
+### InvldOp
 [taginvldop]: # (invldop)
 
 This error occurs when an operator like `+` or `-` is given operands that it doesn't understand. For example,
@@ -80,12 +79,12 @@ If the operands are objects, this means that the objects don't provide a method 
 
 `object1` would need to provide a `div()` method that can successfully handle `object2`.
 
-## CnctFld
+### CnctFld
 [tagcnctfld]: # (cnctfld)
 
 This error occurs when concatenation of strings or other objects fails, typically because of low memory.
 
-## Uncallable
+### Uncallable
 [taguncallable]: # (uncallable)
 
 This error occurs when you try to call something that isn't a method or a function. Here, we initialize a variable with a string and call it:
@@ -93,17 +92,17 @@ This error occurs when you try to call something that isn't a method or a functi
     var f = "Not a function"
     f() // Causes 'Uncallable'
 
-## GlblRtrn
+### GlblRtrn
 [tagglblrtrn]: # (glblrtrn)
 
 This error occurs when morpho encounters a `return` keyword outside of a function or method definition.
 
-## InstFail
+### InstFail
 [taginstfail]: # (instfail)
 
 This error occurs when morpho tried to create a new object, but something went wrong.
 
-## NotAnObj
+### NotAnObj
 [tagnotanobj]: # (notanobj)
 
 This error occurs if you try to access a property of something that isn't an object:  
@@ -111,7 +110,7 @@ This error occurs if you try to access a property of something that isn't an obj
     var a = 1
     a.size = 5
 
-## ObjLcksPrp
+### ObjLcksPrp
 [tagobjlcksprp]: # (objlcksprp)
 
 This error occurs if you try to access a property or method that hasn't been defined for an object:
@@ -123,7 +122,7 @@ or
 
     print a.foo()
 
-## NoInit
+### NoInit
 [tagnoinit]: # (noinit)
 
 This error can occur if you try to create a new object from a class that doesn't have an `init` method:
@@ -133,7 +132,7 @@ This error can occur if you try to create a new object from a class that doesn't
 
 Here, the argument to `Foo` causes the `NoInit` error because no `init` method is available to process it.
 
-## NotAnInst
+### NotAnInst
 [tagnotaninst]: # (notaninst)
 
 This error occurs if you try to invoke a method on something that isn't an object:
@@ -141,7 +140,7 @@ This error occurs if you try to invoke a method on something that isn't an objec
     var a = 4
     print a.foo()
 
-## ClssLcksMthd
+### ClssLcksMthd
 [tagclsslcksmthd]: # (clsslcksmthd)
 
 This error occurs if you try to invoke a method on a class that doesn't exist:
@@ -149,7 +148,7 @@ This error occurs if you try to invoke a method on a class that doesn't exist:
     class Foo { }
     print Foo.foo()
 
-## InvldArgs
+### InvldArgs
 [taginvldargs]: # (invldargs)
 
 This error occurs if you call a function with the wrong number of arguments:
@@ -157,7 +156,7 @@ This error occurs if you call a function with the wrong number of arguments:
     fn f(x) { return x }
     f(1,2)
 
-## NotIndxbl
+### NotIndxbl
 [tagnotindxbl]: # (notindxbl)
 
 This error occurs if you try to index something that isn't a collection:
@@ -165,7 +164,7 @@ This error occurs if you try to index something that isn't a collection:
     var a = 0.3
     print a[1]
 
-## IndxBnds
+### IndxBnds
 [tagindxbnds]: # (indxbnds)
 
 This error can occur when selecting an entry from a collection object (such as a list) if the index supplied is bigger than the number of entries:
@@ -173,7 +172,7 @@ This error can occur when selecting an entry from a collection object (such as a
     var a = [1,2,3]
     print a[10]
 
-## NonNmIndx
+### NonNmIndx
 [tagnonnmindx]: # (nonnmindx)
 
 This error occurs if you try to index an array with a non-numerical index:
@@ -181,7 +180,7 @@ This error occurs if you try to index an array with a non-numerical index:
     var a[2,2]
     print a["foo","bar"]
 
-## ArrayDim
+### ArrayDim
 [tagarraydim]: # arraydim
 
 This error occurs if you try to index an array with the wrong number of indices:
@@ -189,12 +188,12 @@ This error occurs if you try to index an array with the wrong number of indices:
     var a[2,2]
     print a[1]
 
-## DbgQuit
+### DbgQuit
 [tagdbgquit]: # (dbgquit)
 
 This notification is generated after selecting `Quit` within the debugger. Execution of the program is halted and control returns to the user.    
 
-## SymblUndf
+### SymblUndf
 [tagsymblundf]: # (symblundf)
 
 This error occurs if you refer to something that has not been previously declared, for example trying to use a variable of call a function that doesn't exist. It's possible that the symbol is spelt incorrectly, or that the capitalization doesn't match the definition (*morpho* symbols are case-sensitive).
@@ -208,7 +207,7 @@ To fix this, prefix with `var`:
     var a = 5
 
 
-## MtrxIncmptbl
+### MtrxIncmptbl
 [tagmtrxincmptbl]: # (mtrxincmptbl)
 
 This error occurs when an arithmetic operation is performed on two 'incompatible' matrices. For example, two matrices must have the same dimensions, i.e. the same number of rows and columns, to be added or subtracted,
@@ -224,29 +223,29 @@ Or to be multiplied together, the number of columns of the left hand matrix must
     print a*b // ok
     print b*a // generates a `MtrxIncmptbl` error.
 
-## DvZr
+### DvZr
 [tagdvzr]: # (dvzr)
 
 This error occurs when attempting to divide by zero:
 
     var a = 5 / 0 // Causes 'DvZr'
 
-## StckOvflw
+### StckOvflw
 [tagstckovflw]: # (stckovflw)
 
 This error occurs when the call stack exceeds its maximum depth, typically due to excessive recursion or deeply nested function calls.
 
-## ErrStckOvflw
+### ErrStckOvflw
 [tagerrstckovflw]: # (errstckovflw)
 
 This error occurs when the error handler stack overflows, typically due to errors occurring within error handlers.
 
-## Exit
+### Exit
 [tagexit]: # (exit)
 
 This error is generated when the virtual machine is halted, typically when the program exits normally.
 
-## MltplDsptchFld
+### MltplDsptchFld
 [tagmltpldsptchfld]: # (mltpldsptchfld)
 
 This error occurs when multiple dispatch cannot find a method implementation that matches the provided arguments:
@@ -257,14 +256,14 @@ This error occurs when multiple dispatch cannot find a method implementation tha
     fn method(B b) { }
     method(1) // Causes 'MltplDsptchFld' - no matching method for integer
 
-## TypeChk
+### TypeChk
 [tagtypechk]: # (typechk)
 
 This error occurs when there is a type violation, such as attempting to assign a value of one type to a variable declared with a different type:
 
     String x = 5 // Causes 'TypeChk'
 
-## NoOptArg
+### NoOptArg
 [tagnooptarg]: # (nooptarg)
 
 This error occurs when you try to pass optional arguments to a function that doesn't accept them:
@@ -272,7 +271,7 @@ This error occurs when you try to pass optional arguments to a function that doe
     fn f(x) { return x }
     f(1, y=2) // Causes 'NoOptArg'
 
-## UnkwnOptArg
+### UnkwnOptArg
 [tagunkwnoptarg]: # (unkwnoptarg)
 
 This error occurs when you pass an unknown optional argument to a function:
@@ -280,35 +279,35 @@ This error occurs when you pass an unknown optional argument to a function:
     fn f(x, y=1) { return x + y }
     f(1, z=2) // Causes 'UnkwnOptArg'
 
-## InvldArgsBltn
+### InvldArgsBltn
 [taginvldargsbltn]: # (invldargsbltn)
 
 This error occurs when a built-in function is called with arguments of the wrong type:
 
     print(1, 2, 3) // If print expects a string, causes 'InvldArgsBltn'
 
-## ArrayArgs
+### ArrayArgs
 [tagarrayargs]: # (arrayargs)
 
 This error occurs when creating an Array with invalid arguments. Arrays must be created with integer dimensions:
 
     var a = Array("invalid") // Causes 'ArrayArgs'
 
-## ArrayInit
+### ArrayInit
 [tagarrayinit]: # (arrayinit)
 
 This error occurs when an Array initializer is not an array or list:
 
     var a = Array(2, 2, "invalid") // Causes 'ArrayInit'
 
-## ArrayCmpt
+### ArrayCmpt
 [tagarraycmpt]: # (arraycmpt)
 
 This error occurs when an Array initializer has dimensions that don't match the requested dimensions:
 
     var a = Array(2, 2, [[1,2,3]]) // Causes 'ArrayCmpt' if dimensions don't match
 
-## ArrayIndx
+### ArrayIndx
 [tagarrayindx]: # (arrayindx)
 
 This error occurs when indexing an Array with non-integer indices:
@@ -316,28 +315,28 @@ This error occurs when indexing an Array with non-integer indices:
     var a[2,2]
     a["x", "y"] // Causes 'ArrayIndx'
 
-## BrkOtsdLp
+### BrkOtsdLp
 [tagbrkotsdlp]: # (brkotsdlp)
 
 This error occurs when a `break` statement is encountered outside of a loop:
 
     break // Causes 'BrkOtsdLp'
 
-## CntOtsdLp
+### CntOtsdLp
 [tagcntotsdlp]: # (cntotsdlp)
 
 This error occurs when a `continue` statement is encountered outside of a loop:
 
     continue // Causes 'CntOtsdLp'
 
-## ClssCrcRf
+### ClssCrcRf
 [tagclsscrcrf]: # (clsscrcrf)
 
 This error occurs when a class attempts to inherit from itself:
 
     class A < A { } // Causes 'ClssCrcRf'
 
-## ClssDplctImpl
+### ClssDplctImpl
 [tagclssdplctimpl]: # (clssdplctimpl)
 
 This error occurs when a class has duplicate method implementations with the same signature:
@@ -347,26 +346,26 @@ This error occurs when a class has duplicate method implementations with the sam
         fn method() { } // Causes 'ClssDplctImpl'
     }
 
-## ClssLnrz
+### ClssLnrz
 [tagclsslnrz]: # (clsslnrz)
 
 This error occurs when morpho cannot linearize a class hierarchy due to conflicting inheritance order. Check parent and ancestor classes for inheritance issues.
 
-## SlfOtsdClss
+### SlfOtsdClss
 [tagslfotsdclss]: # (slfotsdclss)
 
 This error occurs when `self` is used outside of a class method:
 
     print self // Causes 'SlfOtsdClss'
 
-## SprOtsdClss
+### SprOtsdClss
 [tagsprotsdclss]: # (sprotsdclss)
 
 This error occurs when `super` is used outside of a class method:
 
     print super // Causes 'SprOtsdClss'
 
-## SprSelMthd
+### SprSelMthd
 [tagsprselmthd]: # (sprselmthd)
 
 This error occurs when `super` is used incorrectly. It can only be used to select a method:
@@ -374,32 +373,33 @@ This error occurs when `super` is used incorrectly. It can only be used to selec
     super // Causes 'SprSelMthd'
     super.method() // OK
 
-## SprNtFnd
+### SprNtFnd
 [tagsprntfnd]: # (sprntfnd)
 
 This error occurs when a superclass cannot be found:
 
     class A < NonExistent { } // Causes 'SprNtFnd'
 
-## TooMnyArg
+### TooMnyArg
 [tagtoomnyarg]: # (toomnyarg)
 
-This error occurs when too many arguments are passed to a function:
+This error occurs at runtime when too many arguments are passed to a function, including when `apply` unpacks a `List` or `Tuple` that is too long:
 
-    fn f(x) { return x }
-    f(1, 2, 3) // Causes 'TooMnyArg'
+    var a = []
+    for (i in 0...256) a.append(1)
+    apply(fn (...x) x.count(), a) // Causes 'TooMnyArg'
 
-## TooMnyPrm
+### TooMnyPrm
 [tagtoomnyprm]: # (toomnyprm)
 
-This error occurs when a function is defined with too many parameters (exceeding the maximum allowed).
+This error occurs at compile time when a function is defined with too many parameters, or a call is compiled with too many arguments passed.
 
-## TooMnyCnst
+### TooMnyCnst
 [tagtoomnycnst]: # (toomnycnst)
 
 This error occurs when a program has too many constants (exceeding the maximum allowed).
 
-## VblDcl
+### VblDcl
 [tagvbldcl]: # (vbldcl)
 
 This error occurs when a variable is declared multiple times in the same scope:
@@ -407,28 +407,28 @@ This error occurs when a variable is declared multiple times in the same scope:
     var x = 1
     var x = 2 // Causes 'VblDcl'
 
-## FlNtFnd
+### FlNtFnd
 [tagflntfnd]: # (flntfnd)
 
 This error occurs when a file cannot be found:
 
     import "nonexistent.morpho" // Causes 'FlNtFnd'
 
-## MdlNtFnd
+### MdlNtFnd
 [tagmdlntfnd]: # (mdlntfnd)
 
 This error occurs when a module cannot be found:
 
     import nonexistent // Causes 'MdlNtFnd'
 
-## ImprtFld
+### ImprtFld
 [tagimprtfld]: # (imprtfld)
 
 This error occurs when an import statement fails:
 
     import "broken.morpho" // Causes 'ImprtFld' if the file has errors
 
-## UnrslvdFrwdRf
+### UnrslvdFrwdRf
 [tagunrslvdfrwdrf]: # (unrslvdfrwdrf)
 
 This error occurs when a function is called before it is defined in the same scope:
@@ -436,21 +436,21 @@ This error occurs when a function is called before it is defined in the same sco
     f() // Causes 'UnrslvdFrwdRf'
     fn f() { }
 
-## MltVarPrmtr
+### MltVarPrmtr
 [tagmltvarprmtr]: # (mltvarprmtr)
 
 This error occurs when a function has more than one variadic parameter:
 
     fn f(...args1, ...args2) { } // Causes 'MltVarPrmtr'
 
-## VarPrLst
+### VarPrLst
 [tagvarprlst]: # (varprlst)
 
 This error occurs when fixed parameters are placed after a variadic parameter:
 
     fn f(...args, x) { } // Causes 'VarPrLst'
 
-## OptPrmDflt
+### OptPrmDflt
 [tagoptprmdflt]: # (optprmdflt)
 
 This error occurs when an optional parameter's default value is not a constant:
@@ -458,14 +458,14 @@ This error occurs when an optional parameter's default value is not a constant:
     var x = 1
     fn f(y: x) { } // Causes 'OptPrmDflt'
 
-## MssngLoopBdy
+### MssngLoopBdy
 [tagmssngloopbdy]: # (mssngloopbdy)
 
 This error occurs when a loop statement is missing its body:
 
     for (var i = 0; i < 10; i++) // Causes 'MssngLoopBdy'
 
-## NstdClss
+### NstdClss
 [tagnstdclss]: # (nstdclss)
 
 This error occurs when attempting to define a class within another class:
@@ -474,26 +474,26 @@ This error occurs when attempting to define a class within another class:
         class B { } // Causes 'NstdClss'
     }
 
-## InvldAssgn
+### InvldAssgn
 [taginvldassgn]: # (invldassgn)
 
 This error occurs when attempting to assign to an invalid target:
 
     5 = 10 // Causes 'InvldAssgn'
 
-## FnPrmSymb
+### FnPrmSymb
 [tagfnprmsymb]: # (fnprmsymb)
 
 This error occurs when function parameters are not symbols:
 
     fn f(5) { } // Causes 'FnPrmSymb'
 
-## PptyNmRqd
+### PptyNmRqd
 [tagpptynmrqd]: # (pptynmrqd)
 
 This error occurs when a property name is required but not provided.
 
-## InitRtn
+### InitRtn
 [taginitrtn]: # (initrtn)
 
 This error occurs when attempting to return a value from an initializer method:
@@ -504,19 +504,19 @@ This error occurs when attempting to return a value from an initializer method:
         }
     }
 
-## MssngIndx
+### MssngIndx
 [tagmssngindx]: # (mssngindx)
 
 This error occurs when indexing syntax is incomplete, missing required indices.
 
-## MssngIntlzr
+### MssngIntlzr
 [tagmssngintlzr]: # (mssngintlzr)
 
 This error occurs when a typed variable is declared without an initializer:
 
     var x: String // Causes 'MssngIntlzr' if initialization is required
 
-## TypeErr
+### TypeErr
 [tagtypeerr]: # (typeerr)
 
 This error occurs when there is a type violation during assignment:
@@ -524,192 +524,192 @@ This error occurs when there is a type violation during assignment:
     var x: String
     x = 5 // Causes 'TypeErr'
 
-## UnknwnType
+### UnknwnType
 [tagunknwntype]: # (unknwntype)
 
 This error occurs when an unknown type is referenced:
 
     var x: UnknownType // Causes 'UnknwnType'
 
-## UnknwnNmSpc
+### UnknwnNmSpc
 [tagunknwnnmspc]: # (unknwnnmspc)
 
 This error occurs when an unknown namespace is referenced:
 
     import unknown::module // Causes 'UnknwnNmSpc'
 
-## UnknwnTypeNmSpc
+### UnknwnTypeNmSpc
 [tagunknwntypenmspc]: # (unknwntypenmspc)
 
 This error occurs when an unknown type is referenced in a namespace:
 
     var x: unknown::Type // Causes 'UnknwnTypeNmSpc'
 
-## SymblUndfNmSpc
+### SymblUndfNmSpc
 [tagsymblundfnmspc]: # (symblundfnmspc)
 
 This error occurs when a symbol is not defined in the specified namespace:
 
     unknown::symbol // Causes 'SymblUndfNmSpc'
 
-## IncExp
+### IncExp
 [tagincexp]: # (incexp)
 
 This error occurs when an expression is incomplete:
 
     var x = 5 + // Causes 'IncExp'
 
-## MssngParen
+### MssngParen
 [tagmssngparen]: # (mssngparen)
 
 This error occurs when a closing parenthesis is missing:
 
     fn f(x // Causes 'MssngParen'
 
-## ExpExpr
+### ExpExpr
 [tagexpexpr]: # (expexpr)
 
 This error occurs when an expression is expected but not found:
 
     var x = // Causes 'ExpExpr'
 
-## MssngExpTerm
+### MssngExpTerm
 [tagmssngexpterm]: # (mssngexpterm)
 
 This error occurs when an expression terminator (semicolon or newline) is missing after an expression.
 
-## VarExpct
+### VarExpct
 [tagvarexpct]: # (varexpct)
 
 This error occurs when a variable name is expected after `var`:
 
     var // Causes 'VarExpct'
 
-## SymblExpct
+### SymblExpct
 [tagsymblexpct]: # (symblexpct)
 
 This error occurs when a symbol is expected but not found.
 
-## MssngBrc
+### MssngBrc
 [tagmssngbrc]: # (mssngbrc)
 
 This error occurs when a closing brace is missing:
 
     fn f() { // Causes 'MssngBrc'
 
-## MssngSqBrc
+### MssngSqBrc
 [tagmssngsqbrc]: # (mssngsqbrc)
 
 This error occurs when a closing square bracket is missing:
 
     var x = [1, 2 // Causes 'MssngSqBrc'
 
-## MssngComma
+### MssngComma
 [tagmssngcomma]: # (mssngcomma)
 
 This error occurs when a comma is expected:
 
     var x = [1 2] // Causes 'MssngComma'
 
-## TrnryMssngColon
+### TrnryMssngColon
 [tagtrnymssngcolon]: # (trnymssngcolon)
 
 This error occurs when a colon is missing in a ternary operator:
 
     var x = true ? 1 // Causes 'TrnryMssngColon'
 
-## IfMssngLftPrn
+### IfMssngLftPrn
 [tagifmssnglftprn]: # (ifmssnglftprn)
 
 This error occurs when a left parenthesis is missing after `if`:
 
     if x > 0 { } // Causes 'IfMssngLftPrn'
 
-## IfMssngRgtPrn
+### IfMssngRgtPrn
 [tagifmssngrgtprn]: # (ifmssngrgtprn)
 
 This error occurs when a right parenthesis is missing after an if condition:
 
     if (x > 0 { } // Causes 'IfMssngRgtPrn'
 
-## WhlMssngLftPrn
+### WhlMssngLftPrn
 [tagwhlmssnglftprn]: # (whlmssnglftprn)
 
 This error occurs when a left parenthesis is missing after `while`:
 
     while x > 0 { } // Causes 'WhlMssngLftPrn'
 
-## ForMssngLftPrn
+### ForMssngLftPrn
 [tagformssnglftprn]: # (formssnglftprn)
 
 This error occurs when a left parenthesis is missing after `for`:
 
     for var i = 0; i < 10; i++ { } // Causes 'ForMssngLftPrn'
 
-## ForMssngRgtPrn
+### ForMssngRgtPrn
 [tagformssngrgtprn]: # (formssngrgtprn)
 
 This error occurs when a right parenthesis is missing after for clauses:
 
     for (var i = 0; i < 10; i++ { } // Causes 'ForMssngRgtPrn'
 
-## FnNoName
+### FnNoName
 [tagfnoname]: # (fnoname)
 
 This error occurs when a function or method name is expected but not found:
 
     fn () { } // Causes 'FnNoName'
 
-## FnMssngLftPrn
+### FnMssngLftPrn
 [tagfnmssnglftprn]: # (fnmssnglftprn)
 
 This error occurs when a left parenthesis is missing after a function name:
 
     fn f { } // Causes 'FnMssngLftPrn'
 
-## FnMssngRgtPrn
+### FnMssngRgtPrn
 [tagfnmssngrgtprn]: # (fnmssngrgtprn)
 
 This error occurs when a right parenthesis is missing after function parameters:
 
     fn f(x { } // Causes 'FnMssngRgtPrn'
 
-## FnMssngLftBrc
+### FnMssngLftBrc
 [tagfnmssnglftbrc]: # (fnmssnglftbrc)
 
 This error occurs when a left brace is missing before a function body:
 
     fn f() // Causes 'FnMssngLftBrc'
 
-## CllMssngRgtPrn
+### CllMssngRgtPrn
 [tagcllmssngrgtprn]: # (cllmssngrgtprn)
 
 This error occurs when a right parenthesis is missing after function call arguments:
 
     f(x // Causes 'CllMssngRgtPrn'
 
-## ClsNmMssng
+### ClsNmMssng
 [tagclsnmssng]: # (clsnmssng)
 
 This error occurs when a class name is expected but not found:
 
     class { } // Causes 'ClsNmMssng'
 
-## ClsMssngLftBrc
+### ClsMssngLftBrc
 [tagclsmssnglftbrc]: # (clsmssnglftbrc)
 
 This error occurs when a left brace is missing before a class body:
 
     class A // Causes 'ClsMssngLftBrc'
 
-## ClsMssngRgtBrc
+### ClsMssngRgtBrc
 [tagclsmssngrgtbrc]: # (clsmssngrgtbrc)
 
 This error occurs when a right brace is missing after a class body:
 
     class A { // Causes 'ClsMssngRgtBrc'
 
-## ExpctDtSpr
+### ExpctDtSpr
 [tagexpctdtspr]: # (expctdtspr)
 
 This error occurs when a dot is expected after `super`:
@@ -717,89 +717,89 @@ This error occurs when a dot is expected after `super`:
     super method() // Causes 'ExpctDtSpr'
     super.method() // OK
 
-## SprNmMssng
+### SprNmMssng
 [tagsprnmssng]: # (sprnmssng)
 
 This error occurs when a superclass name is expected but not found:
 
     class A < { } // Causes 'SprNmMssng'
 
-## MxnNmMssng
+### MxnNmMssng
 [tagmxnnmssng]: # (mxnnmssng)
 
 This error occurs when a mixin class name is expected but not found.
 
-## IntrpIncmp
+### IntrpIncmp
 [tagintrpincmp]: # (intrpincmp)
 
 This error occurs when a string interpolation is incomplete:
 
     var x = "Hello ${" // Causes 'IntrpIncmp'
 
-## EmptyIndx
+### EmptyIndx
 [tagemptyindx]: # (emptyindx)
 
 This error occurs when a variable declaration has an empty capacity:
 
     var x[] // Causes 'EmptyIndx'
 
-## ImprtMssngNm
+### ImprtMssngNm
 [tagimprtmssngnm]: # (imprtmssngnm)
 
 This error occurs when an import statement is missing a module or file name:
 
     import // Causes 'ImprtMssngNm'
 
-## ImprtMltplAs
+### ImprtMltplAs
 [tagimprtmltplas]: # (imprtmltplas)
 
 This error occurs when an import statement has multiple `as` clauses:
 
     import module as A as B // Causes 'ImprtMltplAs'
 
-## ImprtExpctFrAs
+### ImprtExpctFrAs
 [tagimprtexpctfras]: # (imprtexpctfras)
 
 This error occurs when an import statement doesn't have the expected format:
 
     import module invalid // Causes 'ImprtExpctFrAs'
 
-## ExpctSymblAftrAs
+### ExpctSymblAftrAs
 [tagexpctsymblaftras]: # (expctsymblaftras)
 
 This error occurs when a symbol is expected after `as` in an import:
 
     import module as // Causes 'ExpctSymblAftrAs'
 
-## ExpctSymblAftrFr
+### ExpctSymblAftrFr
 [tagexpctsymblaftrfr]: # (expctsymblaftrfr)
 
 This error occurs when a symbol is expected after `for` in an import:
 
     import module for // Causes 'ExpctSymblAftrFr'
 
-## DctSprtr
+### DctSprtr
 [tagdctsprtr]: # (dctsprtr)
 
 This error occurs when a colon is missing in a dictionary key-value pair:
 
     var d = {"key" "value"} // Causes 'DctSprtr'
 
-## DctEntrySprtr
+### DctEntrySprtr
 [tagdctentrysprtr]: # (dctentrysprtr)
 
 This error occurs when a comma is missing between dictionary entries:
 
     var d = {"a": 1 "b": 2} // Causes 'DctEntrySprtr'
 
-## DctTrmntr
+### DctTrmntr
 [tagdcttrmntr]: # (dcttrmntr)
 
 This error occurs when a closing brace is missing in a dictionary:
 
     var d = {"a": 1 // Causes 'DctTrmntr'
 
-## SwtchSprtr
+### SwtchSprtr
 [tagswtchsprtr]: # (swtchsprtr)
 
 This error occurs when a colon is missing after a switch label:
@@ -808,7 +808,7 @@ This error occurs when a colon is missing after a switch label:
         case 1 // Causes 'SwtchSprtr'
     }
 
-## ExpctWhl
+### ExpctWhl
 [tagexpctwhl]: # (expctwhl)
 
 This error occurs when `while` is expected after a do-while loop body:
@@ -817,7 +817,7 @@ This error occurs when `while` is expected after a do-while loop body:
         // body
     } // Causes 'ExpctWhl'
 
-## ExpctCtch
+### ExpctCtch
 [tagexpctctch]: # (expctctch)
 
 This error occurs when `catch` is expected after a `try` statement:
@@ -826,7 +826,7 @@ This error occurs when `catch` is expected after a `try` statement:
         // code
     } // Causes 'ExpctCtch'
 
-## ExpctHndlr
+### ExpctHndlr
 [tagexpcthndlr]: # (expcthndlr)
 
 This error occurs when an error handler block is expected after `catch`:
@@ -835,70 +835,70 @@ This error occurs when an error handler block is expected after `catch`:
         // code
     } catch // Causes 'ExpctHndlr'
 
-## InvldLbl
+### InvldLbl
 [taginvldlbl]: # (invldlbl)
 
 This error occurs when an invalid label is used in a catch statement.
 
-## OneVarPr
+### OneVarPr
 [tagonevarpr]: # (onevarpr)
 
 This error occurs when a function has more than one variadic parameter (same as `MltVarPrmtr`).
 
-## ValRng
+### ValRng
 [tagvalrng]: # (valrng)
 
 This error occurs when a value is out of the expected range.
 
-## StrEsc
+### StrEsc
 [tagstresc]: # (stresc)
 
 This error occurs when an unrecognized escape sequence is used in a string:
 
     var s = "\q" // Causes 'StrEsc'
 
-## RcrsnLmt
+### RcrsnLmt
 [tagrcrsnlmt]: # (rcrsnlmt)
 
 This error occurs when the parser recursion depth is exceeded, typically due to deeply nested expressions.
 
-## UnescpdCtrl
+### UnescpdCtrl
 [tagunescpdctrl]: # (unescpdctrl)
 
 This error occurs when an unescaped control character is found in a string literal.
 
-## InvldUncd
+### InvldUncd
 [taginvlduncd]: # (invlduncd)
 
 This error occurs when an invalid unicode escape sequence is used in a string:
 
     var s = "\uZZZZ" // Causes 'InvldUncd'
 
-## UnrcgnzdTok
+### UnrcgnzdTok
 [tagunrcgnzdtok]: # (unrcgnzdtok)
 
 This error occurs when the parser encounters an unrecognized token.
 
-## UntrmComm
+### UntrmComm
 [taguntrmcomm]: # (untrmcomm)
 
 This error occurs when a multiline comment is not terminated:
 
     /* This comment // Causes 'UntrmComm'
 
-## UntrmStrng
+### UntrmStrng
 [taguntrmstrng]: # (untrmstrng)
 
 This error occurs when a string literal is not terminated:
 
     var s = "This string // Causes 'UntrmStrng'
 
-## UnrgnzdTkn
+### UnrgnzdTkn
 [tagunrgnzdtkn]: # (unrgnzdtkn)
 
 This error occurs when the lexer encounters an unrecognized token.
 
-## MtrxBnds
+### MtrxBnds
 [tagmtrxbnds]: # (mtrxbnds)
 
 This error occurs when attempting to access a matrix element with an index that is out of bounds:
@@ -906,7 +906,7 @@ This error occurs when attempting to access a matrix element with an index that 
     var m = Matrix([[1,2],[3,4]])
     print m[10, 10] // Causes 'MtrxBnds'
 
-## MtrxInvldIndx
+### MtrxInvldIndx
 [tagmtrxinvldindx]: # (mtrxinvldindx)
 
 This error occurs when matrix indices are not integers:
@@ -914,7 +914,7 @@ This error occurs when matrix indices are not integers:
     var m = Matrix([[1,2],[3,4]])
     print m["x", "y"] // Causes 'MtrxInvldIndx'
 
-## MtrxInvldNumIndx
+### MtrxInvldNumIndx
 [tagmtrxinvldnumindx]: # (mtrxinvldnumindx)
 
 This error occurs when a matrix is indexed with the wrong number of indices:
@@ -922,28 +922,28 @@ This error occurs when a matrix is indexed with the wrong number of indices:
     var m = Matrix([[1,2],[3,4]])
     print m[1] // Causes 'MtrxInvldNumIndx' (needs two indices)
 
-## MtrxCns
+### MtrxCns
 [tagmtrxcns]: # (mtrxcns)
 
 This error occurs when the Matrix constructor is called with invalid arguments. It should be called with dimensions or an array/list/matrix initializer:
 
     var m = Matrix("invalid") // Causes 'MtrxCns'
 
-## MtrxIdnttyCns
+### MtrxIdnttyCns
 [tagmtrxidnttycns]: # (mtrxidnttycns)
 
 This error occurs when IdentityMatrix is called with invalid arguments. It expects a single dimension:
 
     var m = IdentityMatrix() // Causes 'MtrxIdnttyCns'
 
-## MtrxInvldInit
+### MtrxInvldInit
 [tagmtrxinvldinit]: # (mtrxinvldinit)
 
 This error occurs when an invalid initializer is passed to the Matrix constructor:
 
     var m = Matrix([["invalid"]]) // Causes 'MtrxInvldInit' if incompatible
 
-## MtrxInvldArg
+### MtrxInvldArg
 [tagmtrxinvldarg]: # (mtrxinvldarg)
 
 This error occurs when matrix arithmetic methods receive invalid arguments:
@@ -951,7 +951,7 @@ This error occurs when matrix arithmetic methods receive invalid arguments:
     var m = Matrix([[1,2],[3,4]])
     m + "string" // Causes 'MtrxInvldArg'
 
-## MtrxRShpArg
+### MtrxRShpArg
 [tagmtrxrshparg]: # (mtrxrshparg)
 
 This error occurs when the reshape method is called with invalid arguments. It requires two integer arguments:
@@ -959,12 +959,12 @@ This error occurs when the reshape method is called with invalid arguments. It r
     var m = Matrix([[1,2],[3,4]])
     m.reshape("invalid") // Causes 'MtrxRShpArg'
 
-## MtrxIncmptbl
+### MtrxIncmptbl
 [tagmtrxincmptbl]: # (mtrxincmptbl)
 
 This error occurs when matrices have incompatible shapes for an operation. See the main documentation above for examples.
 
-## MtrxSnglr
+### MtrxSnglr
 [tagmtrxsnglr]: # (mtrxsnglr)
 
 This error occurs when attempting to invert a singular (non-invertible) matrix:
@@ -972,7 +972,7 @@ This error occurs when attempting to invert a singular (non-invertible) matrix:
     var m = Matrix([[1,2],[2,4]]) // Singular matrix
     m.inverse() // Causes 'MtrxSnglr'
 
-## MtrxNtSq
+### MtrxNtSq
 [tagmtrxntsq]: # (mtrxntsq)
 
 This error occurs when a matrix operation requires a square matrix but a non-square matrix is provided:
@@ -980,12 +980,12 @@ This error occurs when a matrix operation requires a square matrix but a non-squ
     var m = Matrix([[1,2,3],[4,5,6]]) // 2x3 matrix
     m.inverse() // Causes 'MtrxNtSq'
 
-## MtrxOpFld
+### MtrxOpFld
 [tagmtrxopfld]: # (mtrxopfld)
 
 This error occurs when a matrix operation fails for an unspecified reason.
 
-## MtrxNrmArgs
+### MtrxNrmArgs
 [tagmtrxnrmargs]: # (mtrxnrmargs)
 
 This error occurs when the norm method is called with invalid arguments. It expects an optional numerical argument:
@@ -993,7 +993,7 @@ This error occurs when the norm method is called with invalid arguments. It expe
     var m = Matrix([[1,2],[3,4]])
     m.norm("invalid") // Causes 'MtrxNrmArgs'
 
-## MtrxStClArgs
+### MtrxStClArgs
 [tagmtrxstclargs]: # (mtrxstclargs)
 
 This error occurs when `setColumn` is called with invalid arguments. It expects an integer column index and a column matrix:
@@ -1003,52 +1003,52 @@ This error occurs when `setColumn` is called with invalid arguments. It expects 
 
 The older method name `setcolumn` is retained for compatibility but is deprecated.
 
-## LnAlgMtrxIncmptbl
+### LnAlgMtrxIncmptbl
 [taglnalgmtrxincmptbl]: # (lnalgmtrxincmptbl)
 
 This error occurs when matrices have incompatible shapes in linear algebra operations.
 
-## LnAlgMtrxIndxBnds
+### LnAlgMtrxIndxBnds
 [taglnalgmtrxindxbnds]: # (lnalgmtrxindxbnds)
 
 This error occurs when a matrix index is out of bounds in linear algebra operations.
 
-## LnAlgMtrxSnglr
+### LnAlgMtrxSnglr
 [taglnalgmtrxsnglr]: # (lnalgmtrxsnglr)
 
 This error occurs when a matrix is singular in linear algebra operations.
 
-## LnAlgMtrxNtSq
+### LnAlgMtrxNtSq
 [taglnalgmtrxntsq]: # (lnalgmtrxntsq)
 
 This error occurs when a matrix is not square in linear algebra operations.
 
-## LnAlgLapackArgs
+### LnAlgLapackArgs
 [taglnalglapackargs]: # (lnalglapackargs)
 
 This error occurs when a LAPACK function is called with invalid arguments.
 
-## LnAlgMtrxOpFld
+### LnAlgMtrxOpFld
 [taglnalgmtrxopfld]: # (lnalgmtrxopfld)
 
 This error occurs when a matrix operation fails in the linear algebra library.
 
-## LnAlgMtrxNtSpprtd
+### LnAlgMtrxNtSpprtd
 [taglnalgmtrxntspprtd]: # (lnalgmtrxntspprtd)
 
 This error occurs when an operation is not supported for a particular matrix type.
 
-## LnAlgMtrxInvldArg
+### LnAlgMtrxInvldArg
 [taglnalgmtrxinvldarg]: # (lnalgmtrxinvldarg)
 
 This error occurs when invalid arguments are passed to a matrix method in the linear algebra library.
 
-## LnAlgMtrxNnNmrclArg
+### LnAlgMtrxNnNmrclArg
 [taglnalgmtrxnnnmrclarg]: # (lnalgmtrxnnnmrclarg)
 
 This error occurs when a matrix method requires numerical arguments but receives non-numerical ones.
 
-## LnAlgMtrxNrmArgs
+### LnAlgMtrxNrmArgs
 [taglnalgmtrxnrmargs]: # (lnalgmtrxnrmargs)
 
 This error occurs when the norm method is called with an unsupported argument. It requires 1 or inf:
@@ -1056,7 +1056,7 @@ This error occurs when the norm method is called with an unsupported argument. I
     var m = Matrix([[1,2],[3,4]])
     m.norm(2) // Causes 'LnAlgMtrxNrmArgs' if 2 is not supported
 
-## LnAlgInvldArg
+### LnAlgInvldArg
 [taglnalginvldarg]: # (lnalginvldarg)
 
 This error occurs when matrix arithmetic methods receive invalid arguments:
@@ -1064,61 +1064,46 @@ This error occurs when matrix arithmetic methods receive invalid arguments:
     var m = Matrix([[1,2],[3,4]])
     m + "string" // Causes 'LnAlgInvldArg'
 
-## SprsCns
+### SprsCns
 [tagsprscns]: # (sprscns)
 
 This error occurs when the Sparse constructor is called with invalid arguments. It should be called with dimensions or an array initializer:
 
     var s = Sparse("invalid") // Causes 'SprsCns'
 
-## SprsInvldInit
+### SprsInvldInit
 [tagsprsinvldinit]: # (sprsinvldinit)
 
 This error occurs when an invalid initializer is passed to the Sparse constructor.
 
-## SprsSt
+### SprsSt
 [tagsprsst]: # (sprsst)
 
 This error occurs when attempting to set a sparse matrix element fails.
 
-## SprsCnvFld
+### SprsCnvFld
 [tagsprscnvfld]: # (sprscnvfld)
 
 This error occurs when sparse format conversion fails.
 
-## SprsOpFld
+### SprsOpFld
 [tagsprsopfld]: # (sprsopfld)
 
 This error occurs when a sparse matrix operation fails.
 
-## CmplxCns
-[tagcmplxcns]: # (cmplxcns)
-
-This error occurs when the Complex constructor is called with invalid arguments. It should be called with two floats:
-
-    var c = Complex(1) // Causes 'CmplxCns'
-
-## CmplxInvldArg
-[tagcmplxinvldarg]: # (cmplxinvldarg)
-
-This error occurs when complex arithmetic methods receive invalid arguments:
-
-    var c = Complex(1, 2)
-    c + "string" // Causes 'CmplxInvldArg'
-
-## CmpxArg
+### CmpxArg
 [tagcmpxarg]: # (cmpxarg)
 
 This error occurs when a complex operation receives unexpected arguments.
 
-## LstArgs
+### LstArgs
 [taglstargs]: # (lstargs)
 
 This error occurs when a List is created with invalid arguments. Lists must be called with integer dimensions:
 
     var l = List("invalid") // Causes 'LstArgs'
 
-## LstNumArgs
+### LstNumArgs
 [taglstnumargs]: # (lstnumargs)
 
 This error occurs when a List is indexed with more than one argument:
@@ -1126,7 +1111,7 @@ This error occurs when a List is indexed with more than one argument:
     var l = [1, 2, 3]
     l[1, 2] // Causes 'LstNumArgs'
 
-## LstAddArgs
+### LstAddArgs
 [taglstaddargs]: # (lstaddargs)
 
 This error occurs when the add method receives invalid arguments. It requires a list:
@@ -1134,7 +1119,7 @@ This error occurs when the add method receives invalid arguments. It requires a 
     var l = [1, 2, 3]
     l.add("invalid") // Causes 'LstAddArgs'
 
-## LstSrtFn
+### LstSrtFn
 [taglstsrtfn]: # (lstsrtfn)
 
 This error occurs when a list sort function doesn't return an integer:
@@ -1142,7 +1127,7 @@ This error occurs when a list sort function doesn't return an integer:
     var l = [3, 1, 2]
     l.sort(fn(a, b) { return "invalid" }) // Causes 'LstSrtFn'
 
-## EntryNtFnd
+### EntryNtFnd
 [tagentryntfnd]: # (entryntfnd)
 
 This error occurs when an entry is not found in a list:
@@ -1150,14 +1135,14 @@ This error occurs when an entry is not found in a list:
     var l = [1, 2, 3]
     l.remove(10) // Causes 'EntryNtFnd'
 
-## TplArgs
+### TplArgs
 [tagtplargs]: # (tplargs)
 
 This error occurs when a Tuple is created with invalid arguments. Tuples must be called with integer dimensions:
 
     var t = Tuple("invalid") // Causes 'TplArgs'
 
-## TpmNumArgs
+### TpmNumArgs
 [tagtpmnumargs]: # (tpmnumargs)
 
 This error occurs when a Tuple is indexed with more than one argument:
@@ -1165,7 +1150,7 @@ This error occurs when a Tuple is indexed with more than one argument:
     var t = (1, 2, 3)
     t[1, 2] // Causes 'TpmNumArgs'
 
-## DctKyNtFnd
+### DctKyNtFnd
 [tagdctkyntfnd]: # (dctkyntfnd)
 
 This error occurs when a key is not found in a dictionary:
@@ -1173,7 +1158,7 @@ This error occurs when a key is not found in a dictionary:
     var d = {"a": 1}
     print d["b"] // Causes 'DctKyNtFnd'
 
-## DctStArg
+### DctStArg
 [tagdctstarg]: # (dctstarg)
 
 This error occurs when dictionary set methods (union, intersection, difference) receive invalid arguments. They expect a dictionary:
@@ -1181,35 +1166,35 @@ This error occurs when dictionary set methods (union, intersection, difference) 
     var d1 = {"a": 1}
     d1.union("invalid") // Causes 'DctStArg'
 
-## FlOpnFld
+### FlOpnFld
 [tagflopnfld]: # (flopnfld)
 
 This error occurs when a file cannot be opened:
 
     var f = File("nonexistent.txt", "read") // Causes 'FlOpnFld' if file doesn't exist
 
-## FlNmMssng
+### FlNmMssng
 [tagflnmssng]: # (flnmssng)
 
 This error occurs when a filename is missing in a File operation:
 
     var f = File() // Causes 'FlNmMssng'
 
-## FlNmArgs
+### FlNmArgs
 [tagflnmargs]: # (flnmargs)
 
 This error occurs when the first argument to File is not a filename:
 
     var f = File(123, "read") // Causes 'FlNmArgs'
 
-## FlMode
+### FlMode
 [tagflmode]: # (flmode)
 
 This error occurs when the second argument to File is not a valid mode. It should be 'read', 'write', or 'append':
 
     var f = File("test.txt", "invalid") // Causes 'FlMode'
 
-## FlWrtArgs
+### FlWrtArgs
 [tagflwrtargs]: # (flwrtargs)
 
 This error occurs when File.write receives non-string arguments:
@@ -1217,115 +1202,115 @@ This error occurs when File.write receives non-string arguments:
     var f = File("test.txt", "write")
     f.write(123) // Causes 'FlWrtArgs'
 
-## FlWrtFld
+### FlWrtFld
 [tagflwrtfld]: # (flwrtfld)
 
 This error occurs when writing to a file fails.
 
-## FldrExpctPth
+### FldrExpctPth
 [tagfldrexpctpth]: # (fldrexpctpth)
 
 This error occurs when folder methods receive invalid arguments. They expect a path:
 
     Folder.exists(123) // Causes 'FldrExpctPth'
 
-## NtFldr
+### NtFldr
 [tagntfldr]: # (ntfldr)
 
 This error occurs when a path is not a folder:
 
     Folder.exists("file.txt") // May cause 'NtFldr' if it's a file, not a folder
 
-## FldrCrtFld
+### FldrCrtFld
 [tagfldrcrtfld]: # (fldrcrtfld)
 
 This error occurs when folder creation fails:
 
     Folder.create("/invalid/path") // Causes 'FldrCrtFld'
 
-## RngArgs
+### RngArgs
 [tagrngargs]: # (rngargs)
 
 This error occurs when Range receives invalid arguments. It expects numerical arguments: a start, an end, and an optional stepsize:
 
     Range("invalid") // Causes 'RngArgs'
 
-## RngStpSz
+### RngStpSz
 [tagrngstpsz]: # (rngstpsz)
 
 This error occurs when a Range stepsize is too small:
 
     Range(0, 10, 0.0000001) // May cause 'RngStpSz' if too small
 
-## ExpctNmArgs
+### ExpctNmArgs
 [tagexpctnmargs]: # (expctnmargs)
 
 This error occurs when a function expects numerical arguments but receives non-numerical ones:
 
     sqrt("string") // Causes 'ExpctNmArgs'
 
-## ExpctArgNm
+### ExpctArgNm
 [tagexpctargnm]: # (expctargnm)
 
 This error occurs when a function expects a single numerical argument but receives something else:
 
     abs() // Causes 'ExpctArgNm'
 
-## TypArgNm
+### TypArgNm
 [tagtypargnm]: # (typargnm)
 
 This error occurs when a function expects one argument but receives a different number:
 
     type() // May cause 'TypArgNm' if no arguments provided
 
-## MnMxArgs
+### MnMxArgs
 [tagmnmxargs]: # (mnmxargs)
 
 This error occurs when min or max functions receive invalid arguments. They expect at least one numerical argument, list, or matrix:
 
     min() // Causes 'MnMxArgs'
 
-## ApplyArgs
+### ApplyArgs
 [tagapplyargs]: # (applyargs)
 
 This error occurs when the apply function receives fewer than two arguments:
 
     apply() // Causes 'ApplyArgs'
 
-## ApplyNtCllble
+### ApplyNtCllble
 [tagapplyntcllble]: # (applyntcllble)
 
 This error occurs when apply receives a non-callable object as its first argument:
 
     apply("not a function", [1, 2, 3]) // Causes 'ApplyNtCllble'
 
-## FrmtArg
+### FrmtArg
 [tagfrmtarg]: # (frmtarg)
 
 This error occurs when the format method receives invalid arguments. It requires a format string:
 
     "test".format(123) // Causes 'FrmtArg' if format string expected
 
-## InvldFrmt
+### InvldFrmt
 [taginvldfrmt]: # (invldfrmt)
 
 This error occurs when an invalid format string is provided:
 
     "test".format("%Z") // May cause 'InvldFrmt' if %Z is invalid
 
-## ErrorArgs
+### ErrorArgs
 [tagerrorargs]: # (errorargs)
 
 This error occurs when the Error constructor is called with invalid arguments. It must be called with a tag and a default message:
 
     Error("Tag") // Causes 'ErrorArgs'
 
-## Err
+### Err
 [tagerr]: # (err)
 
 This is a generic error tag used for general error conditions.
 
-## EnmrtArgs
+### EnmrtArgs
 [tagenmrtargs]: # (enmrtargs)
 
 This error occurs when the enumerate method receives invalid arguments. It expects a single integer argument:
@@ -1333,7 +1318,7 @@ This error occurs when the enumerate method receives invalid arguments. It expec
     var obj = Object()
     obj.enumerate("invalid") // Causes 'EnmrtArgs'
 
-## IndxArgs
+### IndxArgs
 [tagindxargs]: # (indxargs)
 
 This error occurs when the index method receives invalid arguments. It expects a String property name:
@@ -1341,7 +1326,7 @@ This error occurs when the index method receives invalid arguments. It expects a
     var obj = Object()
     obj.index(123) // Causes 'IndxArgs'
 
-## SetIndxArgs
+### SetIndxArgs
 [tagsetindxargs]: # (setindxargs)
 
 This error occurs when the setindex method receives invalid arguments. It expects an index and a value:
@@ -1349,7 +1334,7 @@ This error occurs when the setindex method receives invalid arguments. It expect
     var obj = Object()
     obj.setindex(1) // Causes 'SetIndxArgs' (missing value)
 
-## RspndsToArg
+### RspndsToArg
 [tagrspndstoarg]: # (rspndstoarg)
 
 This error occurs when the respondsto method receives invalid arguments. It expects a single string argument or no argument:
@@ -1357,7 +1342,7 @@ This error occurs when the respondsto method receives invalid arguments. It expe
     var obj = Object()
     obj.respondsto(123) // Causes 'RspndsToArg'
 
-## HasArg
+### HasArg
 [taghasarg]: # (hasarg)
 
 This error occurs when the has method receives invalid arguments. It expects a single string argument or no argument:
@@ -1365,7 +1350,7 @@ This error occurs when the has method receives invalid arguments. It expects a s
     var obj = Object()
     obj.has(123) // Causes 'HasArg'
 
-## IsMmbrArg
+### IsMmbrArg
 [tagismmbrarg]: # (ismmbrarg)
 
 This error occurs when the ismember method receives invalid arguments. It expects a single argument:
@@ -1373,7 +1358,7 @@ This error occurs when the ismember method receives invalid arguments. It expect
     var obj = Object()
     obj.ismember() // Causes 'IsMmbrArg'
 
-## ObjCantClone
+### ObjCantClone
 [tagobjcantclone]: # (objcantclone)
 
 This error occurs when attempting to clone an object that cannot be cloned:
@@ -1381,7 +1366,7 @@ This error occurs when attempting to clone an object that cannot be cloned:
     var obj = Object()
     obj.clone() // May cause 'ObjCantClone' if cloning not supported
 
-## ObjImmutable
+### ObjImmutable
 [tagobjimmutable]: # (objimmutable)
 
 This error occurs when attempting to modify an immutable object:
@@ -1390,7 +1375,7 @@ This error occurs when attempting to modify an immutable object:
     // If obj is immutable:
     obj.property = "value" // Causes 'ObjImmutable'
 
-## ObjNoPrp
+### ObjNoPrp
 [tagobjnoprp]: # (objnoprp)
 
 This error occurs when an object does not provide properties:
@@ -1398,135 +1383,119 @@ This error occurs when an object does not provide properties:
     var obj = Object()
     obj.property // May cause 'ObjNoPrp' if object doesn't support properties
 
-## InvocationArgs
+### InvocationArgs
 [taginvocationargs]: # (invocationargs)
 
 This error occurs when Invocation is called with invalid arguments. It must be called with an object and a method name:
 
     Invocation() // Causes 'InvocationArgs'
 
-## SystmSlpArgs
+### SystmSlpArgs
 [tagsystmslpargs]: # (systmslpargs)
 
 This error occurs when the sleep method receives invalid arguments. It expects a time in seconds:
 
     sleep("invalid") // Causes 'SystmSlpArgs'
 
-## SystmStWrkDr
+### SystmStWrkDr
 [tagsystmstwrkdr]: # (systmstwrkdr)
 
 This error occurs when setting the working directory fails:
 
     System.setworkingdirectory("/invalid/path") // Causes 'SystmStWrkDr'
 
-## SystmStWrkDrArgs
+### SystmStWrkDrArgs
 [tagsystmstwrkdrargs]: # (systmstwrkdrargs)
 
 This error occurs when setworkingdirectory receives invalid arguments. It expects a path name:
 
     System.setworkingdirectory(123) // Causes 'SystmStWrkDrArgs'
 
-## JSONPrsArgs
+### JSONPrsArgs
 [tagjsonprsargs]: # (jsonprsargs)
 
 This error occurs when JSON.parse receives invalid arguments. It requires a string:
 
     JSON.parse(123) // Causes 'JSONPrsArgs'
 
-## JSONObjctKey
+### JSONObjctKey
 [tagjsonobjctkey]: # (jsonobjctkey)
 
 This error occurs when a JSON object key is not a string:
 
     JSON.parse('{123: "value"}') // Causes 'JSONObjctKey'
 
-## JSONNmbrFrmt
+### JSONNmbrFrmt
 [tagjsonnmbrfrmt]: # (jsonnmbrfrmt)
 
 This error occurs when a number in JSON is improperly formatted:
 
     JSON.parse('{"num": 1.2.3}') // Causes 'JSONNmbrFrmt'
 
-## JSONExtrnsTkn
+### JSONExtrnsTkn
 [tagjsonextrnstkn]: # (jsonextrnstkn)
 
 This error occurs when there is an extraneous token after a JSON element:
 
     JSON.parse('{"a": 1} extra') // Causes 'JSONExtrnsTkn'
 
-## JSONBlnkElmnt
+### JSONBlnkElmnt
 [tagjsonblnkelmnt]: # (jsonblnkelmnt)
 
 This error occurs when a blank element is found in JSON:
 
     JSON.parse('[,]') // Causes 'JSONBlnkElmnt'
 
-## MshFlNtFnd
+### MshFlNtFnd
 [tagmshflntfnd]: # (mshflntfnd)
 
 This error occurs when a mesh file cannot be found:
 
     var m = Mesh("nonexistent.mesh") // Causes 'MshFlNtFnd'
 
-## MshArgs
-[tagmshargs]: # (mshargs)
-
-This error occurs when Mesh receives invalid arguments. It expects either a single file name or no arguments:
-
-    var m = Mesh(123) // Causes 'MshArgs'
-
-## MshVrtMtrxDim
+### MshVrtMtrxDim
 [tagmshvrtmtrxdim]: # (mshvrtmtrxdim)
 
 This error occurs when vertex matrix dimensions are inconsistent with the mesh.
 
-## MshLdVrtDim
+### MshLdVrtDim
 [tagmshldvrtdim]: # (mshldvrtdim)
 
 This error occurs when a vertex has inconsistent dimensions when loading a mesh file.
 
-## MshLdVrtCrd
+### MshLdVrtCrd
 [tagmshldvrtcrd]: # (mshldvrtcrd)
 
 This error occurs when a vertex has non-numerical coordinates when loading a mesh file.
 
-## MshLdPrsErr
+### MshLdPrsErr
 [tagmshldprserr]: # (mshldprserr)
 
 This error occurs when there is a parse error in a mesh file.
 
-## MshLdVrtNm
+### MshLdVrtNm
 [tagmshldvrtnm]: # (mshldvrtnm)
 
 This error occurs when an element has an incorrect number of vertices when loading a mesh file.
 
-## MshLdVrtId
+### MshLdVrtId
 [tagmshldvrtid]: # (mshldvrtid)
 
 This error occurs when a vertex id is not an integer when loading a mesh file.
 
-## MshLdVrtNtFnd
+### MshLdVrtNtFnd
 [tagmshldvrtntfnd]: # (mshldvrtntfnd)
 
 This error occurs when a vertex is not found when loading a mesh file.
 
-## MshStVrtPsnArgs
-[tagmshstvrtpsnargs]: # (mshstvrtpsnargs)
+### MshInvldDim
+[tagmshinvlddim]: # (mshinvlddim)
 
-This error occurs when setvertexposition receives invalid arguments. It expects a vertex id and a position matrix:
+This error occurs when `Mesh` is constructed with a negative dimension:
 
-    var m = Mesh()
-    m.setvertexposition("invalid") // Causes 'MshStVrtPsnArgs'
+    var m = Mesh(-1) // Causes 'MshInvldDim'
 
-## MshVrtPsnArgs
-[tagmshvrtpsnargs]: # (mshvrtpsnargs)
-
-This error occurs when vertexposition receives invalid arguments. It expects a vertex id:
-
-    var m = Mesh()
-    m.vertexposition() // Causes 'MshVrtPsnArgs'
-
-## MshInvldId
+### MshInvldId
 [tagmshinvldid]: # (mshinvldid)
 
 This error occurs when an invalid element id is used:
@@ -1534,23 +1503,7 @@ This error occurs when an invalid element id is used:
     var m = Mesh()
     m.element(-1) // Causes 'MshInvldId'
 
-## MshCnnMtxArgs
-[tagmshcnnmtxargs]: # (mshcnnmtxargs)
-
-This error occurs when connectivitymatrix receives invalid arguments. It expects integer arguments:
-
-    var m = Mesh()
-    m.connectivitymatrix("invalid") // Causes 'MshCnnMtxArgs'
-
-## MshAddGrdArgs
-[tagmshaddgrdargs]: # (mshaddgrdargs)
-
-This error occurs when addgrade receives invalid arguments. It expects either an integer grade and optionally a sparse connectivity matrix:
-
-    var m = Mesh()
-    m.addgrade("invalid") // Causes 'MshAddGrdArgs'
-
-## MshAddGrdOutOfBnds
+### MshAddGrdOutOfBnds
 [tagmshaddgrdoutofbnds]: # (mshaddgrdoutofbnds)
 
 This error occurs when attempting to add elements of a grade that exceeds the mesh's maximum grade:
@@ -1558,15 +1511,7 @@ This error occurs when attempting to add elements of a grade that exceeds the me
     var m = Mesh()
     m.addgrade(10) // Causes 'MshAddGrdOutOfBnds' if max grade is lower
 
-## MshAddSymArgs
-[tagmshaddsymargs]: # (mshaddsymargs)
-
-This error occurs when addsymmetry receives invalid arguments. It expects an object that provides a transform method and optionally a selection:
-
-    var m = Mesh()
-    m.addsymmetry("invalid") // Causes 'MshAddSymArgs'
-
-## MshAddSymMsngTrnsfrm
+### MshAddSymMsngTrnsfrm
 [tagmshaddsymmsngtrnsfrm]: # (mshaddsymmsngtrnsfrm)
 
 This error occurs when addsymmetry receives an object that doesn't provide a transform method:
@@ -1575,38 +1520,7 @@ This error occurs when addsymmetry receives an object that doesn't provide a tra
     var obj = Object()
     m.addsymmetry(obj) // Causes 'MshAddSymMsngTrnsfrm'
 
-## SlNoMsh
-[tagslnomsh]: # (slnomsh)
-
-This error occurs when a Selection operation requires a Mesh object but doesn't receive one:
-
-    var s = Selection("invalid") // Causes 'SlNoMsh'
-
-## SlIsSlArg
-[tagslisslarg]: # (slisslarg)
-
-This error occurs when Selection.isselected receives invalid arguments. It requires a grade and element id:
-
-    var s = Selection(mesh)
-    s.isselected(1) // Causes 'SlIsSlArg' (missing element id)
-
-## SlGrdArg
-[tagslgrdarg]: # (slgrdarg)
-
-This error occurs when a Selection method requires a grade as an argument but doesn't receive one:
-
-    var s = Selection(mesh)
-    s.method() // Causes 'SlGrdArg' if grade required
-
-## SlStArg
-[tagslstarg]: # (slstarg)
-
-This error occurs when Selection set methods receive invalid arguments. They require a selection:
-
-    var s = Selection(mesh)
-    s.union("invalid") // Causes 'SlStArg'
-
-## SlBnd
+### SlBnd
 [tagslbnd]: # (slbnd)
 
 This error occurs when a mesh has no boundary elements:
@@ -1614,19 +1528,23 @@ This error occurs when a mesh has no boundary elements:
     var m = Mesh()
     m.boundary() // Causes 'SlBnd' if no boundary exists
 
-## FldMshArg
-[tagfldmsharg]: # (fldmsharg)
+### SlMsh
+[tagslmsh]: # (slmsh)
 
-This error occurs when Field receives invalid arguments. It expects a mesh as its first argument:
+This error occurs when a set operation is applied to Selections that refer to different Meshes:
 
-    var f = Field("invalid") // Causes 'FldMshArg'
+    var s1 = Selection(mesh1)
+    var s2 = Selection(mesh2)
+    s1.union(s2) // Causes 'SlMsh'
 
-## FldArgs
+### FldArgs
 [tagfldargs]: # (fldargs)
 
-This error occurs when Field receives invalid optional arguments. It allows 'grade' as an optional argument.
+This error occurs when Field receives invalid optional arguments. It allows `grade` and `finiteelementspace` as optional arguments:
 
-## FldBnds
+    Field(mesh, foo=1) // Causes 'FldArgs'
+
+### FldBnds
 [tagfldbnds]: # (fldbnds)
 
 This error occurs when a Field index is out of bounds:
@@ -1634,23 +1552,7 @@ This error occurs when a Field index is out of bounds:
     var f = Field(mesh)
     f[100, 100, 100] // Causes 'FldBnds' if out of bounds
 
-## FldInvldIndx
-[tagfldinvldindx]: # (fldinvldindx)
-
-This error occurs when Field indices are not numerical:
-
-    var f = Field(mesh)
-    f["x", "y", "z"] // Causes 'FldInvldIndx'
-
-## FldInvldArg
-[tagfldinvldarg]: # (fldinvldarg)
-
-This error occurs when Field arithmetic methods receive invalid arguments. They expect a field or number:
-
-    var f = Field(mesh)
-    f + "string" // Causes 'FldInvldArg'
-
-## FldIncmptbl
+### FldIncmptbl
 [tagfldincmptbl]: # (fldincmptbl)
 
 This error occurs when fields have incompatible shapes:
@@ -1659,7 +1561,7 @@ This error occurs when fields have incompatible shapes:
     var f2 = Field(mesh2)
     f1 + f2 // Causes 'FldIncmptbl' if shapes incompatible
 
-## FldIncmptblVal
+### FldIncmptblVal
 [tagfldincmptblval]: # (fldincmptblval)
 
 This error occurs when an assignment value has an incompatible shape with field elements:
@@ -1667,15 +1569,24 @@ This error occurs when an assignment value has an incompatible shape with field 
     var f = Field(mesh)
     f[0, 0, 0] = Matrix([[1,2,3,4]]) // Causes 'FldIncmptblVal' if shape doesn't match
 
-## FldOp
+### FldKind
+[tagfldkind]: # (fldkind)
+
+This error occurs when a named Field constructor is given a function whose first return value is not of the advertised kind. `Field(mesh, fn)` infers the kind from that value; `ScalarField`, `MatrixField`, and `ComplexMatrixField` require a matching kind:
+
+    MatrixField(mesh, fn (x) 3.0) // Causes 'FldKind'
+
+### FldOp
 [tagfldop]: # (fldop)
 
-This error occurs when Field.op receives invalid arguments. It requires a callable object as the first argument and fields of compatible shape as other arguments:
+This error occurs when Field.op receives extra arguments that are not Fields:
 
     var f = Field(mesh)
-    f.op("not callable", f) // Causes 'FldOp'
+    f.op(fn (x) x, "not a field") // Causes 'FldOp'
 
-## FldOpFn
+A non-callable first argument raises `MltplDsptchFld` instead.
+
+### FldOpFn
 [tagfldopfn]: # (fldopfn)
 
 This error occurs when Field.op cannot construct a Field from the return value of the function:
@@ -1683,187 +1594,130 @@ This error occurs when Field.op cannot construct a Field from the return value o
     var f = Field(mesh)
     f.op(fn(x) { return "invalid" }, f) // Causes 'FldOpFn'
 
-## FnSpcArgs
+### FnSpcArgs
 [tagfnspcargs]: # (fnspcargs)
 
-This error occurs when a FunctionSpace is created with invalid arguments. It must be initialized with a label and a grade:
+This error occurs when `FiniteElementSpace` is given an invalid `grade` option. The constructor takes a label, with an optional integer grade:
 
-    FunctionSpace("invalid") // Causes 'FnSpcArgs'
+    FiniteElementSpace("CG1", grade="x") // Causes 'FnSpcArgs'
 
-## FnSpcNtFnd
+### FnSpcNtFnd
 [tagfnspcntfnd]: # (fnspcntfnd)
 
-This error occurs when a function space cannot be found:
+This error occurs when a function space cannot be found for the requested label and grade:
 
-    FunctionSpace.find("nonexistent", 1) // Causes 'FnSpcNtFnd'
+    FiniteElementSpace("nonexistent", grade=1) // Causes 'FnSpcNtFnd'
 
-## FnctlIntMsh
-[tagfnctlintmsh]: # (fnctlintmsh)
-
-This error occurs when a functional's integrand method requires a mesh as an argument but doesn't receive one:
-
-    var func = Length()
-    func.integrand() // Causes 'FnctlIntMsh'
-
-## FnctlELNtFnd
+### FnctlELNtFnd
 [tagfnctleltfnd]: # (fnctleltfnd)
 
-This error occurs when a mesh doesn't provide elements of the required grade:
+This error occurs when a mesh doesn't provide elements of the grade a functional maps over, or the functional cannot act on that grade:
 
-    var func = Length()
-    func.integrand(mesh) // Causes 'FnctlELNtFnd' if mesh lacks required grade
+    var func = Volume()
+    func.integrand(mesh) // Causes 'FnctlELNtFnd' on a surface mesh
 
-## FnctlArgs
+Jump raises the same error if parent connectivity for the interface grade is missing. GradSq raises it on line meshes, where the gradient is not implemented.
+
+### FnctlFESpc
+[tagfnctlfespc]: # (fnctlfespc)
+
+This error occurs when a Field's finite element space cannot be used with this functional. For example, integrating a line Field over area elements, or using a piecewise-constant (`CG0`) Field with `Jump` or `NormSq`:
+
+    AreaIntegral(fn (x, q) q, Field(m, grade=1)).total(m) // Causes 'FnctlFESpc' on a surface mesh
+
+### FnctlNoFESpc
+[tagfnctlnofespc]: # (fnctlnofespc)
+
+Line, area and volume integrals, and Jump, need a Field with a finite element space. This error is raised if the Field was created without one (`finiteelementspace=nil`). Leave that option off to use the default `CG1` space.
+
+    LineIntegral(fn (x, q) q, Field(m, finiteelementspace=nil)).total(m) // Causes 'FnctlNoFESpc'
+
+### FnctlArgs
 [tagfnctlargs]: # (fnctlargs)
 
-This error occurs when invalid arguments are passed to a functional method.
+This error occurs when a functional constructor or prepare step is given invalid arguments (a missing Field, reference mesh, or option). 
 
-## VolEnclZero
+    var func = Length()
+    func.integrand() // Causes 'MltplDsptchFld'
+
+### VolEnclZero
 [tagvolenclzero]: # (volenclzero)
 
 This error occurs when VolumeEnclosed detects an element of zero size. Check that a mesh point is not coincident with the origin:
 
     var func = VolumeEnclosed()
-    func.total(mesh) // Causes 'VolEnclZero' if element has zero size
+    func.total(mesh) // Causes 'VolEnclZero' if an element is coincident with the origin
 
-## LnElstctyRef
-[taglnelstctyref]: # (lnelstctyref)
-
-This error occurs when LinearElasticity requires a mesh as an argument but doesn't receive one:
-
-    var func = LinearElasticity()
-    func.total() // Causes 'LnElstctyRef'
-
-## LnElstctyPrp
-[taglnelstctyprp]: # (lnelstctyprp)
-
-This error occurs when LinearElasticity is missing required properties. It requires 'reference' to be a mesh, 'grade' to be an integer, and 'poissonratio' to be a number:
-
-    var func = LinearElasticity()
-    func.reference = "invalid" // Causes 'LnElstctyPrp'
-
-## HydrglArgs
-[taghydrglargs]: # (hydrglargs)
-
-This error occurs when Hydrogel receives invalid arguments. It requires a reference mesh and allows 'grade', 'a', 'b', 'c', 'd', 'phi0', and 'phiref' as optional arguments.
-
-## HydrglPrp
-[taghydrglprp]: # (hydrglprp)
-
-This error occurs when Hydrogel is missing required properties. It requires the first argument to be a mesh, 'grade' to be an integer, 'a', 'b', 'c', 'd', 'phiref' to be numbers, and 'phi0' to be a number or Field.
-
-## HydrglFldGrd
+### HydrglFldGrd
 [taghydrglfldgrd]: # (hydrglfldgrd)
 
-This error occurs when Hydrogel is given phi0 as a Field that lacks scalar elements in the required grade.
+This error occurs when Hydrogel is given `phi0` as a Field that lacks scalar elements in the grade Hydrogel maps over.
 
-## HydrglZrRfVl
+### HydrglZrRfVl
 [taghydrglzrrfvl]: # (hydrglzrrfvl)
 
-This error occurs when a Hydrogel reference element has a tiny volume. This is a warning.
+This warning occurs when a Hydrogel reference element has a tiny volume.
 
-## HydrglBnds
+### HydrglBnds
 [taghydrglbnds]: # (hydrglbnds)
 
-This error occurs when phi is outside bounds in a Hydrogel calculation. This is a warning.
+This warning occurs when `phi` is outside `(0, 1)` in a Hydrogel calculation. The value is clamped and evaluation continues.
 
-## EquiElArgs
-[tagequielargs]: # (equielargs)
-
-This error occurs when EquiElement receives invalid arguments. It allows 'grade' and 'weight' as optional arguments.
-
-## GradSqArgs
-[taggradsqargs]: # (gradsqargs)
-
-This error occurs when GradSq receives invalid arguments. It requires a field as the argument:
-
-    var func = GradSq()
-    func.total("invalid") // Causes 'GradSqArgs'
-
-## NmtcArgs
-[tagnmtcargs]: # (nmtcargs)
-
-This error occurs when Nematic receives invalid arguments. It requires a field as the argument:
-
-    var func = Nematic()
-    func.total("invalid") // Causes 'NmtcArgs'
-
-## NmtcElArgs
-[tagnmtcelargs]: # (nmtcelargs)
-
-This error occurs when NematicElectric receives invalid arguments. It requires the director and electric field or potential as arguments (in that order).
-
-## SclrPtFnCllbl
+### SclrPtFnCllbl
 [tagsclrptfncllbl]: # (sclrptfncllbl)
 
 This error occurs when a ScalarPotential function is not callable:
 
-    var func = ScalarPotential()
-    func.function = "invalid" // Causes 'SclrPtFnCllbl'
+    var a = ScalarPotential()
+    a.function = 0.4
+    a.integrand(mesh) // Causes 'SclrPtFnCllbl'
 
-## IntgrlArgs
+### IntgrlArgs
 [tagintgrlargs]: # (intgrlargs)
 
-This error occurs when an Integral functional receives invalid arguments. It requires a callable argument followed by zero or more Fields:
+This error occurs when an Integral or Jump is constructed with invalid arguments. It requires a callable, followed by zero or more Fields. `method`, if present, must be a Dictionary:
 
-    var func = LineIntegral()
-    func.total("invalid") // Causes 'IntgrlArgs'
+    LineIntegral(fn (x) x[0], method="Foo") // Causes 'IntgrlArgs'
 
-## IntgrlMthdDct
-[tagintgrlmthddct]: # (intgrlmthddct)
-
-This error occurs when an Integral's method argument is not a Dictionary containing configuration settings:
-
-    var func = LineIntegral()
-    func.method = "invalid" // Causes 'IntgrlMthdDct'
-
-## IntgrlFld
+### IntgrlFld
 [tagintgrlfld]: # (intgrlfld)
 
-This error occurs when an Integral cannot identify a field:
+This error occurs when `grad` or `hess` cannot tell which Field you mean. Pass the Field object, not the interpolated value, if more than one Field is in scope:
 
-    var func = LineIntegral()
-    func.total(fn(x) { return x }, "invalid") // Causes 'IntgrlFld'
+    AreaIntegral(fn (x, fl, gl) grad(fl).inner(grad(g)), f, g) // Causes 'IntgrlFld'
 
-## IntgrlGrdEvl
-[tagintgrlgrdevl]: # (intgrlgrdevl)
+### IntgrlDffEvl
+[tagintgrldffevl]: # (intgrldffevl)
 
-This error occurs when gradient evaluation fails in an Integral:
+This error occurs when `grad` or `hess` evaluation fails in an Integral, or the finite element space does not support that derivative.
 
-    var func = LineIntegral()
-    func.gradient(mesh) // Causes 'IntgrlGrdEvl' if evaluation fails
-
-## IntgrlAmbgsFld
-[tagintgrlambgsfld]: # (intgrlambgsfld)
-
-This error occurs when a field reference is ambiguous in an Integral. Call with a Field object:
-
-    var func = LineIntegral()
-    func.total(fn(x) { return x }) // Causes 'IntgrlAmbgsFld' if ambiguous
-
-## IntgrlNFlds
-[tagintgrlnflds]: # (intgrlnflds)
-
-This error occurs when an incorrect number of Fields is provided for an integrand function:
-
-    var func = LineIntegral()
-    func.total(fn(x, y) { return x + y }, field1) // Causes 'IntgrlNFlds' if wrong number
-
-## IntgrlSpclFn
+### IntgrlSpclFn
 [tagintgrlspclfn]: # (intgrlspclfn)
 
-This error occurs when a special function is called outside of an Integral:
+This error occurs when a special function such as `tangent`, `normal` or `grad` is used outside an Integral, or on the wrong grade of element:
 
-    tangent() // Causes 'IntgrlSpclFn' (must be called within integrand)
+    tangent() // Causes 'IntgrlSpclFn'
 
-## IntgrtrSbdvns
+### IntgrlNested
+[tagintgrlnested]: # (intgrlnested)
+
+This error occurs when an Integral or Jump is evaluated from inside another Integral or Jump integrand. Nested evaluation is not supported:
+
+    AreaIntegral(fn (x) LineIntegral(fn (y) 1).total(m)).total(m) // Causes 'IntgrlNested'
+
+### JumpUnimpl
+[tagjumpunimpl]: # (jumpunimpl)
+
+This error occurs when a Jump integrand uses an evaluation that is not implemented yet, such as a normal-derivative jump that the finite element space cannot provide.
+
+### IntgrtrSbdvns
 [tagintgrtrsbdvns]: # (intgrtrsbdvns)
 
 This error occurs when too many subdivisions are needed in evaluating an integral, possibly indicating a singularity:
 
     // Occurs during numerical integration when subdivision limit is exceeded
 
-## IntgrtrRlNtFnd
+### IntgrtrRlNtFnd
 [tagintgrtrrlntfnd]: # (intgrtrrlntfnd)
 
 This error occurs when an integrator quadrature rule cannot be found:
@@ -1871,64 +1725,66 @@ This error occurs when an integrator quadrature rule cannot be found:
     var method = {"rule": "nonexistent"}
     // Causes 'IntgrtrRlNtFnd' when rule doesn't exist
 
-## IntgrtrRlUnavlb
+### IntgrtrRlUnavlb
 [tagintgrtrrlunavlb]: # (intgrtrrlunavlb)
 
-This error occurs when no quadrature rule is available that matches the provided integrator method dictionary:
+This error occurs when no quadrature rule is available that matches the provided integrator method dictionary, including `"hybrid2d"` used outside two dimensions:
 
     var method = {"rule": "invalid", "degree": 100}
     // Causes 'IntgrtrRlUnavlb' if no matching rule
 
-## IntgrtrMthdTyp
+### IntgrtrMthdTyp
 [tagintgrtrmthdtyp]: # (intgrtrmthdtyp)
 
-This error occurs when an integrator method dictionary option has the wrong type:
+This error occurs when an integrator method dictionary option has the wrong type, or when `errornorm` is not `"max"` or `"sum"`:
 
-    var method = {"rule": 123} // Causes 'IntgrtrMthdTyp' if rule must be string
+    var method = {"rule": 123} // Causes 'IntgrtrMthdTyp' since rule must be a String
+    LineIntegral(fn (x) x[0], method={ "errornorm": "l2" }) // Causes 'IntgrtrMthdTyp'
+    LineIntegral(fn (x) x[0], method={ "tol": "tight" }) // Causes 'IntgrtrMthdTyp'
 
-## DbgSymbl
+### DbgSymbl
 [tagdbgsymbl]: # (dbgsymbl)
 
 This error occurs in the debugger when a symbol cannot be found in the current context:
 
     // Occurs when debugging and accessing a symbol that doesn't exist
 
-## DbgSymblPrpty
+### DbgSymblPrpty
 [tagdbgsymblprpty]: # (dbgsymblprpty)
 
 This error occurs in the debugger when a symbol lacks a requested property:
 
     // Occurs when debugging and accessing a property that doesn't exist
 
-## DbgInvldRg
+### DbgInvldRg
 [tagdbginvldrg]: # (dbginvldrg)
 
 This error occurs in the debugger when an invalid register is accessed:
 
     // Occurs when debugging and accessing an invalid register
 
-## DbgInvldGlbl
+### DbgInvldGlbl
 [tagdbginvldglbl]: # (dbginvldglbl)
 
 This error occurs in the debugger when an invalid global is accessed:
 
     // Occurs when debugging and accessing an invalid global
 
-## DbgInvldInstr
+### DbgInvldInstr
 [tagdbginvldinstr]: # (dbginvldinstr)
 
 This error occurs in the debugger when an invalid instruction is encountered:
 
     // Occurs when debugging and encountering an invalid instruction
 
-## DbgRgObj
+### DbgRgObj
 [tagdbgrgobj]: # (dbgrgobj)
 
 This error occurs in the debugger when a register doesn't contain an object:
 
     // Occurs when debugging and expecting an object in a register
 
-## DbgStPrp
+### DbgStPrp
 [tagdbgstprp]: # (dbgstprp)
 
 This error occurs in the debugger when attempting to set a property on an object that doesn't support it:

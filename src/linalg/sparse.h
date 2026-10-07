@@ -19,7 +19,7 @@
  * Sparse objects
  * ------------------------------------------------------- */
 
-extern objecttype objectdokkeytype;
+extern MORPHO_API objecttype objectdokkeytype;
 #define OBJECT_DOKKEY objectdokkeytype
 
 /** The dictionary of keys format uses this special object type to store indices, enabling use of the existing dictionary type.
@@ -64,7 +64,7 @@ typedef struct {
     double *values; // Values
 } sparseccs;
 
-extern objecttype objectsparsetype;
+extern MORPHO_API objecttype objectsparsetype;
 #define OBJECT_SPARSE objectsparsetype
 
 typedef struct {

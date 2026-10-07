@@ -15,7 +15,7 @@ print m
 print (a.total(m) - 2*sqrt(2)) < 1e-5
 // expect: true
 
-print (a.integrand(m) - Matrix([ 2*sqrt(2) ])).norm() < 1e-5
+print (a.integrand(m) - Field(m, 2*sqrt(2), grade=1)).norm() < 1e-5
 // expect: true
 
 print (a.gradient(m) - numericalgradient(a, m)).norm() < 1e-5

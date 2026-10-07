@@ -1,0 +1,7 @@
+// Top-level var rebind clears callable metadata
+
+fn f(x) { return x }
+
+var f = 3
+print f
+// expect: 3

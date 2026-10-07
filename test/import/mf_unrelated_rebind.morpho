@@ -1,0 +1,7 @@
+// Unrelated modules that export the same name rebind; they do not merge
+
+import "mf_provider.m" for f
+import "mf_provider_b.m" for f
+
+print f(1.5)
+// expect: float

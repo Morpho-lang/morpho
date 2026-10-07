@@ -3,14 +3,6 @@ target_sources(morpho
         morpho.h build.h
 )
 
-target_sources(morpho
-    INTERFACE
-    FILE_SET public_headers
-    TYPE HEADERS
-    FILES
-        morpho.h build.h
-)
-
 add_subdirectory(builtin)
 add_subdirectory(classes)
 add_subdirectory(core)

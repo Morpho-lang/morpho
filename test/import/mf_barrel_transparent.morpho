@@ -1,0 +1,15 @@
+// Transparent barrel re-export keeps the same origin, so a local extension is preserved
+
+import "mf_provider.m" for f
+
+fn f(List x) {
+    return "list"
+}
+
+import "mf_barrel.m" for f
+
+print f([])
+// expect: list
+
+print f("Hi")
+// expect: string

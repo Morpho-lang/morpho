@@ -8,9 +8,9 @@ print a.respondsto("respondsto") // expect: true
 
 print islist(a.respondsto()) // expect: true
 
-print a.clss() // expect: @Field
+print a.clss() // expect: @ScalarField
 
-print a.superclass() // expect: @Object
+print a.superclass() // expect: @Field
 
 print islist(a.invoke("respondsto")) // expect: true
 

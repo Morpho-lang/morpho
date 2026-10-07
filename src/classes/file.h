@@ -15,7 +15,7 @@
  * File objects
  * ------------------------------------------------------- */
 
-extern objecttype objectfiletype;
+extern MORPHO_API objecttype objectfiletype;
 #define OBJECT_FILE objectfiletype
 
 typedef struct {
@@ -45,6 +45,8 @@ typedef struct {
 #define FILE_EOF          "eof"
 #define FILE_RELATIVEPATH "relativepath"
 #define FILE_FILENAME     "filename"
+#define FILE_ISFILE       "isFile"
+#define FILE_EXISTS       "exists"
 
 #define FILE_READMODE     "read"
 #define FILE_WRITEMODE    "write"

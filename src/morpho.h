@@ -78,23 +78,23 @@ typedef void compiler;
 #define MORPHO_THROW_METHOD "throw"
 #define MORPHO_WARNING_METHOD "warning"
 
-extern value initselector;
-extern value indexselector;
-extern value setindexselector;
-extern value addselector;
-extern value addrselector;
-extern value subselector;
-extern value subrselector;
-extern value mulselector;
-extern value mulrselector;
-extern value divselector;
-extern value divrselector;
-extern value powselector;
-extern value powrselector;
-extern value printselector;
-extern value enumerateselector;
-extern value countselector;
-extern value cloneselector;
+extern MORPHO_API value initselector;
+extern MORPHO_API value indexselector;
+extern MORPHO_API value setindexselector;
+extern MORPHO_API value addselector;
+extern MORPHO_API value addrselector;
+extern MORPHO_API value subselector;
+extern MORPHO_API value subrselector;
+extern MORPHO_API value mulselector;
+extern MORPHO_API value mulrselector;
+extern MORPHO_API value divselector;
+extern MORPHO_API value divrselector;
+extern MORPHO_API value powselector;
+extern MORPHO_API value powrselector;
+extern MORPHO_API value printselector;
+extern MORPHO_API value enumerateselector;
+extern MORPHO_API value countselector;
+extern MORPHO_API value cloneselector;
 
 /* **********************************************************************
 * Public interfaces
@@ -123,6 +123,8 @@ void morpho_freevm(vm *v);
 /* Bind new objects to the virtual machine */
 void morpho_bindobjects(vm *v, int nobj, value *obj);
 void morpho_bindrecursive(vm *v, value obj);
+bool morpho_bindtoparent(object *obj, object *parent);
+bool morpho_ischildobject(object *obj);
 value morpho_wrapandbind(vm *v, object *obj);
 value morpho_wrapandbindrecursive(vm *v, object *obj);
 
@@ -132,7 +134,8 @@ void morpho_markvalue(void *v, value val);
 void morpho_markvarrayvalue(void *v, varray_value *array);
 void morpho_markdictionary(void *v, dictionary *dict);
 void morpho_searchunmanagedobject(void *v, object *obj);
-bool morpho_ismanagedobject(object *obj); 
+bool morpho_ismanagedobject(object *obj);
+void morpho_collectgarbage(vm *v); 
 
 /* Tell the VM that the size of an object has changed */
 void morpho_resizeobject(vm *v, object *obj, size_t oldsize, size_t newsize);

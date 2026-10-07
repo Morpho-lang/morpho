@@ -1,0 +1,33 @@
+// Shape gradient for f(q)-only VolumeIntegral vs finite-difference of .total
+
+import meshtools
+import "../numericalderivatives.morpho"
+
+var mb = MeshBuilder()
+mb.addvertex([0,0,0])
+mb.addvertex([1,0,0])
+mb.addvertex([0,1,0])
+mb.addvertex([0,0,1])
+mb.addvolume([0,1,2,3])
+var m = mb.build()
+
+var q = Field(m, fn (x,y,z) y)
+
+fn fq(x, qv) {
+    return qv^2
+}
+
+var lv = VolumeIntegral(fq, q)
+print (lv.gradient(m) - numericalgradient(lv, m)).norm() < 1e-5
+// expect: true
+
+fn usesx(x, qv) {
+    return x[0]*qv
+}
+
+var sx = VolumeIntegral(usesx, q)
+var sxo = VolumeIntegral(usesx, q, optimize=false)
+print (sx.gradient(m) - sxo.gradient(m)).norm() < 1e-5
+// expect: true
+print (sx.gradient(m) - numericalgradient(sx, m)).norm() < 1e-5
+// expect: true

@@ -1,0 +1,99 @@
+// Field kinds: factory, named constructors, inheritance, isfield, MD
+
+var m = Mesh("square.mesh")
+print m
+// expect: <Mesh: 4 vertices>
+
+var sf = Field(m)
+print sf.clss()
+// expect: @ScalarField
+print sf.superclass()
+// expect: @Field
+print isfield(sf)
+// expect: true
+
+var sf2 = ScalarField(m)
+print sf2.clss()
+// expect: @ScalarField
+
+var cf = Field(m, 1+2im)
+print cf.clss()
+// expect: @ComplexField
+print cf.superclass()
+// expect: @Field
+print isfield(cf)
+// expect: true
+
+var cf2 = ComplexField(m)
+print cf2.clss()
+// expect: @ComplexField
+print cf2[0]
+// expect: 0 + 0im
+
+var cf3 = ComplexField(m, 3)
+print cf3[0]
+// expect: 3 + 0im
+
+var mf = MatrixField(m, Matrix(2, 1))
+print mf.clss()
+// expect: @MatrixField
+print isfield(mf)
+// expect: true
+
+var cmf = ComplexMatrixField(m, ComplexMatrix(2, 1))
+print cmf.clss()
+// expect: @ComplexMatrixField
+print isfield(cmf)
+// expect: true
+
+// ComplexField is a Field for typechecks and MD
+Field typed = cf
+print typed.clss()
+// expect: @ComplexField
+
+fn asfield(Field x) { return "Field" }
+fn asfield(ComplexField x) { return "ComplexField" }
+
+print asfield(sf)
+// expect: Field
+print asfield(cf)
+// expect: ComplexField
+
+fn onlyfield(Field x) { return true }
+print onlyfield(sf)
+// expect: true
+print onlyfield(cf)
+// expect: true
+print onlyfield(mf)
+// expect: true
+print onlyfield(cmf)
+// expect: true
+
+var sffn = ScalarField(m, fn (x, y, z) x)
+print sffn.clss()
+// expect: @ScalarField
+
+var mffn = MatrixField(m, fn (x, y, z) Matrix([1, 0]))
+print mffn.clss()
+// expect: @MatrixField
+
+var cmffn = ComplexMatrixField(m, fn (x, y, z) ComplexMatrix([1+im, 0]))
+print cmffn.clss()
+// expect: @ComplexMatrixField
+
+var cffn = ComplexField(m, fn (x, y, z) x+im)
+print cffn.clss()
+// expect: @ComplexField
+
+print Field(m, fn (x, y, z) Matrix([1, 0])).clss()
+// expect: @MatrixField
+
+// Empty mesh: sample fn at the origin so the advertised kind is still built
+var empty = Mesh()
+var emf = MatrixField(empty, fn (x, y, z) Matrix([1, 0]))
+print emf.clss()
+// expect: @MatrixField
+print emf.count()
+// expect: 0
+print ScalarField(empty, fn (x, y, z) 1.0).clss()
+// expect: @ScalarField

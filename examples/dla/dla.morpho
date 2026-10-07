@@ -3,6 +3,7 @@
 import kdtree
 import color
 import graphics
+import morphoview
 import povray
 
 var Np = 100 // Number of particles to add

@@ -1,0 +1,5 @@
+var m = Mesh("square.mesh")
+var a = Area()
+
+print a.integrand(m, 999)
+// expect error 'IndxBnds'

@@ -1,0 +1,10 @@
+// A barrel that extends f publishes a new origin and rebinds
+
+import "mf_provider.m" for f
+import "mf_barrel_extend.m" for f
+
+print f([])
+// expect: list
+
+print f("Hi")
+// expect: string

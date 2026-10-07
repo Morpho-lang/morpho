@@ -1,0 +1,8 @@
+// fn after class occupies the name with a callable snapshot
+
+class Foo { }
+
+fn Foo() { return "fn" }
+
+print Foo()
+// expect: fn

@@ -54,9 +54,6 @@
 #define COMPILE_CLASSINHERITSELF          "ClssCrcRf"
 #define COMPILE_CLASSINHERITSELF_MSG      "A class cannot inherit from itself."
 
-#define COMPILE_TOOMANYARGS               "TooMnyArg"
-#define COMPILE_TOOMANYARGS_MSG           "Too many arguments."
-
 #define COMPILE_TOOMANYPARAMS             "TooMnyPrm"
 #define COMPILE_TOOMANYPARAMS_MSG         "Too many parameters."
 
@@ -291,6 +288,10 @@ typedef struct scompiler {
     
     /* Globals */
     dictionary globals;
+    
+    /* Top-level callable bindings: name -> snapshot, name -> import origin */
+    dictionary callables;
+    dictionary origins;
     
     /* Classes */
     dictionary classes;

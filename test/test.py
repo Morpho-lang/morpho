@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 # Simple automated testing
-# T J Atherton Sept 2020
+# T J Atherton Sept 2020-26
 #
 # Each input file is supplied to a test command, the results
 # are piped to a file and the output is compared with expectations
 # extracted from the input file.
 # Expectations are coded into comments in the input file as follows:
+#
+#   // expect: VALUE          - match a printed line
+#   // expect error 'TAG'     - match an error with that tag
+#                               (also // expect: Error 'TAG' and optional colons)
 
 # import necessary modules
-import os, glob, sys, subprocess
+import os, glob, sys, subprocess, signal
 import regex as rx
 from functools import reduce
 import operator
@@ -44,10 +48,9 @@ def simplify_stacktrace(str):
 def findvalue(str):
     return rx.findall(r'// expect: ?(.*)', str)
 
-# Find an expected error
+# Find an expected error: // expect error 'TAG' (not incidental mentions of "error")
 def finderror(str):
-    #return rx.findall(r'\/\/ expect ?(.*) error', str)
-    return rx.findall(r'.*[E|e]rror[ :].*?(.*)', str)
+    return rx.findall(r'//\s*expect:?\s*[Ee]rror:?\s*\'([A-Za-z0-9]+)\'', str)
 
 # Find an expected error
 def iserror(str):
@@ -73,12 +76,10 @@ def remove(list, remove_list):
 
 # Find what is expected
 def findexpected(str):
-    out = finderror(str) # is it an error?
-    if (out!=[]):
-        out = [simplify_errors(str)] # if so, simplify it
-    else:
-        out = findvalue(str) # or something else?
-    return out
+    tags = finderror(str) # is it an error?
+    if tags:
+        return [err + '[' + tags[0] + ']']
+    return findvalue(str) # or something else?
 
 # Works out what we expect from the input file
 def getexpect(filepath):
@@ -113,6 +114,40 @@ def getoutput(filepath):
     # and remove them
     return list(filter(lambda x: x!=stk, lines))
 
+# Fatal signals. Other non-zero exits are Morpho errors and are judged from the output.
+_CRASH_SIGNALS = {}
+for _sig, _name in (
+    ("SIGSEGV", "SIGSEGV"),
+    ("SIGABRT", "SIGABRT"),
+    ("SIGBUS", "SIGBUS"),
+    ("SIGILL", "SIGILL"),
+    ("SIGFPE", "SIGFPE"),
+    ("SIGSYS", "SIGSYS"),
+    ("SIGTRAP", "SIGTRAP"),
+):
+    _num = getattr(signal, _sig, None)
+    if _num is not None:
+        _CRASH_SIGNALS[_num] = _name
+
+# Windows process statuses for the same class of crash.
+_CRASH_STATUS = {
+    0xC0000005: "ACCESS_VIOLATION",
+    0xC00000FD: "STACK_OVERFLOW",
+    0xC0000094: "INTEGER_DIVIDE_BY_ZERO",
+    0xC000001D: "ILLEGAL_INSTRUCTION",
+    0xC0000096: "PRIVILEGED_INSTRUCTION",
+    0xC000008E: "FLOAT_DIVIDE_BY_ZERO",
+    0xC0000409: "STACK_BUFFER_OVERRUN",
+    0xC0000374: "HEAP_CORRUPTION",
+}
+
+def crash_name(returncode):
+    if returncode is None:
+        return None
+    if returncode < 0:
+        return _CRASH_SIGNALS.get(-returncode)
+    return _CRASH_STATUS.get(returncode & 0xFFFFFFFF)
+
 # Test a file
 def test(file,testLog,CI):
     ret = 0
@@ -134,8 +169,24 @@ def test(file,testLog,CI):
         # Get the output
         out=getoutput(tmp)
 
-        # Was it expected? (ignore exit code; error tests intentionally exit non-zero)
-        if expected==out:
+        # A crash fails even when the printed lines match.
+        # Other non-zero exits are ignored; error tests leave on purpose.
+        crash = crash_name(result.returncode)
+        if crash:
+            if not CI:
+                print(stylize("Failed",colored.fg("red")))
+                print("  Crashed: ", crash)
+                print("  Expected: ", expected)
+                print("    Output: ", out)
+            else:
+                print("\n::error file = {",file,"}::{",file," Crashed: ", crash, "}")
+            print(file+":", end=" ",file = testLog)
+            print("Failed", file = testLog)
+            print("  Crashed: ", crash, file = testLog)
+            print("  Expected: ", expected, file = testLog)
+            print("    Output: ", out, file = testLog)
+            print("\n",file = testLog)
+        elif expected==out:
             if not CI:
                 print(stylize("Passed",colored.fg("green")))
             ret = 1
@@ -198,11 +249,19 @@ if MT:
     command += " -w4" 
     print("Running tests with 4 threads")
 
+def is_serial_only(filepath):
+    with open(filepath, encoding="utf8") as f:
+        for line in f:
+            if "[CI:Serial]" in line:
+                return True
+    return False
+
 files=glob.glob('**/**.'+ext, recursive=True)
 with open(failedTestsFileName,'w', encoding="utf8") as testLog:
 
     for f in files:
-        # print(f)
+        if MT and is_serial_only(f):
+            continue
         success+=test(f,testLog,CI)
         total+=1
 

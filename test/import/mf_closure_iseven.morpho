@@ -1,0 +1,9 @@
+// Fresh unqualified import of a closure-bearing top-level export
+
+import "mf_closure_provider.m" for isEven
+
+print isEven(4)
+// expect: true
+
+print isEven(3)
+// expect: true

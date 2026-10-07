@@ -1,0 +1,4 @@
+var m = Mesh("square.mesh")
+var f = Field(m)
+f.evalElement("x", [0, 0])
+// expect error 'MltplDsptchFld'

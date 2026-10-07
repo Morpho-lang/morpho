@@ -6,3 +6,28 @@ print Pi
 // expect: 3.14159
 print E
 // expect: 2.71828
+
+print abs(180*Degree - Pi) < 1e-15
+// expect: true
+print GoldenRatio > 1 && GoldenRatio < 2
+// expect: true
+
+print isinf(Inf)
+// expect: true
+print isnan(NaN)
+// expect: true
+print Inf > 0
+// expect: true
+
+print isfloat(SpeedOfLight) && SpeedOfLight == 299792458.0
+// expect: true
+print abs(Hbar - Planck/(2*Pi)) < 1e-50
+// expect: true
+print abs(GasConstant - Avogadro*Boltzmann) < 1e-30
+// expect: true
+print abs(Mu0 - 1/(Epsilon0*SpeedOfLight^2)) < 1e-24
+// expect: true
+print abs(ElectronVolt - ElementaryCharge) < 1e-30
+// expect: true
+print StandardGravity
+// expect: 9.80665

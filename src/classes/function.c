@@ -58,6 +58,7 @@ void object_functioninit(objectfunction *func) {
     func->creg=-1;
     func->isrecursive=false;
     func->nregs=0;
+    func->end=-1;
     varray_valueinit(&func->konst);
     varray_varray_upvalueinit(&func->prototype);
     signature_init(&func->sig);

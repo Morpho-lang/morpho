@@ -6,6 +6,9 @@ print m
 
 var f = Field(m, Matrix(2,2))
 
+print f.clss()
+// expect: @MatrixField
+
 print f[0]
 // expect: [ 0 0 ]
 // expect: [ 0 0 ]
@@ -14,11 +17,17 @@ f[1]=f[0]=Matrix([[1,0],[0,1]])
 
 var g = f+f
 
+print g.clss()
+// expect: @MatrixField
+
 print g[1]
 // expect: [ 2 0 ]
 // expect: [ 0 2 ]
 
 var h = Field(m, fn (x,y,z) Matrix([[cos(x),0],[0,sin(x)]]))
+
+print h.clss()
+// expect: @MatrixField
 
 print h[1]
 // expect: [ 0.540302 0 ]

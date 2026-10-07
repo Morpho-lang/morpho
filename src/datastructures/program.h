@@ -51,13 +51,13 @@ typedef struct sprogram {
     varray_globalinfo globals; /** Global variables */
     varray_value classes; /** Classes defined by this program */
     object *boundlist; /** Linked list of static objects bound to this program */
-    dictionary symboltable; /** The symbol table */
 } program;
 
 #define MORPHO_PROGRAMSTART 0
 void program_setentry(program *p, instructionindx entry);
 instructionindx program_getentry(program *p);
 varray_instruction *program_getbytecode(program *p);
+bool program_getinstruction(program *p, instructionindx i, instruction *out);
 objectfunction *program_getglobalfn(program *p);
 void program_bindobject(program *p, object *obj);
 

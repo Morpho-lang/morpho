@@ -1,0 +1,13 @@
+// Constructor (Mesh) with named options; grade from mesh_maxgrade or grade=
+var m = Mesh("tetrahedron.mesh")
+
+var h = Hydrogel(m, a=0.1, b=1.0, c=0.25, d=1.0, phiref=0.1, phi0=0.5)
+print h.grade
+// expect: 3
+
+var h1 = Hydrogel(m, grade=1)
+print h1.grade
+// expect: 1
+
+print Hydrogel()
+// expect error 'MltplDsptchFld'

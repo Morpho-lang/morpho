@@ -8,6 +8,7 @@ This example demonstrates the following features of morpho:
 import meshtools
 import optimize
 import plot
+import morphoview
 import povray
 
 // Define parameters that control the script options
@@ -42,7 +43,7 @@ bnd.addgrade(0) // add point elements
 Since a 2D Q-tensor for a uniaxial nematic is symmetric and traceless, there are only two independent components, Qxx and Qxy. We thus define the q_tensor to be a 2D vector, with its components being Qxx and Qxy. We initialize it to be zero and add a random noise of 1% strength as a perturbation to start the gradient descent. The Q-tensor usually takes values of order 1, so we can use 0.01*random(1) as the initial 1% noise.
 */
 
-var q_tensor = Field(m, fn(x,y,z) Matrix([0.01*random(1), 0.01*random(1)]))
+var q_tensor = Field(m, fn(x,y,z) Matrix([0.01*random(), 0.01*random()]))
 
 // Define various components of the energy.
 // Since these functions are meant to be arguments to AreaIntegral and LineIntegral, their first input argument has to be the position vector `x`. The field argument (the q-tensor in our case) comes after.
@@ -111,9 +112,9 @@ This function returns a `Graphics()` object that has the director field visualiz
 1. m is the mesh
 2. nn is the director field and
 3. dl is the half-length of the cylinders to be drawn. 
-4. aspectratio (optional argument) is the aspect ratio of the cylinders. (default is 0.3 here)
+4. aspectratio (optional argument) is the aspect ratio of the cylinders. (default is 0.15 here)
 */
-fn visualize(m, nn, dl, aspectratio=0.3) {
+fn visualize(m, nn, dl, aspectratio=0.15) {
   var v = m.vertexmatrix()
   var nv = v.dimensions()[1]
   var g = Graphics()
@@ -133,15 +134,13 @@ if (refine_adaptively){
     // Select elements that have a large contribution to the elastic energy
     var en = elastic.integrand(q_tensor)
     var mean = en.sum()/en.count()
-    var srefine = Selection(m) // Start with an empty selection
-    for (id in 0...en.count()) if (en[0,id]>1.5*mean) srefine[2,id]=true // Identify high (compared to the mean) energy elements
+    var srefine = Selection(m, fn (q) q>1.5*mean, en)
   
     // Visualize the selected region for refimenemt 
     
     if (visualize_refinement){
-      var gs = plotselection(m, srefine, grade=2)
-      var nn = Field(m, Matrix([1,0,0])) // Initialize to some vector
-      for (i in 0...m.count()) nn[i]=qtodirector(q_tensor[i])
+      var gs = Plot(srefine, grade=2, style=["shaded", "thick"])
+      var nn = q_tensor.op(qtodirector)
       var gnn=visualize(m, nn, 0.05)
       Show(gs+gnn)
     }
@@ -164,7 +163,7 @@ if (refine_adaptively){
     equiangulate(m)
   
     // Visualize the refined mesh at each stage
-    if (visualize_refinement) Show(plotmesh(m, grade=1))
+    if (visualize_refinement) Show(Plot(m, grade=1, style="thick"))
   
     opt.conjugategradient(iters)
   }
@@ -175,18 +174,15 @@ if (refine_adaptively){
   
 // Convert the q-tensor to the director and order
 
-var nn = Field(m, Matrix([1,0,0])) // Initialize to some vector
-for (i in 0...m.count()) nn[i]=qtodirector(q_tensor[i])
-
-var S = Field(m, 0) // Initialize to a scalar
-for (i in 0...m.count()) S[i]=qtoorder(q_tensor[i])
+var nn = q_tensor.op(qtodirector)
+var S = q_tensor.op(qtoorder)
 
 // Plot the scalar order field
-var splot = plotfield(S, style="interpolate", colormap = ViridisMap(), scalebar=ScaleBar(posn=[1.2,0,0]))
+var splot = Plot(S, style="interpolate", colormap = ViridisMap(), scalebar=ScaleBar(posn=[1.2,0,0]))
 // Plot the director using the visualize function we wrote above
 var gnn=visualize(m, nn, 0.05)
 
-// Both `plotfield` and `visualize` return a Graphics object. We can just add the two to get the final plot 
+// Both `Plot` and `visualize` return a Graphics object. We can just add the two to get the final plot 
 var gdisp = splot+gnn
 
 // Generate a POVRaytracer object using the Graphics() object

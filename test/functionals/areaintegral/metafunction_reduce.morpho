@@ -1,0 +1,44 @@
+// Metafunction kernels are reduced once per map from known arg types
+import meshtools
+
+var m = AreaMesh(fn (x,y) [x,y,0], 0..1:0.5, 0..1:0.5)
+
+fn kernel(Matrix x) {
+    return x[0]*x[1]
+}
+
+fn kernel(Matrix x, Float q) {
+    return q^2
+}
+
+fn kernel(Matrix x, Matrix n) {
+    return n[0]*n[1]
+}
+
+print abs(AreaIntegral(kernel).total(m) - 0.25) < 1e-8
+// expect: true
+
+var qs = Field(m, fn (x,y,z) x)
+print abs(AreaIntegral(kernel, qs).total(m) - AreaIntegral(fn (x, q) q^2, qs).total(m)) < 1e-8
+// expect: true
+
+var qv = Field(m, fn (x,y,z) Matrix([x,y,z]))
+print abs(AreaIntegral(kernel, qv).total(m) - 0.25) < 1e-8
+// expect: true
+
+// Local fieldgradient path remains available after reduce
+var a = AreaIntegral(kernel, qs)
+var g = a.fieldgradient(qs)
+var ng = qs.clone()
+var eps = 1e-8
+for (i in 0...qs.count()) {
+    var q0 = qs[i]
+    qs[i] = q0+eps
+    var fr = a.total(m)
+    qs[i] = q0-eps
+    var fl = a.total(m)
+    qs[i] = q0
+    ng[i] = (fr-fl)/(2*eps)
+}
+print (g-ng).linearize().norm() < 1e-6
+// expect: true

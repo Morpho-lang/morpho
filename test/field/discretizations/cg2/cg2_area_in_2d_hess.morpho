@@ -20,7 +20,7 @@ fn integrand(x, q) {
     return 0
 }
 
-print AreaIntegral(integrand, f, method={}).total(m)
+print AreaIntegral(integrand, f).total(m)
 // expect: 0
 
 print out

@@ -10,13 +10,22 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <complex.h>
+#include <stdio.h>
 #include "varray.h"
 
 #ifdef _WIN32
-#include <windows.h>
+    #ifndef WIN32_LEAN_AND_MEAN // Avoid unnecessary headers
+        #define WIN32_LEAN_AND_MEAN 
+    #endif
+
+    #ifndef NOMINMAX // Prevent windows min/max definitions
+        #define NOMINMAX 
+    #endif
+
+    #include <windows.h>
 #else
-#include <dirent.h>
-#include <pthread.h>
+    #include <dirent.h>
+    #include <pthread.h>
 #endif
 
 /* -------------------------------------------------------
@@ -85,6 +94,8 @@ bool MCEq(MorphoComplex a, MorphoComplex b);
 
 size_t platform_maxpathsize(void);
 bool platform_isdirectory(const char *path);
+bool platform_isfile(const char *path);
+bool platform_exists(const char *path);
 bool platform_normalizepath(const char *path, size_t n, char *out);
 bool platform_makedirectory(const char *path, bool recurse);
 bool platform_setcurrentdirectory(const char *path);
@@ -118,6 +129,9 @@ typedef void* MorphoDLHandle;
 MorphoDLHandle platform_dlopen(const char *path);
 void platform_dlclose(MorphoDLHandle handle);
 void *platform_dlsym(MorphoDLHandle handle, const char *symbol);
+
+FILE *platform_popen(const char *cmd, const char *mode);
+int platform_pclose(FILE *pipe);
 
 bool morpho_isdirectory(const char *path);
 
@@ -156,6 +170,16 @@ void MorphoCond_clear(MorphoCond *cond);
 void MorphoCond_signal(MorphoCond *cond);
 void MorphoCond_broadcast(MorphoCond *cond);
 void MorphoCond_wait(MorphoCond *cond, MorphoMutex *mutex);
+
+/* -------------------------------------------------------
+ * Atomics
+ * ------------------------------------------------------- */
+
+int MorphoAtomic_addint(int *p, int inc);
+void MorphoAtomic_adddouble(double *p, double inc);
+void MorphoAtomic_madddouble(double *p, double alpha, double x);
+bool MorphoAtomic_loadbool(bool *p);            /* return *p */
+void MorphoAtomic_storebool(bool *p, bool val); /* *p <- val */
 
 /* -------------------------------------------------------
  * Time

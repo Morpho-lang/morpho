@@ -7,20 +7,24 @@
  *  - Complex numbers for platforms that do not fully implement C99
  *  - Navigating the file system
  *  - APIs for opening dynamic libraries
- *  - APIs for using threads 
+ *  - APIs for using threads
+ *  - Atomics
  *  - Functions that involve time */
 
 #define _GNU_SOURCE
 
-#ifdef _WIN32
-    #include <windows.h>
-    #include <wincrypt.h>
-#else
-    #ifndef __APPLE__ // _POSIX_C_SOURCE Causes problems with qsort_r on apple
+#ifndef _WIN32
+    #ifndef __APPLE__
         #define _POSIX_C_SOURCE 199309L
     #endif
+#endif
+
+#include "platform.h"
+
+#ifdef _WIN32
+    #include <wincrypt.h>
+#else
     #include <unistd.h>
-    #include <dirent.h>
     #include <sys/stat.h>
     #include <sys/types.h>
     #include <sys/time.h>
@@ -33,9 +37,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include <float.h>
+#include <math.h>
 #include "build.h"
-#include "platform.h"
 #include "error.h"
 
 /* **********************************************************************
@@ -170,9 +175,31 @@ bool platform_isdirectory(const char *path) {
     return (attributes & FILE_ATTRIBUTE_DIRECTORY);
 #else
    struct stat statbuf;
-   if (stat(path, &statbuf) != 0)
-       return 0;
+   if (stat(path, &statbuf) != 0) return 0;
    return (bool) S_ISDIR(statbuf.st_mode);
+#endif
+}
+
+/** Tests if an object at path corresponds to a regular file */
+bool platform_isfile(const char *path) {
+#ifdef _WIN32
+    DWORD attributes = GetFileAttributes(path);
+    if (attributes==INVALID_FILE_ATTRIBUTES) return false;
+    return (attributes & FILE_ATTRIBUTE_DIRECTORY)==0;
+#else
+   struct stat statbuf;
+   if (stat(path, &statbuf) != 0) return false;
+   return (bool) S_ISREG(statbuf.st_mode);
+#endif
+}
+
+/** Tests if a path exists */
+bool platform_exists(const char *path) {
+#ifdef _WIN32
+    return GetFileAttributes(path)!=INVALID_FILE_ATTRIBUTES;
+#else
+    struct stat statbuf;
+    return stat(path, &statbuf)==0;
 #endif
 }
 
@@ -344,7 +371,11 @@ bool platform_directorycontents(MorphoDirContents *contents, char *buffer, size_
 /** Opens a dynamic library, returning a handle for future use */
 MorphoDLHandle platform_dlopen(const char *path) {
 #ifdef _WIN32
-    return LoadLibrary((LPCSTR) path);
+    /* Search the plugin folder for dependent DLLs, then the usual locations including PATH. */
+    char tmp[MAX_PATH];
+    DWORD needed = GetFullPathNameA(path, MAX_PATH, tmp, NULL);
+    if (needed == 0 || needed >= MAX_PATH) return NULL;
+    return LoadLibraryExA(tmp, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
 #else
     return dlopen(path, RTLD_LAZY);
 #endif
@@ -365,6 +396,26 @@ void *platform_dlsym(MorphoDLHandle handle, const char *symbol) {
     return (void *) GetProcAddress(handle, symbol);
 #else 
     return dlsym(handle, symbol);
+#endif
+}
+
+/* **********************************************************************
+ * System command execution
+ * ********************************************************************** */
+
+FILE *platform_popen(const char *cmd, const char *mode) {
+#ifdef _WIN32
+    return _popen(cmd, mode);
+#else
+    return popen(cmd, mode);
+#endif
+}
+
+int platform_pclose(FILE *pipe) {
+#ifdef _WIN32
+    return _pclose(pipe);
+#else
+    return pclose(pipe);
 #endif
 }
 
@@ -495,6 +546,96 @@ void MorphoCond_wait(MorphoCond *cond, MorphoMutex *mutex) {
     SleepConditionVariableCS(cond, mutex, INFINITE);
 #else 
     pthread_cond_wait(cond, mutex);
+#endif
+}
+
+/* **********************************************************************
+ * Atomics
+ * ********************************************************************** */
+
+/** @brief: Atomic add: *p <- *p + inc. Returns the previous value of *p.
+ * @warning: Only safe for concurrent callers if all use this function. */
+int MorphoAtomic_addint(int *p, int inc) {
+#ifdef _WIN32
+    return (int) InterlockedExchangeAdd((volatile LONG *) p, (LONG) inc);
+#elif defined(__GNUC__) || defined(__clang__)
+    return __atomic_fetch_add(p, inc, __ATOMIC_RELAXED);
+#else
+#error "Atomics not supported on this platform."
+#endif
+}
+
+/** @brief: Atomic add: *p <- *p + inc. 
+ * @warning: Only safe for concurrent callers if all use this function. 
+ * @warning: *p must be 8-byte aligned. */
+void MorphoAtomic_adddouble(double *p, double inc) {
+#ifdef _WIN32
+    union { double d; uint64_t u; } old, neu;
+    old.u=(uint64_t) InterlockedCompareExchange64((volatile LONG64 *) p, 0, 0);
+    do {
+        neu.d=old.d+inc;
+        uint64_t prev=(uint64_t) InterlockedCompareExchange64((volatile LONG64 *) p,
+            (LONG64) neu.u, (LONG64) old.u);
+        if (prev==old.u) return;
+        old.u=prev;
+    } while (1);
+#elif defined(__GNUC__) || defined(__clang__)
+    double old, neu;
+    __atomic_load(p, &old, __ATOMIC_RELAXED);
+    do {
+        neu=old+inc;
+    } while (!__atomic_compare_exchange(p, &old, &neu, true, __ATOMIC_RELAXED, __ATOMIC_RELAXED));
+#else
+#error "Atomics not supported on this platform."
+#endif
+}
+
+/** @brief: Atomic fused multiply-add: *p <- fma(alpha, x, *p).
+ * @warning: Only safe for concurrent callers if all use this function. 
+ * @warning: *p must be 8-byte aligned. */
+void MorphoAtomic_madddouble(double *p, double alpha, double x) {
+#ifdef _WIN32
+    union { double d; uint64_t u; } old, neu;
+    old.u=(uint64_t) InterlockedCompareExchange64((volatile LONG64 *) p, 0, 0);
+    do {
+        neu.d=fma(alpha, x, old.d);
+        uint64_t prev=(uint64_t) InterlockedCompareExchange64((volatile LONG64 *) p,
+            (LONG64) neu.u, (LONG64) old.u);
+        if (prev==old.u) return;
+        old.u=prev;
+    } while (1);
+#elif defined(__GNUC__) || defined(__clang__)
+    double old, neu;
+    __atomic_load(p, &old, __ATOMIC_RELAXED);
+    do {
+        neu=fma(alpha, x, old);
+    } while (!__atomic_compare_exchange(p, &old, &neu, true, __ATOMIC_RELAXED, __ATOMIC_RELAXED));
+#else
+#error "Atomics not supported on this platform."
+#endif
+}
+
+/** @brief: Atomic load: return *p.
+ * @warning: Only safe for concurrent callers if all use MorphoAtomic bool functions. */
+bool MorphoAtomic_loadbool(bool *p) {
+#ifdef _WIN32
+    return (bool) InterlockedOr8((volatile CHAR *) p, 0);
+#elif defined(__GNUC__) || defined(__clang__)
+    return __atomic_load_n(p, __ATOMIC_RELAXED);
+#else
+#error "Atomics not supported on this platform."
+#endif
+}
+
+/** @brief: Atomic store: *p <- val.
+ * @warning: Only safe for concurrent callers if all use MorphoAtomic bool functions. */
+void MorphoAtomic_storebool(bool *p, bool val) {
+#ifdef _WIN32
+    InterlockedExchange8((volatile CHAR *) p, (CHAR) val);
+#elif defined(__GNUC__) || defined(__clang__)
+    __atomic_store_n(p, val, __ATOMIC_RELAXED);
+#else
+#error "Atomics not supported on this platform."
 #endif
 }
 

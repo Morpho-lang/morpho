@@ -1,0 +1,6 @@
+// Module-level _ functions are not imported
+
+import "mf_provider.m"
+
+_privateFn()
+// expect error 'SymblUndf'

@@ -1,0 +1,21 @@
+// Extend after import; duplicate signature is ambiguous; re-import preserves the extension
+
+import "mf_provider.m" for f
+
+fn f(List x) {
+    return "list"
+}
+
+print f("Hi")
+// expect: string
+
+print f(1)
+// expect: int
+
+print f([])
+// expect: list
+
+import "mf_provider.m" for f
+
+print f([])
+// expect: list

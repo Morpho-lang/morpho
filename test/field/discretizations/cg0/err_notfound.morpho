@@ -1,0 +1,2 @@
+FiniteElementSpace("CG0", grade=4)
+// expect error 'FnSpcNtFnd'

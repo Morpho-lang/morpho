@@ -4,103 +4,144 @@
 # Plot
 [tagplot]: # (plot)
 
-The `plot` module provides visualization capabilities for Meshes, Selections and Fields. These functions produce Graphics objects that can be displayed with `Show`.
-
-To use the module, first import it:
+The `plot` module draws a mesh, a selection, or a field. Import it with:
 
     import plot
 
+A `Plot` is a `Graphics` you can open with `Show`:
+
+    Show(Plot(mesh, grade=[0, 1], style="thick"))
+    Show(Plot(selection, grade=[0, 1, 2], style=["shaded", "thick"]))
+    Show(Plot(field, style="interpolate", scalebar=true))
+
+`grade` chooses what to draw: `0` points, `1` lines, `2` faces. A list draws more than one. If you omit `grade`, only the highest grade is drawn.
+
+`style` changes how those are drawn:
+
+* `"thick"` draws spheres and tubes.
+* `"shaded"` lights the faces.
+* `"interpolate"` blends a field's colors across each face.
+* `"spheres"` and `"tubes"` draw only the points or only the lines in the thick style.
+
+Combine them with a list, as in `style=["shaded", "thick"]`. With no style, `Plot` draws points, plain lines, and flat faces.
+
+`selection` on a mesh plot draws only the elements in that `Selection`. `color` sets the color. `axes=true` adds a box and axis labels. `scalebar=true` adds a color legend, or pass a `ScaleBar` to place it yourself. `title` and `background` set the window title and background color.
+
+Legacy functions `plotmesh`, `plotselection`, and `plotfield` are provided for compatibility with older code. New code should simply use `Plot` as shown above. With no `style` specified, those functions draw the older thick style.
+
 [showsubtopics]: # (subtopics)
+
+## Refresh
+[tagrefresh]: # (refresh)
+
+A field plot can be changed in place:
+
+    p.colormap(MagmaMap())
+    p.range(0, 1)
+    p.center(0)
+    p.axes(true)
+    p.scalebar(true)
+    p.refresh()
+
+`colormap` sets the color map and redraws. `range(cmin, cmax)` sets the values at the ends of the color map; `range()` with no arguments uses the field's own bounds again. `center` sets the value drawn with the middle color, which matters for a diverging map; `center()` clears it. `axes` and `scalebar` show or hide those parts. `refresh` redraws the plot from the current field.
 
 ## Plotmesh
 [tagplotmesh]: # (plotmesh)
 
-Visualizes a `Mesh` object:
+`plotmesh` is the older way to draw a `Mesh`. Prefer `Plot`:
+
+    Plot(mesh, selection=sel, grade=[0, 1], color=Red, style="thick")
+
+The older function draws the thick style if you omit `style`:
 
     var g = plotmesh(mesh)
 
-Plotmesh accepts a number of optional arguments to control what is displayed:
-
-* `selection` - Only elements in a provided `Selection` are drawn.
-* `grade` - Only draw the specified grade. This can also be a list of multiple grades to draw.
-* `color` - Draw the mesh in a provided `Color`.
-* `filter` and `transmit` - Used by the `povray` module to indicate transparency.
+* `selection` — draw only elements in a `Selection`.
+* `grade` — one grade, or a list of grades.
+* `color` — color for the mesh. Use `color.opacity(a)` for transparency.
+* `style` — see above. If you omit it, `plotmesh` draws the thick style. `Plot` draws points, plain lines, and flat faces unless you set `style`.
 
 ## Plotmeshlabels
 [tagplotmeshlabels]: # (plotmeshlabels)
 
-Draws the ids for elements in a `Mesh`: 
+Draws the ids for elements in a `Mesh`:
 
-    var g = plotmeshlabels(mesh) 
+    var g = plotmeshlabels(mesh)
 
-Plotmeshlabels accepts a number of optional arguments to control the output: 
-
-* `grade` - Only draw the specified grade. This can also be a list of multiple grades to draw.
-* `selection` - Only labels in a provided `Selection` are drawn.
-* `offset` - Local offset vector for labels. Can be a `List`, a `Matrix` or a function. 
-* `dirn` - Text direction for labels. Can be a `List`, a `Matrix` or a function. 
-* `vertical` - Text vertical direction. Can be a `List`, a `Matrix` or a function. 
-* `color` - Label color. Can be a `Color` object or a `Dictionary` of colors for each grade. 
-* `fontsize` - Font size to use. 
+* `grade` — one grade, or a list of grades.
+* `selection` — label only elements in a `Selection`.
+* `offset` — where to place each label relative to the element. A list, a matrix, or a function.
+* `dirn` — direction the text runs. A list, a matrix, or a function.
+* `vertical` — upright direction of the text. A list, a matrix, or a function.
+* `color` — a color, or a dictionary of colors for each grade.
+* `fontsize` — size of the labels.
 
 ## Plotselection
 [tagplotselection]: # (plotselection)
 
-Visualizes a `Selection` object:
+`plotselection` is the older way to draw a `Selection`. Selected elements are red and the rest of the mesh is gray. Prefer `Plot`:
+
+    Plot(sel, grade=[0, 1, 2], style="thick")
+
+The older function takes the mesh first, and draws the thick style if you omit `style`:
 
     var g = plotselection(mesh, sel)
 
-Plotselection accepts a number of optional arguments to control what is displayed:
+* `grade` — one grade, or a list of grades.
+* `style` — see above. If you omit it, `plotselection` draws the thick style.
 
-* `grade` - Only draw the specified grade. This can also be a list of multiple grades to draw.
-* `filter` and `transmit` - Used by the `povray` module to indicate transparency.
+`Plot(sel, color=Red)` draws the whole mesh in one color instead of red and gray.
 
 ## Plotfield
 [tagplotfield]: # (plotfield)
 
-Visualizes a scalar `Field` object:
+`plotfield` is the older way to draw a scalar `Field`. Prefer `Plot`:
+
+    Plot(field, colormap=ViridisMap(), style="interpolate", scalebar=true, cmin=0, cmax=1)
+
+The older function draws the thick style if you omit `style`:
 
     var g = plotfield(field)
 
-Plotfield accepts a number of optional arguments to control what is displayed:
+* `grade` — which grade to draw.
+* `colormap` — a color map. The field is stretched to fit it.
+* `scale` — set to `false` to use the field values as color-map positions directly.
+* `scalebar` — `true`, or a `ScaleBar` to place the legend yourself.
+* `selection` — draw only elements in a `Selection`.
+* `style` — see above. If you omit it, `plotfield` draws the thick style. `"interpolate"` blends values across each face.
+* `cmin` and `cmax` — values at the ends of the color map. Values outside this range keep the end colors.
+* `center` — field value drawn with the middle color.
 
-* `grade` - Draw the specified grade.
-* `colormap` - A `Colormap` object to use. The field is automatically scaled.
-* `scalebar` - A `Scalebar` object to use. 
-* `selection` - Only elements in a provided `Selection` are drawn.
-* `style` - Plot style. See below. 
-* `filter` and `transmit` - Used by the `povray` module to indicate transparency.
-* `cmin` and `cmax` - Can be used to define the data range covered.
-  Values beyond these limits will be colored by the lower/upper bound of
-  the colormap accordingly.
+## Plotaxes
+[tagplotaxes]: # (plotaxes)
 
-Supported plot styles: 
+Draws red, green, and blue arrows for the x, y, and z axes, starting at a point:
 
-* `default` - Color `Mesh` elements by the corresponding value of the `Field`.
-* `interpolate` - Interpolate `Field` quantities onto higher elements.
+    plotaxes([0, 0, 0], size=1)
+
+`size` is the length of each arrow. Add the result to a `Graphics` with `+`.
 
 ## ScaleBar
 [tagscalebar]: # (scalebar)
+[tagscalebarstrip]: # (scalebarstrip)
 
-Represents a scalebar for a plot: 
+A color legend for a plot:
 
-    Show(plotfield(field, scalebar=ScaleBar(posn=[1.2,0,0])))
+    Show(Plot(field, style="interpolate", scalebar=ScaleBar(posn=[1.2, 0, 0])))
 
-`ScaleBar`s can be created with many adjustable parameters: 
+* `nticks` — maximum number of ticks.
+* `posn` — where to draw the bar.
+* `length` — length of the bar.
+* `dirn` — direction the bar runs.
+* `tickdirn` — direction the ticks run.
+* `colormap` — color map to show.
+* `textdirn` — direction the labels run.
+* `textvertical` — upright direction of the labels.
+* `fontsize` — size of the labels.
+* `textcolor` — color of the labels.
 
-* `nticks` - Maximum number of ticks to show.  
-* `posn` - Position to draw the `ScaleBar`. 
-* `length` - Length of `ScaleBar` to draw. 
-* `dirn` - Direction to draw the `ScaleBar` in. 
-* `tickdirn` - Direction to draw the ticks in. 
-* `colormap` - `ColorMap` to use.
-* `textdirn` - Direction to draw labels in. 
-* `textvertical` - Label vertical direction. 
-* `fontsize` - Fontsize for labels
-* `textcolor` - Color for labels 
+`ScaleBarStrip` draws a flat strip instead of a round bar.
 
-You can draw the `ScaleBar` directly by calling the `draw` method: 
+Draw a bar on its own with `draw`. `min` and `max` are the values at the two ends:
 
     sb.draw(min, max)
-
-where `min` and `max` are the minimum and maximum values to display on the scalebar. 

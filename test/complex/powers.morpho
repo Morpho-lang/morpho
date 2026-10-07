@@ -22,3 +22,13 @@ print 2^Complex(1,1)
 
 print (E^Complex(0,Pi) + 1).abs() < 1e-15
 // expect: true
+
+// powr(left) is left^self. Complex^Complex uses .pow, so call .powr explicitly.
+var a = 2im
+var b = 1+im
+print (a^b - b.powr(a)).abs() < 1e-12
+// expect: true
+print (b^a - a.powr(b)).abs() < 1e-12
+// expect: true
+print (a^b - b^a).abs() > 0.1
+// expect: true

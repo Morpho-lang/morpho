@@ -29,7 +29,7 @@ var f = Field(m, fn (x, y, z) exact(x, y, z), finiteelementspace=fe)
 var err = AreaIntegral(fn (x, q) {
     var ex = exact(x[0], x[1], x[2])
     return (q-ex)^2
-}, f, method={}).total(m, bnd)
+}, f).total(m, bnd)
 
 print abs(err) < 1e-10
 // expect: true

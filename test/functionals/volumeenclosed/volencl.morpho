@@ -5,8 +5,8 @@ var a = VolumeEnclosed()
 print m
 // expect: <Mesh: 4 vertices>
 
-print a.integrand(m)
-// expect: [ 0.0294627 0.0294627 0.0294627 0.0294627 ]
+print (a.integrand(m) - Field(m, 0.0294627, grade=2)).norm() < 1e-5
+// expect: true
 
 print a.total(m)
 // expect: 0.117851

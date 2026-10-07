@@ -4,9 +4,9 @@
 # Field
 [tagfield]: # (Field)
 
-Fields are used to store information, including numbers or matrices, associated with the elements of a `Mesh` object.
+Fields are used to store information, including numbers or matrices, associated with the elements of a `Mesh` object. 
 
-You can create a `Field` by applying a function to each of the vertices,
+You can create a `Field` by applying a function,
 
     var f = Field(mesh, fn (x, y, z) x+y+z)
 
@@ -14,20 +14,29 @@ or by supplying a single constant value,
 
     var f = Field(mesh, Matrix([1,0,0]))
 
-Fields can then be added and subtracted using the `+` and `-` operators.
+Fields can then be added and subtracted using the `+` and `-` operators, including elementwise addition or subtraction of a number.
 
 To access elements of a `Field`, use index notation:
 
-    print f[grade, element, index]
+    print f[id] // Prints element id from lowest active grade
+    print f[g, id] // Prints element id on grade `g`
+    print f[g, id, index] // Prints quantity `index` on element `id` on grade `g`
 
-where
-* `grade` is the grade to select
-* `element` is the element id
-* `index` is the element index
+If grade 0 is empty, `f[0, id]` is treated as `f[id]`. Prefer `f[id]`.
 
-As a shorthand, it's possible to omit the grade and index; these are then both assumed to be `0`:
+Fields are associated with a `FiniteElementSpace` to allow calculus operations, including integration, local derivatives, etc. Unless another `FiniteElementSpace` is specified, the default is piecewise-linear (`CG1`) with values defined on vertices.
 
-    print f[2]
+Create a `Field` with a specified `FiniteElementSpace`:
+
+    var f = Field(mesh, fn (x, y, z) x+y+z, finiteelementspace=FiniteElementSpace("CG2"))
+
+Create a piecewise constant (`CG0`) `Field` just by specifying a grade:
+
+    var f = Field(mesh, 1, grade=1) // Field is defined on line elements
+
+Create a `Field` with no `FiniteElementSpace` attached, i.e. a raw container:
+
+    var f = Field(mesh, fn (x, y, z) x+y+z, finiteelementspace=nil)
 
 [showsubtopics]: # (subtopics)
 
@@ -36,36 +45,38 @@ As a shorthand, it's possible to omit the grade and index; these are then both a
 
 Returns the Mesh associated with a Field object:
 
-    var f.mesh() 
+    print f.mesh() 
 
 ## Grade
 [taggrade]: # (grade)
 
-To create fields that include grades other than just vertices, use the `grade` option to `Field`. This can be just a grade index,
+An integer `grade=N` with `N>=1` creates a piecewise-constant `CG0` field on that grade:
 
     var f = Field(mesh, 0, grade=2)
 
-which creates an empty field with `0` for each of the facets of the mesh `mesh`.
+Each facet then stores one value, initialized to `0`. `grade=0` is the same as the default `CG1` vertex field.
+
+A function passed with `grade=N` is sampled at the nodes of that space (the element centroid for `CG0`), not at the mesh vertices.
 
 You can store more than one item per element by supplying a list to the `grade` option indicating how many items you want to store on each grade. For example,
 
     var f = Field(mesh, 1.0, grade=[0,2,1])
 
-stores two numbers on the line (grade 1) elements and one number on the facets (grade 2) elements. Each number in the field is initialized to the value `1.0`.
+stores two numbers on the line (grade 1) elements and one number on the facets (grade 2) elements. Each number in the field is initialized to the value `1.0`. A list also opts out of a finite element space.
 
 ## Shape
 [tagshape]: # (shape)
 
-The `shape` method returns a list indicating the number of items stored on each element of a particular grade. This has the same format as the list you supply to the `grade` option of the `Field` constructor. For example,
+The `shape` method returns a tuple indicating the number of items stored on each element of a particular grade. This has the same format as the sequence you supply to the `grade` option of the `Field` constructor. For example,
 
-    [1,0,2]
+    (1, 0, 2)
 
 would indicate one item stored on each vertex and two items stored on each facet.
 
 ## FiniteElementSpace
 [tagfiniteelementspace]: # (finiteelementspace)
 
-Returns the `FiniteElementSpace` used to discretize the field:
+Returns the `FiniteElementSpace` used to discretize the field, or `nil` if the field is a raw container:
 
     var fs = f.finiteElementSpace()
     print fs.grade()
@@ -112,6 +123,24 @@ For example:
 
     var dofs = f.elementDofs(el)
     print dofs
+
+## Norm
+[tagnorm]: # (norm)
+
+Returns the Frobenius norm of the values stored in the field:
+
+    print f.norm()
+
+This is the same as `f.linearize().norm()`.
+
+## Sum
+[tagsum]: # (sum)
+
+Returns the sum of the values stored in the field:
+
+    print f.sum()
+
+For a scalar field this is a `Float`. For a matrix-valued field it is a `Matrix` of the same shape as each stored entry.
 
 ## Linearize
 [taglinearize]: # (linearize)

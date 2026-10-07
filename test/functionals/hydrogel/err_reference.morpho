@@ -1,0 +1,6 @@
+var m = Mesh("tetrahedron.mesh")
+var h = Hydrogel(m, a=0.1, b=1.0, c=0.25, d=1.0, phiref=0.1, phi0=0.5)
+h.reference = "invalid"
+
+print h.total(m)
+// expect error 'FnctlArgs'

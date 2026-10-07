@@ -1,0 +1,22 @@
+// ColorTable bracket access returns the Color for that column
+
+import color
+
+var cols = Matrix( ( (1, 0),
+                     (0, 1),
+                     (0, 0) ) )
+var colors = ColorTable(cols)
+
+var a = colors[0]
+print a.r
+// expect: 1
+print a.g
+// expect: 0
+print a.b
+// expect: 0
+
+print colors[1].g
+// expect: 1
+
+print colors[0].r == colors.color(0).r
+// expect: true

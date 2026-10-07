@@ -1,0 +1,11 @@
+// Typed varg GETUID must not read past nargs (leftover call registers)
+
+fn f(a, Int b, ...xs) {
+    return "resolved"
+}
+
+print f(10, 20)
+// expect: resolved
+
+print f(99)
+// expect error 'MltplDsptchFld'

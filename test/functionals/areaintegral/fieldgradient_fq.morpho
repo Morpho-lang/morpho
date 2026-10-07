@@ -1,0 +1,110 @@
+// AreaIntegral.fieldgradient vs finite-difference of .total
+
+import meshtools
+import "../numericalderivatives.morpho"
+
+var mb = MeshBuilder()
+mb.addvertex([0,0])
+mb.addvertex([1,0])
+mb.addvertex([0,1])
+mb.addface([0,1,2])
+var m = mb.build()
+m.addgrade(1)
+
+var q = Field(m, fn (x,y) Matrix([x, y]))
+
+fn landau(x, qv) {
+    var qt2 = qv.inner(qv)
+    return qt2 + qt2*qt2
+}
+
+// Root rule only so local ∂f/∂q matches adaptive-off totals
+var bulk = AreaIntegral(landau, q, method={ "adapt": false })
+print (bulk.fieldgradient(q, m) - numericalfieldgradient(bulk, m, q)).linearize().norm() < 1e-5
+// expect: true
+
+fn usesx(x, qv) {
+    return x[0]*qv.inner(qv)
+}
+var sx = AreaIntegral(usesx, q, method={ "adapt": false })
+print (sx.fieldgradient(q, m) - numericalfieldgradient(sx, m, q)).linearize().norm() < 1e-5
+// expect: true
+
+fn usesgrad(x, qv) {
+    var g = grad(qv)
+    return g[0].inner(g[0]) + g[1].inner(g[1])
+}
+var sg = AreaIntegral(usesgrad, q, method={ "adapt": false })
+print (sg.fieldgradient(q, m) - numericalfieldgradient(sg, m, q)).linearize().norm() < 1e-4
+// expect: true
+
+fn condgrad(x, qv) {
+    if (true) {
+        var g = grad(qv)
+        return g[0].inner(g[0]) + g[1].inner(g[1])
+    }
+    return qv.inner(qv)
+}
+var sc = AreaIntegral(condgrad, q, method={ "adapt": false })
+print (sc.fieldgradient(q, m) - numericalfieldgradient(sc, m, q)).linearize().norm() < 1e-4
+// expect: true
+
+var mref = m.clone()
+fn qjac(x, qv) {
+    return qv.inner(qv) * (jacobian().trace() + invjacobian().trace())
+}
+var sj = AreaIntegral(qjac, q, method={ "adapt": false }, reference=mref)
+print (sj.fieldgradient(q, m) - numericalfieldgradient(sj, m, q)).linearize().norm() < 1e-5
+// expect: true
+
+var mdef = m.clone()
+mdef.setvertexmatrix(2*mdef.vertexmatrix())
+var qdef = Field(mdef, fn (x,y) Matrix([x, y]))
+fn qcg(x, qv) {
+    return qv.inner(qv) * cgtensor().trace()
+}
+var scg = AreaIntegral(qcg, qdef, method={ "adapt": false }, reference=m)
+print (scg.fieldgradient(qdef, mdef) - numericalfieldgradient(scg, mdef, qdef)).linearize().norm() < 1e-5
+// expect: true
+
+// hess is not local: static scan keeps this on global FD
+var q2 = Field(m, fn (x,y) x^2 + y^2, finiteelementspace=FiniteElementSpace("CG2", grade=2))
+fn useshess(x, qv) {
+    return hess(qv).norm()^2
+}
+var sh = AreaIntegral(useshess, q2, method={ "adapt": false })
+print (sh.fieldgradient(q2, m) - numericalfieldgradient(sh, m, q2)).linearize().norm() < 1e-4
+// expect: true
+
+var mb3 = MeshBuilder()
+mb3.addvertex([0,0,0])
+mb3.addvertex([1,0,0])
+mb3.addvertex([0,1,0])
+mb3.addface([0,1,2])
+var m3 = mb3.build()
+m3.addgrade(1)
+var q3 = Field(m3, fn (x,y,z) Matrix([x, y, 0.3]))
+fn qn(x, qv) {
+    return qv.inner(normal())
+}
+var sn = AreaIntegral(qn, q3, method={ "adapt": false })
+print (sn.fieldgradient(q3, m3) - numericalfieldgradient(sn, m3, q3)).linearize().norm() < 1e-5
+// expect: true
+
+// Default adaptive engine; smooth f is accepted at phase 1 so local G still runs
+var bulkd = AreaIntegral(landau, q)
+print (bulkd.fieldgradient(q, m) - numericalfieldgradient(bulkd, m, q)).linearize().norm() < 1e-5
+// expect: true
+
+var bulko = AreaIntegral(landau, q, optimize=false)
+print (bulko.fieldgradient(q, m) - numericalfieldgradient(bulko, m, q)).linearize().norm() < 1e-5
+// expect: true
+
+var sgd = AreaIntegral(usesgrad, q)
+print (sgd.fieldgradient(q, m) - numericalfieldgradient(sgd, m, q)).linearize().norm() < 1e-4
+// expect: true
+
+// hess is ineligible: never try; numerical FD with adapt permitted
+var shd = AreaIntegral(useshess, q2)
+print (shd.fieldgradient(q2, m) - numericalfieldgradient(shd, m, q2)).linearize().norm() < 1e-4
+// expect: true

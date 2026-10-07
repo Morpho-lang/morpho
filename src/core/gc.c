@@ -65,6 +65,13 @@ void vm_bindobjectwithoutcollect(vm *v, value obj);
 /** Marks an object as reachable */
 void vm_gcmarkobject(vm *v, object *obj) {
     if (!obj) return;
+    if (obj->status==OBJECT_ISCHILD) { // Child objects keep their parent alive
+#ifdef MORPHO_DEBUG_LOGGARBAGECOLLECTOR
+        morpho_printf(v, "Child object %p; marking parent %p\n", (void *) obj, (void *) obj->next);
+#endif
+        vm_gcmarkobject(v, obj->next);
+        return;
+    }
     if (v->status==VM_BIND) { // Bind object rather than mark
         vm_bindobjectwithoutcollect(v, MORPHO_OBJECT(obj));
         return;
@@ -202,6 +209,7 @@ void vm_gcsweep(vm *v) {
     object *prev=NULL;
     object *obj = v->objects;
     while (obj!=NULL) {
+        if (obj->status==OBJECT_ISCHILD) UNREACHABLE("Child object found on VM object list");
         if (obj->status==OBJECT_ISMARKED) {
             prev=obj;
             obj->status=OBJECT_ISUNMARKED; /* Clear for the next cycle */
@@ -277,4 +285,8 @@ void vm_collectgarbage(vm *v) {
     }
     
     vc->status=oldstatus;
+}
+
+void morpho_collectgarbage(vm *v) {
+    vm_collectgarbage(v);
 }

@@ -5,7 +5,7 @@
  * Reimplemented using Morpho's optimization capabilities */
 
 import functionals
-import optimize
+import optimize as Opt
 import meshtools
 import delaunay
 
@@ -92,70 +92,13 @@ fn RectangularDomain(ranges) {
 }
 
 /* ********************************************************
- * Functionals to control mesh quality
- * ******************************************************** */
-
-/* -------------------------------------------------------
- * One sided hookean elasticity:
- * Energy F = 1/2 ((L-L0)/L0)^2 for L<L0, 0 otherwise
- * Construct with a Field of reference lengths L0
- * ------------------------------------------------------- */
-class OneSidedHookeElasticity is Functional {
-  init(l0) {
-    self.ref = l0
-    super.init(1)
-  }
-
-  integrandfn(mesh, vert, id, el) {
-    var len = (vert.column(el[0])-vert.column(el[1])).norm()
-    var len0 = self.ref[self.grade, id]
-    if (len>len0) return 0
-    return ((len-len0)/len0)^2/2
-  }
-
-  gradientfn(mesh, vert, id, el, grd) {
-    var x0 = vert.column(el[0])
-    var x1 = vert.column(el[1])
-    var dx = x0-x1
-
-    var len = dx.norm()
-    var len0 = self.ref[self.grade, id]
-    if (len>len0) return
-    var g = dx*(len-len0)/(len0^2*len)
-
-    grd.setcolumn(el[0], g+grd.column(el[0]))
-    grd.setcolumn(el[1], -g+grd.column(el[1]))
-  }
-}
-
-/* -------------------------------------------------------
- * Evaluates a scalar potential at the midpoint of
- * an element. Will be used to detect elements inside
- * forbidden areas.
- * ------------------------------------------------------- */
-class ScalarPotentialMidpoint is Functional {
-  init(hbar) {
-    self.func = hbar
-    super.init(1)
-  }
-
-  integrandfn(mesh, vert, id, el) {
-    var dim = el.count()
-    var x = vert.column(el[0])
-    for (var i=1; i<dim; i+=1) x+=vert.column(el[i])
-    x/=dim
-    return self.func(x)
-  }
-}
-
-/* ********************************************************
  * Shape optimizer
  * We subclass ShapeOptimizer to add a special convergence
  * criterion, which additionally tests if the mesh has
  * moved too far from its starting point
  * ******************************************************** */
 
-class MGShapeOptimizer is ShapeOptimizer {
+class MGShapeOptimizer is Opt.ShapeOptimizer {
   init (problem, mesh, ttol=0.1, localcheck=false) {
     super.init(problem, mesh)
     self.x0 = mesh.vertexmatrix().clone()
@@ -333,24 +276,21 @@ class MeshGen {
   }
 
   setupproblem() { // Setup optimization problem
-    self.problem = OptimizationProblem(self.mesh)
+    self.problem = Opt.OptimizationProblem(self.mesh)
     // Build reference lengths
     var lengths = Length().integrand(self.mesh)
 
     // Evaluate the weight function at the midpoint
     var hbar = ScalarPotentialMidpoint(self.weight).integrand(self.mesh)
 
-    // Calculate preferred lengths
-    var len0 = Field(self.mesh, grade=1)
-
-    fn lnorm(l, n) { // n-norm of a matrix
+    fn lnorm(l, n) { // n-norm of stored Field values
       var sum = 0 
       for (a in l) sum+=a^n
       return sum^(1/n)
     }
 
     var lscale=self.fscale*(lnorm(lengths, self.dim)/lnorm(hbar, self.dim))
-    for (id in 0...self.mesh.count(1)) len0[id]=lscale*hbar[id]
+    var len0 = lscale*hbar
 
     // Impose elasticity
     var lel = OneSidedHookeElasticity(len0)

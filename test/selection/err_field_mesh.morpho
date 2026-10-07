@@ -1,0 +1,6 @@
+var m = Mesh("square.mesh")
+var m2 = Mesh("square.mesh")
+var f = Field(m, 1)
+
+var s = Selection(m2, fn (q) q>0, f)
+// expect error 'SlFldMsh'

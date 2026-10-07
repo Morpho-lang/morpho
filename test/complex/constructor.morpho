@@ -1,5 +1,4 @@
 // Complex number testing
-import constants
 
 // constructor
 var Z = Complex(1,2);

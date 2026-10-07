@@ -1,0 +1,17 @@
+// Cached transparent barrel re-export keeps the same origin
+
+import "mf_barrel.m" as BarrelCache
+
+import "mf_provider.m" for f
+
+fn f(List x) {
+    return "list"
+}
+
+import "mf_barrel.m" for f
+
+print f([])
+// expect: list
+
+print f("Hi")
+// expect: string

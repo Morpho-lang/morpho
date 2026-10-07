@@ -4,193 +4,197 @@
 # Graphics
 [taggraphics]: # (graphics)
 
-The `graphics` module provides a number of classes to provide simple visualization capabilities. To use it, you first need to import the module:
+The `graphics` module builds a `Graphics` from simple objects. Import it with:
 
     import graphics
 
-The `Graphics` class acts as an abstract container for graphical information; to actually launch the display see the `Show` class. You can create an empty scene like this,
+Create an empty `Graphics` container:
 
     var g = Graphics()
 
-Additional elements can be added using the `display` method.
+Add an object with `display`. This returns an id you can keep if you want to change the object later:
 
-    g.display(element)
+    var id = g.display(Sphere([0, 0, 0], 0.2, color=Red))
 
-Morpho provides the following fundamental Graphical element classes:
+Open the `Graphics` with `Show` (import `morphoview` first):
 
-    TriangleComplex
+    import morphoview
+    Show(g)
 
-You can also use functions like `Arrow`, `Tube` and `Cylinder` to create these elements conveniently.
+You can set the window title, the background color, and the lighting when you create the `Graphics`:
 
-To combine graphics objects, use the add operator:
+    var g = Graphics(title="Charges", background=White, light="threepoint")
 
-    var g1 = Graphics(), g2 = Graphics()
-    // ...
-    Show(g1+g2)
+Combine two `Graphics` with `+`. The result retains the title, background, and lights of the left hand `Graphics`:
+
+    Show(g1 + g2)
+
+The `extend` method copies the contents of another `Graphics` into the receiver and returns the new ids created: 
+
+    var ids = g.extend(g2)
+
+Basic objects you can display: `Sphere`, `Cylinder`, `Arrow`, `Tube`, `Polygon`, `Text`, `PointCloud`, `LineSet`, and `TriangleComplex`.
+
+Give an object a color with `color=`. Use a named color such as `Red`, a list such as `[1, 0, 0]`, `Color(r, g, b)`, or a see-through color such as `Red.opacity(0.3)`. To give each point its own color, pass a `ColorTable`.
 
 [showsubtopics]: # (subtopics)
 
 ## Show
 [tagshow]: # (Show)
 
-`Show` is used to launch an interactive graphical display using the external `morphoview` application. `Show` takes a `Graphics` object as an argument:
+`Show` opens an interactive view of a `Graphics` using the `morphoview` module:
 
-    var g = Graphics()
+    import morphoview
     Show(g)
 
-## TriangleComplex
-[tagTriangleComplex]: # (TriangleComplex)
+## Placing an object
+[tagdisplay]: # (display)
 
-A `TriangleComplex` is a graphical element that can be used as part of a graphical display. It consists of a list of vertices and a connectivity matrix that selects which vertices are used in each triangle.
+The `display` method adds an object to a `Graphics`. You can control the placement of the object with additional arguments: a second argument translates it; `scale` changes its size, as one number or as `[x, y, z]`; `rotate` rotates it about an axis `[angle, x, y, z]` where `angle` is in radians:
 
-To create one, call the constructor with the following arguments:
+    g.display(Sphere([0, 0, 0], 0.2), [1, 0, 0], scale=2)
+    g.display(Arrow([0, 0, 0], [1, 0, 0]), rotate=[Pi/2, 0, 0, 1])
 
-    TriangleComplex(position, normals, colors, connectivity)
-
-* `position` is a `Matrix` containing vertex positions as *columns*.
-* `normals` is a `Matrix` with a normal for each vertex.
-* `colors` is the color of the object.
-* `connectivity` is a `Sparse` matrix where each column represents a triangle and rows correspond to vertices.
-
-You can also provide optional arguments:
-
-* `transmit` sets the transparency of the object. This parameter is only
-used by the povray module as of now. Default is 0.
-* `filter` sets the transparency of the object using a filter effect.
-This parameter is only used by the povray module as of now. Default is 0. For the difference between `transmit` and `filter`, checkout the 
-[POVRay documentation](http://xahlee.info/3d/povray-glassy.html).
-
-
-Add to a `Graphics` object using the `display` method.
-
-## Arrow
-[tagArrow]: # (Arrow)
-
-The `Arrow` function creates an arrow. It takes two arguments:
-
-    arrow(start, end)
-
-* `start` and `end` are the two vertices. The arrow points `start` -> `end`.
-
-You can also provide optional arguments:
-
-* `aspectratio` controls the width of the arrow relative to its length
-* `n` is an integer that controls the quality of the display. Higher `n` leads to a rounder arrow.
-* `color` is the color of the arrow. This can be a list of RGB values or a `Color` object
-* `transmit` sets the transparency of the arrow. This parameter is only
-used by the povray module as of now. Default is 0.
-* `filter` sets the transparency of the arrow using a filter effect.
-This parameter is only used by the povray module as of now. Default is 0. For the difference between `transmit` and `filter`, checkout the 
-[POVRay documentation](http://xahlee.info/3d/povray-glassy.html).
-
-Display an arrow:
-
-    var g = Graphics([])
-    g.display(Arrow([-1/2,-1/2,-1/2], [1/2,1/2,1/2], aspectratio=0.05, n=10))
-    Show(g)
-
-## Cylinder
-[tagCylinder]: # (Cylinder)
-
-The `Cylinder` function creates a cylinder. It takes two required arguments:
-
-    cylinder(start, end)
-
-* `start` and `end` are the two vertices.
-
-You can also provide optional arguments:
-
-* `aspectratio` controls the width of the cylinder relative to its length.
-* `n` is an integer that controls the quality of the display. Higher `n` leads to a rounder cylinder.
-* `color` is the color of the cylinder. This can be a list of RGB values or a `Color` object.
-* `transmit` sets the transparency of the cylinder. This parameter is only
-used by the povray module as of now. Default is 0.
-* `filter` sets the transparency of the cylinder using a filter effect.
-This parameter is only used by the povray module as of now. Default is 0. For the difference between `transmit` and `filter`, checkout the 
-[POVRay documentation](http://xahlee.info/3d/povray-glassy.html).
-
-Display an cylinder:
-
-    var g = Graphics()
-    g.display(Cylinder([-1/2,-1/2,-1/2], [1/2,1/2,1/2], aspectratio=0.1, n=10))
-    Show(g)
-
-## Tube
-[tagTube]: # (Tube)
-
-The `Tube` function connects a sequence of points to form a tube.
-
-    Tube(points, radius)
-
-* `points` is a list of points; this can be a list of lists or a `Matrix` with the positions as columns.
-* `radius` is the radius of the tube.
-
-You can also provide optional arguments:
-
-* `n` is an integer that controls the quality of the display. Higher `n` leads to a rounder tube.
-* `color` is the color of the tube. This can be a list of RGB values or a `Color` object.
-* `closed` is a `bool` that indicates whether the tube should be closed to form a loop.
-* `transmit` sets the transparency of the tube. This parameter is only
-used by the povray module as of now. Default is 0.
-* `filter` sets the transparency of the tube using a filter effect.
-This parameter is only used by the povray module as of now. Default is 0. For the difference between `transmit` and `filter`, checkout the 
-[POVRay documentation](http://xahlee.info/3d/povray-glassy.html).
-
-Draw a square:
-
-    var a = Tube([[-1/2,-1/2,0],[1/2,-1/2,0],[1/2,1/2,0],[-1/2,1/2,0]], 0.1, closed=true)
-    var g = Graphics()
-    g.display(a)
+You can also provide a `color` for an object, overriding any color the object has; disable shading with `flat=true`, which is useful for legends and color bars.
 
 ## Sphere
-[tagSphere]: # (Sphere)
+[tagsphere]: # (Sphere)
 
-The `Sphere` function creates a sphere.
+Represents a sphere placed at `center` with a given `radius` and optional color: 
 
-    Sphere(center, radius)
+    Sphere(center, radius, color=Red)
 
-* `center` is the position of the center of the sphere; this can be a list or column `Matrix`.
-* `radius` is the radius of the sphere
+The value `center` can be given as a `List` or a column matrix:
 
-You can also provide optional arguments:
+    g.display(Sphere([0, 0, 0], 0.25, color=Blue))
 
-* `color` is the color of the sphere. This can be a list of RGB values or a `Color` object.
-* `transmit` sets the transparency of the sphere. This parameter is only
-used by the povray module as of now. Default is 0.
-* `filter` sets the transparency of the sphere using a filter effect.
-This parameter is only used by the povray module as of now. Default is 0. For the difference between `transmit` and `filter`, checkout the 
-[POVRay documentation](http://xahlee.info/3d/povray-glassy.html).
+## Cylinder
+[tagcylinder]: # (Cylinder)
 
-Draw some randomly sized spheres:
+Represents a cylinder drawn from `start` to `end` points, with an optional color:
 
-    var g = Graphics()
-    for (i in 0...10) {
-      g.display(Sphere([random()-1/2, random()-1/2, random()-1/2], 0.1*(1+random()),       color=Gray(random())))
-    }
-    Show(g)
+    Cylinder(start, end, aspectratio=0.1, radius=nil, n=10, color=Red)
+
+The parameters `start` and `end` can be given as a `List` or a column `Matrix`. Optional parameter `aspectratio` sets the thickness as a fraction of the length; `radius` sets the thickness directly and is used instead of `aspectratio`. The value `n` controls how smooth the cylinder is; a larger value produces a rounder cylinder.
+
+    g.display(Cylinder([0, 0, 0], [0, 0, 1], radius=0.05, color=Green))
+
+## Arrow
+[tagarrow]: # (Arrow)
+
+Represents an arrow drawn from `start` to `end` points, with an optional color:
+
+    Arrow(start, end, aspectratio=0.1, radius=nil, n=10, color=Red)
+
+The parameters `start` and `end` can be given as a `List` or a column `Matrix`. Optional parameter `aspectratio` sets the head size as a fraction of the length; if `radius` is omitted, it also sets the shaft thickness. The parameter `radius` sets the shaft thickness directly, leaving `aspectratio` to control only the head. The value `n` controls how smooth the arrow is; a larger value produces a rounder arrow.
+
+    g.display(Arrow([-0.5, -0.5, -0.5], [0.5, 0.5, 0.5], aspectratio=0.15, color=Yellow))
+
+## Tube
+[tagtube]: # (Tube)
+
+Represents a tube of radius `radius` drawn through a sequence of `points`, with an optional color:
+
+    Tube(points, radius, n=10, closed=false, color=Red)
+
+The parameter `points` can be given as a `List` of points, or a `Matrix` with one point per column. Optional parameter `closed`, if set to `true`, joins the last point back to the first. The value `n` controls how smooth the tube is; a larger value produces a rounder tube.
+
+    g.display(Tube([[-0.5, -0.5, 0], [0.5, -0.5, 0], [0.5, 0.5, 0], [-0.5, 0.5, 0]],
+                   0.05, closed=true, color=Orange))
+
+## Polygon
+[tagpolygon]: # (Polygon)
+
+Represents a flat polygon with three or more corners, with an optional color:
+
+    Polygon(position, color=Blue)
+
+The parameter `position` can be given as a `List` of points, or a `Matrix` with one point per column. The corners must lie in one plane, and the shape must be convex. The order of the corners decides which side faces outward.
+
+    g.display(Polygon([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], color=Blue))
+
+## PointCloud
+[tagpointcloud]: # (PointCloud)
+
+Represents a set of points, with an optional color:
+
+    PointCloud(position, color=White)
+
+The parameter `position` can be given as a `List` of points, or a `Matrix` with one point per column. Optional parameter `color` may be one color, or a `ColorTable` with one color per point.
+
+    g.display(PointCloud([[0, 0, 0], [1, 0, 0], [0, 1, 0]], color=White))
+
+## LineSet
+[taglineset]: # (LineSet)
+
+Represents line segments drawn through a sequence of points, with an optional color:
+
+    LineSet(position, color=White, closed=false)
+
+The parameter `position` can be given as a `List` of points, or a `Matrix` with one point per column. The segments connect the points in order. Optional parameter `closed`, when `true`, joins the last point back to the first. Pass pairs of point indices as `connectivity` to choose the segments yourself:
+
+    LineSet(position, connectivity, color=Cyan)
+
+    g.display(LineSet([[0, 0, 0], [1, 0, 0], [1, 1, 0]], color=White))
+    g.display(LineSet([[0, 0, 0], [1, 0, 0], [0, 1, 0]], [[0, 1], [0, 2]], color=Cyan))
+
+## TriangleComplex
+[tagtrianglecomplex]: # (TriangleComplex)
+
+Represents a surface made of triangles, with an optional color. This is a very general primitive that can be used to make many kinds of shape from a set of positions and connectivity:
+
+    TriangleComplex(position, normals, color, connectivity)
+
+The parameters `position` and `normals` are a `Matrix` with one column per point. Each column of `connectivity` is one triangle. Optional parameter `color` may be one color, or a `ColorTable` with one color per point.
 
 ## Text
-[tagText]: # (Text)
+[tagtext]: # (Text)
 
-A `Text` object is used to display text. 
+Represents text drawn from `position`, with an optional color:
 
-    Text(text, position)
+    Text(text, position, dirn=[1, 0, 0], vertical=nil, size=10, font=nil, color=White)
 
-* `text` is the text to display as a string.
-* `position` is the position at which to display the text. 
+The parameters `position`, `dirn`, and `vertical` can be given as a `List` or a column `Matrix`. Optional parameter `dirn` sets the direction the text runs; `vertical` sets the upright direction and, if omitted, the text stands upright in the x-z plane. Optional parameter `font` is a font name, such as `"Helvetica"`. The value `size` is the font size in points.
 
-You can also provide optional arguments:
+    g.display(Text("Hello", [0, 0, 0], size=72, dirn=[1, 0, 0], color=White))
 
-* `color` is the color of the text. This should be a `Color` object.
-* `dirn` is the direction along which the text is drawn. This should be a `List` or a `Matrix`.
-* `size` is the font size to use
-* `vertical` is the vertical direction for the text
-* `font` is the `Font` object to use.
+## Light
+[taglight]: # (Light)
 
-Draw several pieces of text around the y axis:
+By default a `Graphics` uses neutral lighting. Other choices are `"threepoint"` and `"off"`:
 
-    var g = Graphics()
-    for (phi in 0..Pi:Pi/8) {
-      g.display(Text("Hello World", [0,0,0], size=72, dirn=[0,1,0], vertical=[cos(phi),0,sin(phi)]))
-    }
-    Show(g)
+    var g = Graphics(light="threepoint")
+
+You can also place your own lamps. A lamp is a position, with an optional color and brightness. A `Graphics` can have up to four.
+
+    g.addLight([2, 2, 2], color=White, intensity=0.8)
+    g.addLight(Light([-1, 0, 1], color=Blue, intensity=0.3))
+
+`setLights` replaces the current lighting. `resetLights` returns to neutral lighting.
+
+    g.setLights("off")
+    g.resetLights()
+
+## Scene
+[tagscene]: # (Scene)
+
+A `Scene` works similarly to `Graphics`, except that the contents can be modified supporting interactivity and animation. Each object added to the scene with `display` returns an id, as for `Graphics`. Use that id to move an object:
+
+    var s = Scene()
+    var id = s.display(Sphere([0, 0, 0], 0.2, color=Red))
+    s.move(id, [1, 0, 0])
+    s.move(id, scale=2)
+
+You can also remove the object;
+
+    s.remove(id)
+
+or replace it with a different object, retaining the id;
+
+    s.replace(id, Cylinder([0, 0, 0], [0, 0, 1], radius=0.05))
+
+or even recolor it:
+
+    s.recolor(id, Blue)
+
+A special `morph` method updates a `TriangleComplex` whose points have moved, leaving the triangle connectivity unchanged. Use `replace` when the object itself should change.

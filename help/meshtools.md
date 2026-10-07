@@ -96,7 +96,7 @@ The `DelaunayMesh` constructor function creates a `Mesh` object directly from a 
     var pts = []
     for (i in 0...100) pts.append(Matrix([random(), random()]))
     var m=DelaunayMesh(pts)
-    Show(plotmesh(m))
+    Show(Plot(m))
 
 You can control the output dimension of the mesh (e.g. to create a 2D mesh embedded in 3D space) using the optional `outputdim` property. 
 

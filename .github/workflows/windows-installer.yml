@@ -36,3 +36,12 @@ jobs:
           python -m pip install regex colored
           Set-Location test
           python test.py -c
+
+      - name: Installer integration problems
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:INSTALLER_PROBLEMS -eq "1") {
+            Write-Host "::error::The installer ran morpho6, but PATH or the bundled package install did not complete. See the install step annotations."
+            exit 1
+          }

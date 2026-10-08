@@ -20,13 +20,21 @@ $RequiredNames = @(
     "suitesparseconfig.dll"
 )
 $Failures = @()
+$Problems = @()
 
+# GitHub keeps only 10 notice annotations per step, so routine progress stays
+# in the log and the step summary. Write-Result is reserved for results we
+# need to read back from the public annotations API.
 function Write-Note([string]$Message) {
     Write-Host $Message
-    Write-Host "::notice::$Message"
     if ($env:GITHUB_STEP_SUMMARY) {
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $Message
     }
+}
+
+function Write-Result([string]$Message) {
+    Write-Note $Message
+    Write-Host "::notice::$Message"
 }
 
 function Add-Failure([string]$Message) {
@@ -36,6 +44,16 @@ function Add-Failure([string]$Message) {
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- " + $Message)
     }
     $script:Failures += $Message
+}
+
+# Reported as an error, but morpho6 can still be tested.
+function Add-Problem([string]$Message) {
+    Write-Host $Message
+    Write-Host "::error::$Message"
+    if ($env:GITHUB_STEP_SUMMARY) {
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- " + $Message)
+    }
+    $script:Problems += $Message
 }
 
 function Find-Morpho6 {
@@ -116,7 +134,7 @@ if (-not $ActualExe) {
 
 $ActualBin = Split-Path -Parent $ActualExe
 $ActualRoot = Split-Path -Parent $ActualBin
-Write-Note "morpho6.exe installed at $ActualExe"
+Write-Result "morpho6.exe installed at $ActualExe"
 if ($ActualExe -ne $ExpectedExe) {
     Add-Failure "morpho6.exe is at '$ActualExe', but this build looks up modules and help in '$ExpectedRoot'."
 }
@@ -148,13 +166,23 @@ if (-not $Uninstall) {
     }
 }
 
+function Format-PathHits([string]$Label, [string]$Value) {
+    if (-not $Value) { return "$Label=(empty)" }
+    $Hits = @($Value -split ';' | Where-Object { $_ -like '*Morpho*' })
+    if ($Hits.Count -eq 0) { return "$Label=no Morpho entry" }
+    return "$Label=[" + ($Hits -join " | ") + "]"
+}
+
 $MachinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
 $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
-$OnMachine = $MachinePath -like '*\Morpho\bin*'
-$OnUser = $UserPath -like '*\Morpho\bin*'
-Write-Note "PATH includes Morpho\bin (machine=$OnMachine, user=$OnUser)."
-if (-not $OnMachine -and -not $OnUser) {
-    Add-Failure "Installer did not add a Morpho\bin directory to the machine or user PATH."
+$PathReport = @(
+    (Format-PathHits "machine" $MachinePath),
+    (Format-PathHits "user" $UserPath)
+) -join "; "
+Write-Result "PATH after install: $PathReport"
+$OnPath = ($MachinePath -like '*\Morpho\bin*') -or ($UserPath -like '*\Morpho\bin*')
+if (-not $OnPath) {
+    Add-Problem "Installer did not add $ActualBin to the machine or user PATH ($PathReport)."
 }
 Add-Content -Path $env:GITHUB_PATH -Value $ActualBin
 
@@ -176,7 +204,7 @@ function Invoke-Morpho([string[]]$ArgumentList, [int]$TimeoutSec) {
 }
 
 $Version = Invoke-Morpho @("--version") 30
-Write-Note "morpho6 --version exit=$($Version.Code) output=[$($Version.Text.Trim())]"
+Write-Result "morpho6 --version exit=$($Version.Code) output=[$($Version.Text.Trim())]"
 if ($Version.Code -ne 0 -or $Version.Text -notmatch "0\.6\.5") {
     Add-Failure "morpho6 --version did not report 0.6.5 (exit=$($Version.Code), output=$($Version.Text.Trim()))."
 }
@@ -193,7 +221,7 @@ print System.version()
 $SmokeResult = Invoke-Morpho @($Smoke) 60
 $ActualLines = @($SmokeResult.Text -split "`r?`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" })
 $ExpectedLines = @("2", "3.14159", "windows", "0.6.5")
-Write-Note ("smoke exit=$($SmokeResult.Code) output=[" + ($ActualLines -join " | ") + "]")
+Write-Result ("smoke exit=$($SmokeResult.Code) output=[" + ($ActualLines -join " | ") + "]")
 $Same = ($SmokeResult.Code -eq 0) -and ($ActualLines.Count -eq $ExpectedLines.Count)
 if ($Same) {
     for ($i = 0; $i -lt $ExpectedLines.Count; $i++) {
@@ -226,21 +254,28 @@ do {
     Start-Sleep -Seconds 5
 } while ((Get-Date) -lt $PackageDeadline)
 
-$Task = schtasks /Query /TN MorphoPackageInstall /FO LIST 2>&1 | Out-String
-Write-Note ("Scheduled task MorphoPackageInstall: " + (($Task -replace '\s+', ' ').Trim()))
+$Task = ((schtasks /Query /TN MorphoPackageInstall /FO LIST 2>&1 | Out-String) -replace '\s+', ' ').Trim()
+if ($Task.Length -gt 300) { $Task = $Task.Substring(0, 300) }
+$Listing = @()
 foreach ($Root in $PackageRoots) {
     if (Test-Path -LiteralPath $Root) {
         $Names = @(Get-ChildItem -LiteralPath $Root -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
-        Write-Note ("Contents of ${Root}: " + ($Names -join ", "))
+        $Listing += ("${Root}: " + ($Names -join ", "))
     }
 }
+$ListingText = ($Listing -join " || ")
+if ($ListingText.Length -gt 500) { $ListingText = $ListingText.Substring(0, 500) }
 if ($Done) {
-    Write-Note "Package install marker: $Done"
+    Write-Result "Package install marker: $Done"
 } else {
-    Add-Failure "Package install did not write morpho-pkginstall.done."
+    Add-Problem "Package install did not write morpho-pkginstall.done. Task: $Task. Dirs: $ListingText"
 }
 
 if ($Failures.Count -gt 0) {
     throw ($Failures -join " ")
 }
-Write-Note "Installed morpho6 passed the smoke test."
+if ($Problems.Count -gt 0) {
+    # Keep the job red after the language tests, without skipping those tests.
+    Add-Content -Path $env:GITHUB_ENV -Value "INSTALLER_PROBLEMS=1"
+}
+Write-Result "Installed morpho6 passed the smoke test."

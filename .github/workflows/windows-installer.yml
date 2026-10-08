@@ -35,7 +35,17 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install regex colored
           Set-Location test
-          python test.py -c
+          python test.py -c *> ..\test-out.txt
+          $code = $LASTEXITCODE
+          $tail = @(Get-Content ..\test-out.txt | Select-Object -Last 6)
+          $summary = ($tail -join " | ")
+          if ($summary.Length -gt 500) { $summary = $summary.Substring($summary.Length - 500) }
+          Write-Host "::notice::$summary"
+          if (Test-Path FailedTests.txt) {
+            $failed = @(Select-String -Path FailedTests.txt -Pattern "Failed" -SimpleMatch)
+            Write-Host "::notice::FailedTests.txt has $($failed.Count) Failed lines"
+          }
+          exit $code
 
       - name: Installer integration problems
         if: always()

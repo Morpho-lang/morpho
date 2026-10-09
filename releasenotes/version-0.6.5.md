@@ -47,7 +47,7 @@ The `VTK` and `povray` modules are now separate packages installable with `morph
     morphopm install vtk
     morphopm install povray
 
-Old copies are still shipped with Morpho, but print a warning and will be removed in a future release. The `shapeopt` module is deprecat
+Old copies are still shipped with Morpho, but print a warning to encourage migration. The `shapeopt` and `histogram` modules are deprecated and will be removed in a future release.
 
 ## Minor fixes
 
@@ -58,3 +58,5 @@ Old copies are still shipped with Morpho, but print a warning and will be remove
 * Installed packages are searched before the built-in modules.
 * Fixed a degenerate case in Delaunay triangulation.
 * Help entries updated for the new graphics and plot interface.
+* Additional constants provided in the `constants` module. 
+* `KDTree.ismember` now returns the matching `KDTreeNode` or `false`. 

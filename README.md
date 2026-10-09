@@ -56,10 +56,10 @@ The simplest way to install morpho is through the [homebrew package manager](htt
 ```
 brew update
 brew tap morpho-lang/morpho
-brew install morpho morpho-cli morpho-morphoview morpho-morphopm
+brew install morpho-all
 ```
 
-If you need to uninstall morpho, simply open a terminal and type `brew uninstall morpho-morphopm morpho-cli morpho-morphoview morpho`. It's very important to uninstall the homebrew morpho in this way before attempting to install from source as below.
+If you need to uninstall morpho, simply open a terminal and type `brew uninstall morpho-all`. It's very important to uninstall the homebrew morpho in this way before attempting to install from source as below.
 
 ### Install from source
 

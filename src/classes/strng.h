@@ -47,6 +47,12 @@ typedef struct {
 #define OBJECT_STRINGLABEL "string" // These are only used by the parser... Should be moved?
 #define OBJECT_SYMBOLLABEL "symbol"
 
+/** Create an objectstring from a character array of fixed length */
+objectstring *object_newstringwithlength(const char *in, size_t length);
+
+/** Create an objectstring from a C string */
+objectstring *object_newstring(const char *in);
+
 /** Create a string object from a C string */
 value object_stringfromcstring(const char *in, size_t length);
 

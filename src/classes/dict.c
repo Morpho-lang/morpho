@@ -192,6 +192,23 @@ value Dictionary_enumerate(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Iterate protocol */
+value Dictionary_iterate(vm *v, int nargs, value *args) {
+    objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    if (n<0) { morpho_runtimeerror(v, VM_INVALIDARGS); return MORPHO_NIL; }
+    
+    for (int i=n; i<slf->dict.capacity; i+=1) {
+        if (!MORPHO_ISNIL(slf->dict.contents[i].key)) {
+            value ret[3]={ MORPHO_INTEGER(i+1), slf->dict.contents[i].val, slf->dict.contents[i].key };
+            return morpho_return(v, 3, ret);
+        }
+    }
+
+    value ret[3]={ MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };
+    return morpho_return(v, 3, ret);
+}
+
 /** Gets a list of keys */
 value Dictionary_keys(vm *v, int nargs, value *args) {
     objectdictionary *slf = MORPHO_GETDICTIONARY(MORPHO_SELF(args));
@@ -263,6 +280,7 @@ MORPHO_METHOD(DICTIONARY_CLEAR_METHOD, Dictionary_clear, MORPHO_FN_MUTATES),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Dictionary_print, MORPHO_FN_IO),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Dictionary_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Dictionary_enumerate, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_ITERATE_METHOD, " (Int)", Dictionary_iterate, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(DICTIONARY_KEYS_METHOD, "List ()", Dictionary_keys, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Dictionary ()", Dictionary_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(MORPHO_UNION_METHOD, "Dictionary (Dictionary)", Dictionary_union, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),

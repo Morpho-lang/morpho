@@ -1267,7 +1267,7 @@ static void help_appendothertopics(const char *name, int preferred, varray_char 
         if (cand[i] == preferred) continue;
         help_displaypath(cand[i], path, sizeof(path));
         varray_charadd(result, "- ", 2);
-        varray_charadd(result, path, strlen(path));
+        varray_charadd(result, path, (int) strlen(path));
         varray_charwrite(result, '\n');
     }
 }

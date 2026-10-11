@@ -46,12 +46,12 @@ objecttypedefn objectstringdefn = {
     .cmpfn = objectstring_cmpfn
 };
 
-/** @brief Creates a string from an existing character array with given length
+/** @brief Creates a string from an existing character array of given length
  *  @param in     the string to copy
  *  @param length length of string to copy
- *  @returns the object (as a value) which will be MORPHO_NIL on failure */
-value object_stringfromcstring(const char *in, size_t length) {
-    value out = MORPHO_NIL;
+ *  @returns the object or NULL on failure
+ *  @warning Including an interior \0 character can cause issues where string contents are used with C APIs */
+objectstring *object_newstringwithlength(const char *in, size_t length) {
     objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
 
     if (new) {
@@ -61,11 +61,27 @@ value object_stringfromcstring(const char *in, size_t length) {
         } else {
             memset(new->string, 0, length);
         }
-        new->string[length] = '\0'; /* Zero terminate the string to be compatible with C */
-        new->length=strlen(new->string);
-        out = MORPHO_OBJECT(new);
+        new->string[length] = '\0'; // Ensure string is zero-terminated
+        new->length=length;
     }
-    return out;
+    
+    return new;
+}
+
+/** @brief Creates a string from an existing null terminated C string
+ *  @param in     the string to copy
+ *  @returns the object or NULL on failure */
+objectstring *object_newstring(const char *in) {
+    return object_newstringwithlength(in, strlen(in));
+}
+
+/** @brief Creates a string from an existing character array with given length
+ *  @param in     the string to copy
+ *  @param length length of string to copy
+ *  @returns the object (as a value) which will be MORPHO_NIL on failure */
+value object_stringfromcstring(const char *in, size_t length) {
+    objectstring *str = object_newstringwithlength(in, length);
+    return (str ? MORPHO_OBJECT(str): MORPHO_NIL);
 }
 
 /** @brief Creates a string with given length
@@ -280,6 +296,25 @@ value String_enumerate(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Iterate protocol */
+value String_iterate(vm *v, int nargs, value *args) {
+    objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
+    int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    if (i<0) { morpho_runtimeerror(v, VM_INVALIDARGS); return MORPHO_NIL; }
+
+    if (i<slf->length) {
+        char *c = slf->string+i;
+        int nbytes = morpho_utf8numberofbytes(c);
+        objectstring *new = object_newstringwithlength(c, nbytes);
+        
+        value ret[3]={ MORPHO_INTEGER(i+nbytes), morpho_wrapandbind(v, (object *) new), MORPHO_NIL };
+        return morpho_return(v, 3, ret);
+    }
+
+    value ret[3]={ MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };
+    return morpho_return(v, 3, ret);
+}
+
 /** Tests if a string encodes a number */
 value String_isnumber(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
@@ -370,6 +405,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "String ()", String_print, MORPHO_F
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "String ()", String_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, "String (Int)", String_getindex, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", String_enumerate, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ITERATE_METHOD, "(Int)", String_iterate, MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(STRING_ISNUMBER_METHOD, "Bool ()", String_isnumber, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(STRING_SPLIT_METHOD, "List (String)", String_split, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(STRING_SUBSTRING_METHOD, "String (Int, Int)", String_substring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),

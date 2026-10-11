@@ -119,6 +119,7 @@ bool vm_start(vm *v, program *p) {
     v->fp->closure=NULL;
     v->fp->roffset=0;
     v->fp->nopt=0;
+    v->fp->expect=0;
     
 #ifdef MORPHO_PROFILER
     v->fp->inbuiltinfunction=NULL;
@@ -730,6 +731,7 @@ static inline bool vm_call(vm *v, value fn, unsigned int regcall, unsigned int n
 
     v->fp->ret=false; /* Interpreter should not return from this frame */
     v->fp->function=func; /* Store the function */
+    v->fp->expect=0; // Clear expect
 
     /* Do we need to expand the stack? */
     if (v->stack.count+func->nregs>v->stack.capacity) {
@@ -1475,6 +1477,12 @@ callfunction: // Jump here if an instruction becomes a call
                 ERROR(VM_GLBLRTRN);
             }
 
+        CASE_CODE(EXPECT):
+        {
+            v->fp->expect = bc;
+            DISPATCH();
+        }
+        
         CASE_CODE(CLOSURE):
         {
             a=DECODE_A(bc);
@@ -2007,6 +2015,20 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
     }
 
     return success;
+}
+
+/** Call to provide multiple return values */
+value morpho_return(vm *v, int nret, value *ret) {
+    value out = MORPHO_NIL;
+    if (v->fp->expect) {
+        
+    } else {
+        objecttuple *new = object_newtuple(nret, ret);
+        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
+        out = MORPHO_OBJECT(new);
+        vm_bindobjectwithoutcollect(v, new); // Avoid triggering garbage collection
+        return out;
+    }
 }
 
 /** Find the class associated with a value */

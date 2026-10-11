@@ -123,7 +123,8 @@ typedef struct {
     unsigned int stackcount;
     unsigned int returnreg; // Stores where any return value should be placed
     bool ret; // Should the interpreter return from this frame?
-    int nopt; // Number of optional arguments called 
+    int nopt; // Number of optional arguments called
+    instruction expect; // Set to active expect instruction 
 #ifdef MORPHO_PROFILER
     objectbuiltinfunction *inbuiltinfunction; // Keep track if we're in a built in function
 #endif

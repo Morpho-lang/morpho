@@ -66,6 +66,7 @@ typedef void compiler;
 #define MORPHO_CLONE_METHOD "clone"
 
 #define MORPHO_ENUMERATE_METHOD "enumerate"
+#define MORPHO_ITERATE_METHOD "iterate"
 #define MORPHO_COUNT_METHOD "count"
 #define MORPHO_CLONE_METHOD "clone"
 #define MORPHO_PRINT_METHOD "prnt"
@@ -165,6 +166,7 @@ bool morpho_debug(vm *v, program *p);
 bool morpho_lookupmethod(value obj, value label, value *method);
 bool morpho_countparameters(value f, int *nparams);
 bool morpho_call(vm *v, value fn, int nargs, value *args, value *ret);
+value morpho_return(vm *v, int nret, value *ret);
 bool morpho_invoke(vm *v, value obj, value method, int nargs, value *args, value *ret);
 error *morpho_geterror(vm *v);
 

@@ -2026,7 +2026,7 @@ value morpho_return(vm *v, int nret, value *ret) {
         objecttuple *new = object_newtuple(nret, ret);
         if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
         out = MORPHO_OBJECT(new);
-        vm_bindobjectwithoutcollect(v, new); // Avoid triggering garbage collection
+        vm_bindobjectwithoutcollect(v, out); // Avoid triggering garbage collection
         return out;
     }
 }

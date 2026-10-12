@@ -4589,7 +4589,7 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
     return ret;
 }
 
-static codeinfo compiler_movetoproperty(compiler *c, syntaxtreenode *node, codeinfo in, syntaxtreenode *obj);
+static codeinfo compiler_movetoproperty(compiler *c, codeinfo in, syntaxtreenode *obj);
 
 /* --------------------------------------
  * Assignment
@@ -4824,7 +4824,7 @@ bool _assign(compiler *c, lvalue_t *left, rvalue_t *right, codeinfo *out) {
                 success=true;
                 break;
             case LVALUE_PROPERTY:
-                ret = compiler_movetoproperty(c, right->node, right->ret, target);
+                ret = compiler_movetoproperty(c, right->ret, target);
                 success=true;
                 break;
         }
@@ -4969,44 +4969,47 @@ static codeinfo compiler_dot(compiler *c, syntaxtreenode *node, registerindx req
 }
 
 /* Moves the result of a calculation to an object property */
-static codeinfo compiler_movetoproperty(compiler *c, syntaxtreenode *node, codeinfo in, syntaxtreenode *obj) {
-    codeinfo prop = CODEINFO_EMPTY;
+static codeinfo compiler_movetoproperty(compiler *c, codeinfo in, syntaxtreenode *obj) {
+    codeinfo prop = CODEINFO_EMPTY, store = in;
+    bool storetmp = false;
+    instructionindx start = compiler_currentinstructionindex(c);
 
-    /* The left hand side of obj should evaluate to the object in question */
+    // Evaluate the object we're assigning to
     codeinfo left = compiler_nodetobytecode(c, obj->left, REGISTER_UNALLOCATED);
-    unsigned int ninstructions=left.ninstructions;
 
     if (!(CODEINFO_ISREGISTER(left) || CODEINFO_ISSHORTCONSTANT(left))) {
-        /* Ensure we're working with a register or a constant */
-        left=compiler_movetoregister(c, node, left, REGISTER_UNALLOCATED);
-        ninstructions+=left.ninstructions;
+        left=compiler_movetoregister(c, obj, left, REGISTER_UNALLOCATED);
     }
-
-    /* The right hand side of obj should be a property name */
+    
+    // Property name must be a symbol
     syntaxtreenode *selector = compiler_getnode(c, obj->right);
-    if (selector->type==NODE_SYMBOL) {
-        prop=compiler_addsymbolwithsizecheck(c, selector, selector->content);
-        ninstructions+=prop.ninstructions;
-    } else {
-        compiler_error(c, selector, COMPILE_PROPERTYNAMERQD);
+    if (!selector || selector->type != NODE_SYMBOL) {
+        compiler_error(c, obj, COMPILE_PROPERTYNAMERQD);
+        compiler_releaseoperand(c, left);
         return CODEINFO_EMPTY;
     }
+    
+    prop=compiler_addsymbolwithsizecheck(c, selector, selector->content);
 
-    codeinfo store = in;
-    if (!CODEINFO_ISREGISTER(in)) {
-        /* Ensure we're working with a register */
-        store=compiler_movetoregister(c, node, store, REGISTER_UNALLOCATED);
-        ninstructions+=store.ninstructions;
-        compiler_releaseoperand(c, store);
+    if (!CODEINFO_ISREGISTER(store)) { // Ensure the target is in a register
+        store=compiler_movetoregister(c, obj, store, REGISTER_UNALLOCATED);
+        storetmp=true;
     }
 
-    compiler_addinstruction(c, ENCODE(OP_SPR, left.dest, prop.dest, store.dest), node);
-    ninstructions++;
+    compiler_addinstruction(c, ENCODE(OP_SPR, left.dest, prop.dest, store.dest), obj);
 
-    if (CODEINFO_ISREGISTER(prop)) compiler_releaseoperand(c, prop);
+    // Release all temporaries
+    compiler_releaseoperand(c, left);
+    compiler_releaseoperand(c, prop);
+    if (storetmp) compiler_releaseoperand(c, store);
 
-    return CODEINFO(CODEINFO_ISCONSTANT(in), in.dest, ninstructions);
+    instructionindx end = compiler_currentinstructionindex(c);
+    return CODEINFO(in.returntype, in.dest, (unsigned int) (end - start));
 }
+
+/* --------------------------------------
+ * Compile an arbitrary node
+ * -------------------------------------- */
 
 /** Compiles a node to bytecode */
 static codeinfo compiler_nodetobytecode(compiler *c, syntaxtreeindx indx, registerindx reqout) {

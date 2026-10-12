@@ -57,6 +57,9 @@
 #define COMPILE_TOOMANYPARAMS             "TooMnyPrm"
 #define COMPILE_TOOMANYPARAMS_MSG         "Too many parameters."
 
+#define COMPILE_TOOMANYASSGNTRGTS         "TooMnyAssgnTrgts"
+#define COMPILE_TOOMANYASSGNTRGTS_MSG     "Too many assignment targets."
+
 #define COMPILE_VARALREADYDECLARED        "VblDcl"
 #define COMPILE_VARALREADYDECLARED_MSG    "Variable with this name already declared in this scope."
 

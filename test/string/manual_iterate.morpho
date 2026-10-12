@@ -1,0 +1,17 @@
+// Manually drive String iteration
+
+var str = "Hello!"
+
+print str.iterate(0) // expect: (1, H, nil)
+
+print str.iterate(1) // expect: (2, e, nil)
+
+print str.iterate(2) // expect: (3, l, nil)
+
+print str.iterate(3) // expect: (4, l, nil)
+
+print str.iterate(4) // expect: (5, o, nil)
+
+print str.iterate(5) // expect: (6, !, nil)
+
+print str.iterate(6) // expect: (nil, nil, nil)

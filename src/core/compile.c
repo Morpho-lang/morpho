@@ -4591,22 +4591,239 @@ static codeinfo compiler_symbol(compiler *c, syntaxtreenode *node, registerindx 
 
 static codeinfo compiler_movetoproperty(compiler *c, syntaxtreenode *node, codeinfo in, syntaxtreenode *obj);
 
-/** Assign to a symbol */
+/* --------------------------------------
+ * Assignment
+ * -------------------------------------- */
+
+/** Types of possible assignment target (lvalue) */
+typedef enum { ASSIGN_NONE, ASSIGN_VAR, ASSIGN_UPVALUE, ASSIGN_OBJ, ASSIGN_GLOBAL } lvaluetype_t;
+
+/** Types of possible access modifiers for an lvalue */
+typedef enum { LVALUE_INDEX, LVALUE_PROPERTY } lvalueoptype_t;
+
+/** Track access modifiers for lvalues */
+typedef struct {
+    lvalueoptype_t type;
+    syntaxtreeindx indx;
+    value symbol;
+} lvaluemodifier_t;
+
+DECLARE_VARRAY(lvaluemodifier, lvaluemodifier_t)
+DEFINE_VARRAY(lvaluemodifier, lvaluemodifier_t)
+
+/** Tracks information about an assignment target */
+typedef struct {
+    lvaluetype_t type;
+    registerindx slot;
+    value symbol;
+    syntaxtreenode *node;
+    varray_lvaluemodifier modifiers;
+} lvalue_t;
+
+/** Tracks information about an assigned value */
+typedef struct {
+    syntaxtreeindx indx;
+    syntaxtreenode *node;
+    codeinfo ret;
+} rvalue_t;
+
+/** Set the contents of an lvalue_t */
+void lvalue_set(lvalue_t *lval, lvaluetype_t type, registerindx slot, value symbol, syntaxtreenode *node) {
+    lval->type=type; lval->slot=slot; lval->symbol=symbol; lval->node=node;
+}
+
+/** Initialize an lvalue */
+void lvalue_init(lvalue_t *lval) {
+    lvalue_set(lval, ASSIGN_NONE, 0, MORPHO_NIL, NULL);
+    varray_lvaluemodifierinit(&lval->modifiers);
+}
+
+/** Clear an lvalue */
+void lvalue_clear(lvalue_t *lval) {
+    varray_lvaluemodifierclear(&lval->modifiers);
+}
+
+/** Determines the lvalue type from a given symbol */
+bool _lvaluefromsymbol(compiler *c, syntaxtreenode *node, value symbol, lvalue_t *out) {
+    registerindx reg=compiler_getlocal(c, symbol); // Is this a local variable?
+    if (reg!=REGISTER_UNALLOCATED) {
+        lvalue_set(out, ASSIGN_VAR, reg, symbol, node);
+        return true;
+    }
+    
+    reg=compiler_resolveupvalue(c, symbol); // ...an upvalue?
+    if (reg!=REGISTER_UNALLOCATED) {
+        lvalue_set(out, ASSIGN_UPVALUE, reg, symbol, node);
+        return true;
+    }
+    
+    reg=compiler_findglobal(c, symbol, true); // ...a global?
+    if (reg!=REGISTER_UNALLOCATED) {
+        lvalue_set(out, ASSIGN_GLOBAL, reg, symbol, node);
+        return true;
+    }
+    
+    compiler_error(c, node, COMPILE_SYMBOLNOTDEFINED, (MORPHO_ISSTRING(symbol) ? MORPHO_GETCSTRING(symbol) : ""));
+    return false;
+}
+
+/** Examines an lvalue defined at a given syntaxtreenode, filling out required information */
+bool _processlvalue(compiler *c, syntaxtreeindx indx, lvalue_t *out) {
+    syntaxtreenode *node = compiler_getnode(c, indx);
+    if (!node) return false;
+    out->node=node; // Record the node
+    out->slot=REGISTER_UNALLOCATED;
+    
+    switch (node->type) {
+        case NODE_SYMBOL:
+            return _lvaluefromsymbol(c, node, node->content, out);
+        case NODE_DOT:
+            break;
+        case NODE_INDEX:
+            break;
+        default: break;
+    }
+    return false;
+}
+
+/** Flattens a collection of nodes at indx into a list of lvalues; returning the number of lvalues obtained */
+bool _flattenlvalues(compiler *c, syntaxtreeindx indx, lvalue_t *lvalues, int *count) {
+    bool success=true;
+    syntaxtreenodetype flattentype[] = { NODE_TUPLE, NODE_ARGLIST }; // Types of node to flatten
+    varray_syntaxtreeindx nodeindx; // Find child nodes corresponding to lvalues
+    varray_syntaxtreeindxinit(&nodeindx);
+    
+    syntaxtree_flatten(&c->tree, indx, sizeof(flattentype)/sizeof(syntaxtreenodetype), flattentype, &nodeindx);
+    
+    if (lvalues) for (int i=0; i<nodeindx.count && success; i++) {
+        if (!_processlvalue(c, nodeindx.data[i], &lvalues[i])) success=false;
+    }
+    
+    if (count) *count=nodeindx.count;
+    varray_syntaxtreeindxclear(&nodeindx);
+    return success;
+}
+
+/** Initialize an rvalue */
+void rvalue_init(rvalue_t *rval) {
+    rval->node=NULL; rval->indx=0; rval->ret=CODEINFO_EMPTY;
+}
+
+/** Examines an rvalue defined at a given syntaxtreenode, filling out required information */
+bool _processrvalue(compiler *c, syntaxtreeindx indx, rvalue_t *out) {
+    out->indx=indx;
+    out->node=compiler_getnode(c, indx);
+    out->ret=CODEINFO_EMPTY;
+    return out->node!=NULL;
+}
+
+/** Flattens a collection of nodes at indx into a list of lvalues; returning the number of lvalues obtained */
+bool _flattenrvalues(compiler *c, syntaxtreeindx indx, rvalue_t *rvalues, int *count) {
+    bool success=true;
+    syntaxtreenodetype flattentype[] = { NODE_TUPLE, NODE_ARGLIST }; // Types of node to flatten
+    varray_syntaxtreeindx nodeindx; // Find child nodes corresponding to rvalues
+    varray_syntaxtreeindxinit(&nodeindx);
+    
+    syntaxtree_flatten(&c->tree, indx, sizeof(flattentype)/sizeof(syntaxtreenodetype), flattentype, &nodeindx);
+    
+    if (rvalues) for (int i=0; i<nodeindx.count && success; i++) {
+        if (!_processrvalue(c, nodeindx.data[i], &rvalues[i])) success=false;
+    }
+    
+    if (count) *count=nodeindx.count;
+    varray_syntaxtreeindxclear(&nodeindx);
+    return success;
+}
+
+/** Evaluate rvalue */
+bool _evalrvalue(compiler *c, rvalue_t *rvalue) {
+    registerindx reg = compiler_regtemp(c, REGISTER_UNALLOCATED);
+    rvalue->ret=compiler_nodetobytecode(c, rvalue->indx, reg);
+    rvalue->ret=compiler_movetoregister(c, rvalue->node, rvalue->ret, reg);
+    return !compiler_haserror(c);
+}
+
+/** Assign an lvalue to an rvalue */
+bool _assign(compiler *c, lvalue_t *left, rvalue_t *right, codeinfo *out) {
+    codeinfo ret=CODEINFO_EMPTY;
+    bool success=false;
+    
+    switch (left->type) {
+        case ASSIGN_VAR: // Move to a register
+            ret = compiler_movetoregister(c, right->node, right->ret, left->slot);
+            success=true;
+            break;
+        case ASSIGN_UPVALUE:
+            ret = compiler_movetoupvalue(c, right->node, right->ret, left->slot);
+            success=true;
+            break;
+        case ASSIGN_GLOBAL:
+            compiler_cleartoplevelcallable(c, left->symbol);
+            ret = compiler_movetoglobal(c, right->node, right->ret, left->slot);
+            success=true;
+            break;
+        default: break;
+    }
+    if (out) *out = ret;
+    
+    return success;
+}
+
+/** Compile an assignment  */
 static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    codeinfo out = CODEINFO_EMPTY;
+    int nlvalues, nrvalues;
+    instructionindx start = compiler_currentinstructionindex(c);
+    
+    // Count lvalues and rvalues
+    _flattenlvalues(c, node->left, NULL, &nlvalues);
+    _flattenrvalues(c, node->right, NULL, &nrvalues);
+    if (nlvalues>MORPHO_MAXRETURN || nrvalues > MORPHO_MAXRETURN) { compiler_error(c, node, COMPILE_TOOMANYASSGNTRGTS); return CODEINFO_EMPTY; }
+    
+    lvalue_t lvalues[nlvalues+1];
+    rvalue_t rvalues[nrvalues+1];
+    
+    for (int i=0; i<nlvalues; i++) lvalue_init(&lvalues[i]);
+    for (int i=0; i<nrvalues; i++) rvalue_init(&rvalues[i]);
+    
+    if (!_flattenlvalues(c, node->left, lvalues, NULL)) {
+        compiler_error(c, node, COMPILE_INVALIDASSIGNMENT);
+        goto compiler_assign_cleanup;
+    }
+    
+    // Obtain a list of rvalues
+    if (!_flattenrvalues(c, node->right, rvalues, NULL)) goto compiler_assign_cleanup;
+    
+    // Evaluate rvalues
+    for (int i=0; i<nrvalues; i++) if (!_evalrvalue(c, &rvalues[i])) goto compiler_assign_cleanup;
+    
+    // Perform assignment
+    for (int i=0; i<nlvalues && i<nrvalues; i++) if (!_assign(c, &lvalues[i], &rvalues[i], NULL)) goto compiler_assign_cleanup;
+    
+    instructionindx end = compiler_currentinstructionindex(c);
+    out = CODEINFO(REGISTER, REGISTER_UNALLOCATED, (unsigned int) (end-start));
+    
+    // Cleanup
+compiler_assign_cleanup:
+    for (int i=0; i<nrvalues; i++) compiler_releaseoperand(c, rvalues[i].ret);
+    for (int i=0; i<nlvalues; i++) lvalue_clear(&lvalues[i]);
+    return out;
+}
+    /*
     syntaxtreenode *varnode = compiler_getnode(c, node->left);
     syntaxtreenode *indxnode = NULL;
     codeinfo ret, right=CODEINFO_EMPTY;
     value var=MORPHO_NIL;
     registerindx reg=REGISTER_UNALLOCATED, istart=0, iend=0, tmp=REGISTER_UNALLOCATED;
-    enum { ASSIGN_VAR, ASSIGN_UPVALUE, ASSIGN_OBJ, ASSIGN_GLBL, ASSIGN_INDEX } mode=ASSIGN_VAR;
+    lvaluetype_t mode=ASSIGN_VAR;
     unsigned int ninstructions = 0;
 
-    /* Find the symbol or check if it's an object */
+    // Find the symbol or check if it's an object
     if (varnode) {
         if (varnode->type==NODE_SYMBOL) {
             var = varnode->content;
         } else if (varnode->type==NODE_DOT) {
-            mode=ASSIGN_OBJ; /* Or object */
+            mode=ASSIGN_OBJ; // Or object
         } else if (varnode->type==NODE_INDEX) {
             mode=ASSIGN_INDEX;
             indxnode=varnode;
@@ -4623,15 +4840,15 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
 
     if (!MORPHO_ISNIL(var) || mode==ASSIGN_OBJ || mode==ASSIGN_INDEX) {
         if (mode!=ASSIGN_OBJ) {
-            /* Find the local variable and get the assigned register */
+            // Find the local variable and get the assigned register
             if (reg==REGISTER_UNALLOCATED) reg=compiler_getlocal(c, var);
 
-            /* Perhaps it's an upvalue? */
+            // Perhaps it's an upvalue?
             if (reg==REGISTER_UNALLOCATED) {
                 reg=compiler_resolveupvalue(c, var);
                 if (reg!=REGISTER_UNALLOCATED) {
                     if (indxnode) {
-                        /* Indexed upvalue: LUP into a register, then SIX (same as globals) */
+                        // Indexed upvalue: LUP into a register, then SIX (same as globals)
                         tmp=compiler_regalloctop(c);
                         codeinfo mv=compiler_movetoregister(c, node, CODEINFO(UPVALUE, reg, 0), tmp);
                         ninstructions+=mv.ninstructions;
@@ -4641,12 +4858,12 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
                 }
             }
 
-            /* .. or a global? */
+            // .. or a global?
             if (reg==REGISTER_UNALLOCATED) {
                 reg=compiler_findglobal(c, var, true);
                 if (reg!=REGISTER_UNALLOCATED) {
                     if (indxnode) {
-                        /* If an indexed global, move the global into a register */
+                        // If an indexed global, move the global into a register
                         tmp=compiler_regalloctop(c);
                         codeinfo mv=compiler_movetoregister(c, node, CODEINFO(GLOBAL, reg, 0), tmp);
                         ninstructions+=mv.ninstructions;
@@ -4656,7 +4873,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
                 }
             }
 
-            /* Still couldn't resolve it, so generate an error */
+            // Still couldn't resolve it, so generate an error
             if (reg==REGISTER_UNALLOCATED) {
                 compiler_error(c, node, COMPILE_SYMBOLNOTDEFINED, (MORPHO_ISSTRING(var) ? MORPHO_GETCSTRING(var) : ""));
                 return CODEINFO_EMPTY;
@@ -4668,13 +4885,13 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
             ninstructions+=right.ninstructions;
         }
 
-        /* Evaluate the rhs */
+        // Evaluate the rhs
         right = compiler_nodetobytecode(c, node->right, (mode!=ASSIGN_VAR ? REGISTER_UNALLOCATED : reg));
         ninstructions+=right.ninstructions;
 
         switch (mode) {
             case ASSIGN_VAR:
-                /* Move to a register */
+                // Move to a register
                 ret=compiler_movetoregister(c, node, right, reg);
                 ninstructions+=ret.ninstructions;
                 break;
@@ -4693,7 +4910,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
                 break;
             case ASSIGN_INDEX:
             {
-                /* Make sure the rhs is in the register after the last index */
+                // Make sure the rhs is in the register after the last index
                 if (!(CODEINFO_ISREGISTER(right) && right.dest==iend+1)) {
                     registerindx last=compiler_regtempwithindx(c, iend+1);
                     compiler_releaseoperand(c, right);
@@ -4716,12 +4933,12 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
 
     if (tmp!=REGISTER_UNALLOCATED) compiler_regfreetemp(c, tmp);
 
-    /* Make sure the correct number of instructions is returned */
+    // Make sure the correct number of instructions is returned
     ret=right;
     ret.ninstructions=ninstructions;
 
     return ret;
-}
+    */
 
 /* Compiles property lookup */
 static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerindx reqout) {
@@ -5357,6 +5574,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_INVALIDASSIGNMENT, ERROR_COMPILE, COMPILE_INVALIDASSIGNMENT_MSG);
     morpho_defineerror(COMPILE_CLASSINHERITSELF, ERROR_COMPILE, COMPILE_CLASSINHERITSELF_MSG);
     morpho_defineerror(COMPILE_TOOMANYPARAMS, ERROR_COMPILE, COMPILE_TOOMANYPARAMS_MSG);
+    morpho_defineerror(COMPILE_TOOMANYASSGNTRGTS, ERROR_COMPILE, COMPILE_TOOMANYASSGNTRGTS_MSG);
     morpho_defineerror(COMPILE_VARALREADYDECLARED, ERROR_COMPILE, COMPILE_VARALREADYDECLARED_MSG);
     morpho_defineerror(COMPILE_FILENOTFOUND, ERROR_COMPILE, COMPILE_FILENOTFOUND_MSG);
     morpho_defineerror(COMPILE_MODULENOTFOUND, ERROR_COMPILE, COMPILE_MODULENOTFOUND_MSG);

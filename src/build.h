@@ -113,6 +113,9 @@
 /** @brief Maximum number of arguments */
 #define MORPHO_MAXARGS 255 /** @warning Note that this cannot easily be adjusted >255 without changing the instruction encoding */
 
+/** @brief Maximum number of return values */
+#define MORPHO_MAXRETURN 64
+
 /** @brief Maximum number of arguments copied onto the C stack (e.g. by apply) */
 #define MORPHO_MAXCARGS 4096
 

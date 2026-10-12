@@ -2017,11 +2017,28 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
     return success;
 }
 
-/** Call to provide multiple return values */
+/** API to provide return values */
 value morpho_return(vm *v, int nret, value *ret) {
     value out = MORPHO_NIL;
     if (v->fp->expect) {
+        instruction expect = v->fp->expect;
+        v->fp->expect = 0; // Reset expect in this callframe
         
+        int nexp = DECODE_A(expect);
+        if (nret<nexp) {
+            morpho_runtimeerror(v, VM_TOOFEWRTRNS, nexp, nret);
+            return MORPHO_NIL;
+        }
+        
+        value *reg = v->stack.data + v->fp->roffset;
+        if (nexp>0) reg[DECODE_B(expect)] = ret[0]; // First return has an arbitrary destination
+
+        if (nexp>1) {
+            registerindx r = DECODE_C(expect);
+            for (int i=1; i<nexp; i++) reg[r+i-1] = ret[i];
+        }
+
+        return MORPHO_NIL;
     } else {
         objecttuple *new = object_newtuple(nret, ret);
         if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
@@ -2286,6 +2303,7 @@ void morpho_initialize(void) {
     morpho_defineerror(VM_CNCTFLD, ERROR_HALT, VM_CNCTFLD_MSG);
     morpho_defineerror(VM_UNCALLABLE, ERROR_HALT, VM_UNCALLABLE_MSG);
     morpho_defineerror(VM_GLBLRTRN, ERROR_HALT, VM_GLBLRTRN_MSG);
+    morpho_defineerror(VM_TOOFEWRTRNS, ERROR_HALT, VM_TOOFEWRTRNS_MSG);
     morpho_defineerror(VM_INSTANTIATEFAILED, ERROR_HALT, VM_INSTANTIATEFAILED_MSG);
     morpho_defineerror(VM_NOTANOBJECT, ERROR_HALT, VM_NOTANOBJECT_MSG);
     morpho_defineerror(VM_OBJECTLACKSPROPERTY, ERROR_HALT, VM_OBJECTLACKSPROPERTY_MSG);

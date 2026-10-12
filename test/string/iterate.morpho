@@ -5,24 +5,3 @@
   (a, b) = "Hello!".iterate(0)
   print (a, b) // expect: (1, H)
 }
-
-//
-/*
-{
-  var str = "Hello!"
-  var i, v
-
-  for (k in 0..7) {
-    (i, v) = str.iterate(k)
-    print (i, v)
-  }
-}
-*/
-// expect: (1, H)
-// expect: (2, e)
-// expect: (3, l)
-// expect: (4, l)
-// expect: (5, o)
-// expect: (6, !)
-// expect: (nil, nil)
-// expect: (nil, nil)

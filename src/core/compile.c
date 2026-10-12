@@ -3904,17 +3904,31 @@ static bool compiler_specializemetafunctioncall(compiler *c, syntaxtreenode *nod
     return true;
 }
 
+/** Expect structure */
+typedef struct {
+    int nret;
+    registerindx first;
+    registerindx rest;
+} expect_t;
+
+/** Emits an expect instruction */
+unsigned int compiler_emitexpect(compiler *c, syntaxtreenode *node, expect_t *expect) {
+    if (!expect) return 0;
+    compiler_addinstruction(c, ENCODE(OP_EXPECT, expect->nret, expect->first, expect->rest), node);
+    return 1;
+}
+
+/** Prototype needed for _call.*/
+static codeinfo _invoke(compiler *c, syntaxtreenode *node, registerindx reqout, expect_t *expect);
+
 /** Compiles a function call */
-static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx reqout) {
+static codeinfo _call(compiler *c, syntaxtreenode *node, registerindx reqout, expect_t *expect) {
     unsigned int ninstructions=0;
     if (compiler_haserror(c)) return CODEINFO_EMPTY;
 
-    if (compiler_isinvocation(c, node)) {
-        return compiler_invoke(c, node, reqout);
-    }
+    if (compiler_isinvocation(c, node)) return _invoke(c, node, reqout, expect);
     
     registerindx top=compiler_regtop(c);
-
     compiler_beginargs(c);
     
     // Check if the call is a constructor
@@ -4001,6 +4015,7 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
         selectorload>=0) {
         compiler_specializemetafunctioncall(c, node, &func, selectorload, nposn, target, &rtype);
     }
+    if (expect) ninstructions+=compiler_emitexpect(c, node, expect);
     compiler_addinstruction(c, ENCODE(OP_CALL, func.dest, nposn, nopt), node);
     ninstructions++;
 
@@ -4022,7 +4037,10 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
     return CODEINFO(REGISTER, func.dest, ninstructions);
 }
 
-
+/** Public veneer onto call with no prior expect */
+static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    return _call(c, node, reqout, NULL);
+}
 
 /* Compiles a method invocation:
         node              |          node
@@ -4030,7 +4048,7 @@ static codeinfo compiler_call(compiler *c, syntaxtreenode *node, registerindx re
      DOT     args         |    method     args
    /    \                 |    (self)
 object   method */
-static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx reqout) {
+static codeinfo _invoke(compiler *c, syntaxtreenode *node, registerindx reqout, expect_t *expect) {
     unsigned int ninstructions=0;
     codeinfo object=CODEINFO_EMPTY;
 
@@ -4113,9 +4131,12 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
 
     compiler_endargs(c);
 
-    // Generate the invoke instruction
+    // Count arguments
     int nposn=0, nopt=0;
     compiler_regcountargs(c, object.dest+1, lastarg, &nposn, &nopt);
+
+    // Generate the invoke instruction
+    if (expect) ninstructions+=compiler_emitexpect(c, node, expect);
     compiler_addinstruction(c, ENCODE(OP_INVOKE, rSel, nposn, nopt), node);
     ninstructions++;
 
@@ -4136,6 +4157,18 @@ static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx 
     }
 
     return CODEINFO(REGISTER, object.dest, ninstructions);
+}
+
+/** Public veneer onto invoke with no prior expect */
+static codeinfo compiler_invoke(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    return _invoke(c, node, reqout, NULL);
+}
+
+/** Compile a call or invoke with multiple returns */
+static codeinfo compiler_callexpect(compiler *c, syntaxtreenode *node,
+                                    int nret, registerindx first, registerindx rest) {
+    expect_t expect = { .nret=nret, .first=first, .rest = rest};
+    return _call(c, node, REGISTER_UNALLOCATED, &expect);
 }
 
 /** Compile a return statement */
@@ -4850,6 +4883,22 @@ bool _assign(compiler *c, lvalue_t *left, rvalue_t *right, codeinfo *out) {
     return success && !compiler_haserror(c);
 }
 
+/** Evaluate a call expecting multiple return values */
+static bool _evalrvalueexpect(compiler *c, rvalue_t *rvalue, int nret, rvalue_t *returns) {
+    // Allocate consecutive registers for the returned values
+    for (int i=0; i<nret; i++) {
+        rvalue_init(&returns[i]);
+        returns[i].node=rvalue->node;
+        returns[i].indx=rvalue->indx;
+        returns[i].ret=CODEINFO(REGISTER, compiler_regalloctop(c), 0);
+    }
+
+    // Compile call preceeded by an EXPECT
+    rvalue->ret=compiler_callexpect(c, rvalue->node, nret, returns[0].ret.dest, returns[1].ret.dest);
+
+    return !compiler_haserror(c);
+}
+
 /** Compile an assignment  */
 static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo out = CODEINFO_EMPTY;
@@ -4863,9 +4912,10 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
     
     lvalue_t lvalues[nlvalues+1];
     rvalue_t rvalues[nrvalues+1];
+    rvalue_t returns[nlvalues+1]; // Use to store return sites
     
-    for (int i=0; i<nlvalues; i++) lvalue_init(&lvalues[i]);
-    for (int i=0; i<nrvalues; i++) rvalue_init(&rvalues[i]);
+    for (int i=0; i<nlvalues; i++) { lvalue_init(&lvalues[i]); rvalue_init(&returns[i]); }
+    for (int i=0; i<nrvalues; i++) { rvalue_init(&rvalues[i]); }
     
     if (!_flattenlvalues(c, node->left, lvalues, NULL)) {
         compiler_error(c, node, COMPILE_INVALIDASSIGNMENT);
@@ -4875,19 +4925,32 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
     // Obtain a list of rvalues
     if (!_flattenrvalues(c, node->right, rvalues, NULL)) goto compiler_assign_cleanup;
     
-    // Evaluate rvalues
-    for (int i=0; i<nrvalues; i++) if (!_evalrvalue(c, &rvalues[i])) goto compiler_assign_cleanup;
+    // Detect assignment due to a call with multiple return values
+    bool multireturn = nlvalues>1 && nrvalues==1 && rvalues[0].node && rvalues[0].node->type==NODE_CALL;
     
-    // Perform assignment
-    for (int i=0; i<nlvalues && i<nrvalues; i++) if (!_assign(c, &lvalues[i], &rvalues[i], NULL)) goto compiler_assign_cleanup;
+    if (multireturn) { // Evaluate the call with an EXPECT
+        if (!_evalrvalueexpect(c, &rvalues[0], nlvalues, returns)) goto compiler_assign_cleanup;
+
+        for (int i=0; i<nlvalues; i++) { // Assign each returned value
+            if (!_assign(c, &lvalues[i], &returns[i], NULL)) goto compiler_assign_cleanup;
+        }
+    } else {
+        // Evaluate rvalues
+        for (int i=0; i<nrvalues; i++) if (!_evalrvalue(c, &rvalues[i])) goto compiler_assign_cleanup;
+        
+        // Perform assignment
+        for (int i=0; i<nlvalues && i<nrvalues; i++) if (!_assign(c, &lvalues[i], &rvalues[i], NULL)) goto compiler_assign_cleanup;
+    }
     
     instructionindx end = compiler_currentinstructionindex(c);
     out = CODEINFO(REGISTER, REGISTER_UNALLOCATED, (unsigned int) (end-start));
     
-    // Cleanup
 compiler_assign_cleanup:
     for (int i=0; i<nrvalues; i++) compiler_releaseoperand(c, rvalues[i].ret);
-    for (int i=0; i<nlvalues; i++) lvalue_clear(&lvalues[i]);
+    for (int i=0; i<nlvalues; i++) {
+        lvalue_clear(&lvalues[i]);
+        compiler_releaseoperand(c, returns[i].ret);
+    }
     return out;
 }
 

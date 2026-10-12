@@ -140,6 +140,9 @@ void morpho_unreachable(const char *explanation);
 #define VM_GLBLRTRN                       "GlblRtrn"
 #define VM_GLBLRTRN_MSG                   "Return encountered outside a function or method."
 
+#define VM_TOOFEWRTRNS                    "TooFewRtrns"
+#define VM_TOOFEWRTRNS_MSG                "Too few return values from call: expected %i but got %i."
+
 #define VM_INSTANTIATEFAILED              "InstFail"
 #define VM_INSTANTIATEFAILED_MSG          "Could not instantiate object."
 

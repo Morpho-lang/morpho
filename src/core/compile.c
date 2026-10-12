@@ -2188,93 +2188,89 @@ static codeinfo compiler_constant(compiler *c, syntaxtreenode *node, registerind
     return CODEINFO(CONSTANT, indx, 0);
 }
 
+/** Compile a sequence of expressions into consecutive registers. */
+static codeinfo compiler_compileregistersequence(compiler *c, int n, syntaxtreeindx *nodes, registerindx *istart, registerindx *iend) {
+    codeinfo out=CODEINFO_EMPTY;
+    instructionindx start = compiler_currentinstructionindex(c);
+    registerindx reg=REGISTER_UNALLOCATED;
+
+    for (int i=0; i<n; i++) {
+        reg=compiler_regalloctop(c);
+        if (i==0 && istart) *istart=reg;
+
+        syntaxtreenode *node=compiler_getnode(c, nodes[i]);
+        codeinfo val=compiler_nodetobytecode(c, nodes[i], reg);
+        if (!(CODEINFO_ISREGISTER(val) && val.dest==reg)) {
+            compiler_regtempwithindx(c, reg);
+            codeinfo moved=compiler_movetoregister(c, node, val, reg);
+            compiler_releaseoperand(c, val);
+            val=moved;
+        }
+
+        if (compiler_haserror(c)) return CODEINFO_EMPTY;
+        
+        if (compiler_regtop(c)!=reg) {
+            compiler_regshow(c);
+            UNREACHABLE("Incorrect register allocation compiling register sequence.");
+        }
+    }
+    
+    if (iend) *iend=reg;
+    out.ninstructions=(unsigned int) (compiler_currentinstructionindex(c)-start);
+    return out;
+}
+
 /** Compiles a list or tuple */
 static codeinfo compiler_list(compiler *c, syntaxtreenode *node, registerindx reqout) {
-    syntaxtreenodetype dictentrytype[] = { NODE_ARGLIST };
-    varray_syntaxtreeindx entries;
+    syntaxtreenodetype flattentype[] = { NODE_ARGLIST };
+    instructionindx start = compiler_currentinstructionindex(c);
 
-    /* Set up a call to the List() or Tuple() function as appropriate */
-    char *classname = LIST_CLASSNAME;
-    value type = _listtype;
-    if (node->type==NODE_TUPLE) {
-        classname = TUPLE_CLASSNAME;
-        type = _tupletype;
-    }
+    // Set up a call to the List() or Tuple() function as appropriate
+    char *classname = (node->type==NODE_TUPLE ? TUPLE_CLASSNAME : LIST_CLASSNAME);
+    value type = (node->type==NODE_TUPLE ? _tupletype : _listtype);
     
     codeinfo out = compiler_findbuiltin(c, node, classname, reqout);
-    
     if (!compiler_regcheckandsetcurrenttype(c, node, out.dest, type)) return CODEINFO_EMPTY;
 
+    varray_syntaxtreeindx entries;
     varray_syntaxtreeindxinit(&entries);
-    if (node->right!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, 1, dictentrytype, &entries);
-
-    /* Now loop over the nodes */
-    unsigned int nargs=0;
-    for (int i=0; i<entries.count; i++) {
-        syntaxtreenode *entry=compiler_getnode(c, entries.data[i]);
-
-        registerindx reg=compiler_regalloctop(c);
-        codeinfo val = compiler_nodetobytecode(c, entries.data[i], reg);
-        out.ninstructions+=val.ninstructions;
-        if (!(CODEINFO_ISREGISTER(val) && (val.dest==reg))) {
-            compiler_releaseoperand(c, val);
-            compiler_regtempwithindx(c, reg);
-            val=compiler_movetoregister(c, entry, val, reg);
-            out.ninstructions+=val.ninstructions;
-        }
-        nargs++;
-    }
-
+    if (node->right!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, sizeof(flattentype)/sizeof(syntaxtreenodetype), flattentype, &entries);
+    
+    compiler_compileregistersequence(c, entries.count, entries.data, NULL, NULL);
+    
+    if (!compiler_haserror(c)) compiler_addinstruction(c, ENCODE_DOUBLE(OP_CALL, out.dest, entries.count), node);
+    
     varray_syntaxtreeindxclear(&entries);
-
-    /* Make the function call */
-    compiler_addinstruction(c, ENCODE_DOUBLE(OP_CALL, out.dest, nargs), node);
-    out.ninstructions++;
     compiler_regfreetoend(c, out.dest+1);
 
+    out.ninstructions=(unsigned int) (compiler_currentinstructionindex(c) - start);
     return out;
 }
 
 /** Compiles a dictionary */
 static codeinfo compiler_dictionary(compiler *c, syntaxtreenode *node, registerindx reqout) {
-    syntaxtreenodetype dictentrytype[] = { NODE_DICTIONARY, NODE_DICTENTRY };
-    varray_syntaxtreeindx entries;
+    syntaxtreenodetype flattentype[] = { NODE_DICTIONARY, NODE_DICTENTRY };
+    instructionindx start = compiler_currentinstructionindex(c);
 
-    /* Set up a call to the Dictionary() function */
+    // Set up a call to the Dictionary() function */
     codeinfo out = compiler_findbuiltin(c, node, DICTIONARY_CLASSNAME, reqout);
-
     if (!compiler_regcheckandsetcurrenttype(c, node, out.dest, _dicttype)) return CODEINFO_EMPTY;
-    
+
+    // Flatten to key, value, key, value, ...
+    varray_syntaxtreeindx entries;
     varray_syntaxtreeindxinit(&entries);
-    /* Flatten all the child nodes; these end up as a sequence: key, val, key, val, ... */
-    if (node->left!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->left, 2, dictentrytype, &entries);
-    if (node->right!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, 2, dictentrytype, &entries);
+    
+    if (node->left!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->left, sizeof(flattentype)/sizeof(syntaxtreenodetype), flattentype, &entries);
+    if (node->right!=SYNTAXTREE_UNCONNECTED) syntaxtree_flatten(compiler_getsyntaxtree(c), node->right, sizeof(flattentype)/sizeof(syntaxtreenodetype), flattentype, &entries);
 
-    /* Now loop over the nodes */
-    unsigned int nargs=0;
-    for (int i=0; i<entries.count; i+=2) {
-        /* Loop over key/val pairs */
-        for (int j=0; j<2; j++) {
-            syntaxtreenode *entry=compiler_getnode(c, entries.data[i+j]);
+    compiler_compileregistersequence(c, entries.count, entries.data, NULL, NULL);
 
-            registerindx reg=compiler_regalloctop(c);
-            codeinfo val = compiler_nodetobytecode(c, entries.data[i+j], reg);
-            out.ninstructions+=val.ninstructions;
-            if (!(CODEINFO_ISREGISTER(val) && (val.dest==reg))) {
-                compiler_releaseoperand(c, val);
-                val=compiler_movetoregister(c, entry, val, reg);
-                out.ninstructions+=val.ninstructions;
-            }
-            nargs++;
-        }
-    }
+    if (!compiler_haserror(c)) compiler_addinstruction(c, ENCODE_DOUBLE(OP_CALL, out.dest, entries.count), node);
+
     varray_syntaxtreeindxclear(&entries);
-
-    /* Make the function call */
-    compiler_addinstruction(c, ENCODE_DOUBLE(OP_CALL, out.dest, nargs), node);
-    out.ninstructions++;
     compiler_regfreetoend(c, out.dest+1);
 
+    out.ninstructions=(unsigned int) (compiler_currentinstructionindex(c)-start);
     return out;
 }
 

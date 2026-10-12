@@ -1,0 +1,15 @@
+// Check handling of nested targets in assignment expressions
+
+class Foo {
+  init(List lst) { self.lst = lst }
+}
+
+var a = [ Foo([1,2,3]), Foo([4,5,6]), Foo([7,8,9]) ]
+
+a[0].lst[1] = 20
+a[1].lst[1] = 30
+
+for (e in a) print e.lst 
+// expect: [ 1, 20, 3 ]
+// expect: [ 4, 30, 6 ]
+// expect: [ 7, 8, 9 ]

@@ -36,6 +36,9 @@
 #define COMPILE_SELFOUTSIDECLASS          "SlfOtsdClss"
 #define COMPILE_SELFOUTSIDECLASS_MSG      "Cannot use 'self' outside of a class."
 
+#define COMPILE_SELFASSGN                 "SlfAssgn"
+#define COMPILE_SELFASSGN_MSG             "You cannot modify 'self'."
+
 #define COMPILE_RETURNININITIALIZER       "InitRtn"
 #define COMPILE_RETURNININITIALIZER_MSG   "Cannot return a value in an initializer."
 
@@ -59,6 +62,9 @@
 
 #define COMPILE_TOOMANYASSGNTRGTS         "TooMnyAssgnTrgts"
 #define COMPILE_TOOMANYASSGNTRGTS_MSG     "Too many assignment targets."
+
+#define COMPILE_PRPRTYNMEXPCTD            "PrprtyNmExpctd"
+#define COMPILE_PRPRTYNMEXPCTD_MSG        "Property name expected in assignment."
 
 #define COMPILE_VARALREADYDECLARED        "VblDcl"
 #define COMPILE_VARALREADYDECLARED_MSG    "Variable with this name already declared in this scope."

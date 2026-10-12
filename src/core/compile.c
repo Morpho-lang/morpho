@@ -4596,7 +4596,7 @@ static codeinfo compiler_movetoproperty(compiler *c, syntaxtreenode *node, codei
  * -------------------------------------- */
 
 /** Types of possible assignment target (lvalue) */
-typedef enum { ASSIGN_NONE, ASSIGN_VAR, ASSIGN_UPVALUE, ASSIGN_OBJ, ASSIGN_GLOBAL } lvaluetype_t;
+typedef enum { ASSIGN_NONE, ASSIGN_VAR, ASSIGN_SELF, ASSIGN_UPVALUE, ASSIGN_GLOBAL } lvaluetype_t;
 
 /** Types of possible access modifiers for an lvalue */
 typedef enum { LVALUE_INDEX, LVALUE_PROPERTY } lvalueoptype_t;
@@ -4634,13 +4634,19 @@ void lvalue_set(lvalue_t *lval, lvaluetype_t type, registerindx slot, value symb
 
 /** Initialize an lvalue */
 void lvalue_init(lvalue_t *lval) {
-    lvalue_set(lval, ASSIGN_NONE, 0, MORPHO_NIL, NULL);
+    lvalue_set(lval, ASSIGN_NONE, REGISTER_UNALLOCATED, MORPHO_NIL, NULL);
     varray_lvaluemodifierinit(&lval->modifiers);
 }
 
 /** Clear an lvalue */
 void lvalue_clear(lvalue_t *lval) {
     varray_lvaluemodifierclear(&lval->modifiers);
+}
+
+/** Add a modifier to an lvalue */
+bool lvalue_addmodifier(lvalue_t *lval, lvalueoptype_t t, syntaxtreeindx i, value s) {
+    lvaluemodifier_t mod = { .type = t, .indx = i, .symbol = s };
+    return varray_lvaluemodifieradd(&lval->modifiers, &mod, 1);
 }
 
 /** Determines the lvalue type from a given symbol */
@@ -4667,23 +4673,47 @@ bool _lvaluefromsymbol(compiler *c, syntaxtreenode *node, value symbol, lvalue_t
     return false;
 }
 
+/** Recursively process assignment lvalue tree, emitting modifiers as necessary */
+bool _processlvaluerecursive(compiler *c, syntaxtreeindx indx, lvalue_t *out) {
+    syntaxtreenode *node = compiler_getnode(c, indx);
+    if (!node) return false;
+
+    switch (node->type) {
+        case NODE_SYMBOL: {
+            return _lvaluefromsymbol(c, node, node->content, out);
+        }
+        case NODE_SELF: {
+            lvalue_set(out, ASSIGN_SELF, 0, MORPHO_NIL, node);
+            return true;
+        }
+        case NODE_DOT: {
+            if (!_processlvaluerecursive(c, node->left, out)) return false; // Recursively process anything to the left
+            
+            // Check that the rhs is a property symbol
+            syntaxtreenode *property = compiler_getnode(c, node->right);
+            if (!property || property->type != NODE_SYMBOL) { compiler_error(c, node, COMPILE_PRPRTYNMEXPCTD); return false; }
+            
+            return lvalue_addmodifier(out, LVALUE_PROPERTY, indx, property->content);
+        }
+        case NODE_INDEX: {
+            if (!_processlvaluerecursive(c, node->left, out)) return false; // Recursively process anything to the left
+            
+            return lvalue_addmodifier(out, LVALUE_INDEX, indx, MORPHO_NIL);
+        }
+        default: compiler_error(c, node, COMPILE_INVALIDASSIGNMENT);
+    }
+    return false;
+}
+
 /** Examines an lvalue defined at a given syntaxtreenode, filling out required information */
 bool _processlvalue(compiler *c, syntaxtreeindx indx, lvalue_t *out) {
     syntaxtreenode *node = compiler_getnode(c, indx);
     if (!node) return false;
-    out->node=node; // Record the node
-    out->slot=REGISTER_UNALLOCATED;
     
-    switch (node->type) {
-        case NODE_SYMBOL:
-            return _lvaluefromsymbol(c, node, node->content, out);
-        case NODE_DOT:
-            break;
-        case NODE_INDEX:
-            break;
-        default: break;
-    }
-    return false;
+    if (!_processlvaluerecursive(c, indx, out)) return false;
+    
+    out->node=node; // Record the node
+    return true;
 }
 
 /** Flattens a collection of nodes at indx into a list of lvalues; returning the number of lvalues obtained */
@@ -4743,30 +4773,85 @@ bool _evalrvalue(compiler *c, rvalue_t *rvalue) {
     return !compiler_haserror(c);
 }
 
+/** Moves an output to an index */
+codeinfo compiler_movetoindex(compiler *c, codeinfo in, syntaxtreenode *indxnode) {
+    registerindx istart, iend;
+    codeinfo obj, right=in, indices;
+    bool righttmp=false; // Was the rhs in a temporary register?
+    instructionindx start=compiler_currentinstructionindex(c);
+    
+    // Compile the object being indexed
+    obj = compiler_nodetobytecode(c, indxnode->left, REGISTER_UNALLOCATED);
+    if (!CODEINFO_ISREGISTER(obj)) obj = compiler_movetoregister(c, indxnode, obj, REGISTER_UNALLOCATED);
+    
+    // Now compile indices
+    indices = compiler_compileindexlist(c, indxnode, &istart, &iend);
+    
+    // Make sure the rhs is in the register after the last index
+    if (!(CODEINFO_ISREGISTER(right) && right.dest==iend+1)) {
+        registerindx last=compiler_regtempwithindx(c, iend+1);
+        right=compiler_movetoregister(c, indxnode, right, last);
+        righttmp=true;
+    }
+    
+    if (right.dest!=iend+1) UNREACHABLE("Failed register allocation in compiling SIX instruction.");
+    
+    // Generate the SIX instruction
+    compiler_addinstruction(c, ENCODE(OP_SIX, obj.dest, istart, right.dest), indxnode);
+    
+    // Release registers
+    compiler_releaseoperand(c, obj);
+    for (registerindx i=istart; i<=iend; i++) compiler_regfreetemp(c, i);
+    if (righttmp) compiler_regfreetemp(c, right.dest);
+    
+    instructionindx end=compiler_currentinstructionindex(c);
+    return CODEINFO(in.returntype, in.dest, (unsigned int) (end-start));
+}
+
 /** Assign an lvalue to an rvalue */
 bool _assign(compiler *c, lvalue_t *left, rvalue_t *right, codeinfo *out) {
     codeinfo ret=CODEINFO_EMPTY;
     bool success=false;
     
-    switch (left->type) {
-        case ASSIGN_VAR: // Move to a register
-            ret = compiler_movetoregister(c, right->node, right->ret, left->slot);
-            success=true;
-            break;
-        case ASSIGN_UPVALUE:
-            ret = compiler_movetoupvalue(c, right->node, right->ret, left->slot);
-            success=true;
-            break;
-        case ASSIGN_GLOBAL:
-            compiler_cleartoplevelcallable(c, left->symbol);
-            ret = compiler_movetoglobal(c, right->node, right->ret, left->slot);
-            success=true;
-            break;
-        default: break;
+    lvaluemodifier_t modifier;
+    if (varray_lvaluemodifierlast(&left->modifiers, &modifier)) {
+        syntaxtreenode *target = compiler_getnode(c, modifier.indx);
+        if (!target) return false;
+
+        switch (modifier.type) {
+            case LVALUE_INDEX:
+                ret = compiler_movetoindex(c, right->ret, target);
+                success=true;
+                break;
+            case LVALUE_PROPERTY:
+                ret = compiler_movetoproperty(c, right->node, right->ret, target);
+                success=true;
+                break;
+        }
+    } else {
+        switch (left->type) {
+            case ASSIGN_VAR: // Move to a register
+                ret = compiler_movetoregister(c, right->node, right->ret, left->slot);
+                success=true;
+                break;
+            case ASSIGN_UPVALUE:
+                ret = compiler_movetoupvalue(c, right->node, right->ret, left->slot);
+                success=true;
+                break;
+            case ASSIGN_GLOBAL:
+                compiler_cleartoplevelcallable(c, left->symbol);
+                ret = compiler_movetoglobal(c, right->node, right->ret, left->slot);
+                success=true;
+                break;
+            case ASSIGN_SELF:
+                compiler_error(c, left->node, COMPILE_SELFASSGN);
+                break;
+            default: break;
+        }
     }
     if (out) *out = ret;
     
-    return success;
+    return success && !compiler_haserror(c);
 }
 
 /** Compile an assignment  */
@@ -4809,136 +4894,10 @@ compiler_assign_cleanup:
     for (int i=0; i<nlvalues; i++) lvalue_clear(&lvalues[i]);
     return out;
 }
-    /*
-    syntaxtreenode *varnode = compiler_getnode(c, node->left);
-    syntaxtreenode *indxnode = NULL;
-    codeinfo ret, right=CODEINFO_EMPTY;
-    value var=MORPHO_NIL;
-    registerindx reg=REGISTER_UNALLOCATED, istart=0, iend=0, tmp=REGISTER_UNALLOCATED;
-    lvaluetype_t mode=ASSIGN_VAR;
-    unsigned int ninstructions = 0;
 
-    // Find the symbol or check if it's an object
-    if (varnode) {
-        if (varnode->type==NODE_SYMBOL) {
-            var = varnode->content;
-        } else if (varnode->type==NODE_DOT) {
-            mode=ASSIGN_OBJ; // Or object
-        } else if (varnode->type==NODE_INDEX) {
-            mode=ASSIGN_INDEX;
-            indxnode=varnode;
-            varnode=compiler_getnode(c, varnode->left);
-            var = varnode->content;
-
-            if (varnode->type==NODE_DOT || varnode->type==NODE_SELF) {
-                codeinfo mv=compiler_nodetobytecode(c, indxnode->left, reg);
-                ninstructions+=mv.ninstructions;
-                reg=mv.dest;
-            }
-        }
-    }
-
-    if (!MORPHO_ISNIL(var) || mode==ASSIGN_OBJ || mode==ASSIGN_INDEX) {
-        if (mode!=ASSIGN_OBJ) {
-            // Find the local variable and get the assigned register
-            if (reg==REGISTER_UNALLOCATED) reg=compiler_getlocal(c, var);
-
-            // Perhaps it's an upvalue?
-            if (reg==REGISTER_UNALLOCATED) {
-                reg=compiler_resolveupvalue(c, var);
-                if (reg!=REGISTER_UNALLOCATED) {
-                    if (indxnode) {
-                        // Indexed upvalue: LUP into a register, then SIX (same as globals)
-                        tmp=compiler_regalloctop(c);
-                        codeinfo mv=compiler_movetoregister(c, node, CODEINFO(UPVALUE, reg, 0), tmp);
-                        ninstructions+=mv.ninstructions;
-                        reg=tmp;
-                        mode=ASSIGN_INDEX;
-                    } else mode=ASSIGN_UPVALUE;
-                }
-            }
-
-            // .. or a global?
-            if (reg==REGISTER_UNALLOCATED) {
-                reg=compiler_findglobal(c, var, true);
-                if (reg!=REGISTER_UNALLOCATED) {
-                    if (indxnode) {
-                        // If an indexed global, move the global into a register
-                        tmp=compiler_regalloctop(c);
-                        codeinfo mv=compiler_movetoregister(c, node, CODEINFO(GLOBAL, reg, 0), tmp);
-                        ninstructions+=mv.ninstructions;
-                        reg=tmp;
-                        mode=ASSIGN_INDEX;
-                    } else mode=ASSIGN_GLBL;
-                }
-            }
-
-            // Still couldn't resolve it, so generate an error
-            if (reg==REGISTER_UNALLOCATED) {
-                compiler_error(c, node, COMPILE_SYMBOLNOTDEFINED, (MORPHO_ISSTRING(var) ? MORPHO_GETCSTRING(var) : ""));
-                return CODEINFO_EMPTY;
-            }
-        }
-
-        if (indxnode) {
-            right=compiler_compileindexlist(c, indxnode, &istart, &iend);
-            ninstructions+=right.ninstructions;
-        }
-
-        // Evaluate the rhs
-        right = compiler_nodetobytecode(c, node->right, (mode!=ASSIGN_VAR ? REGISTER_UNALLOCATED : reg));
-        ninstructions+=right.ninstructions;
-
-        switch (mode) {
-            case ASSIGN_VAR:
-                // Move to a register
-                ret=compiler_movetoregister(c, node, right, reg);
-                ninstructions+=ret.ninstructions;
-                break;
-            case ASSIGN_UPVALUE:
-                ret=compiler_movetoupvalue(c, node, right, reg);
-                ninstructions+=ret.ninstructions;
-                break;
-            case ASSIGN_OBJ:
-                ret=compiler_movetoproperty(c, node, right, varnode);
-                ninstructions+=ret.ninstructions;
-                break;
-            case ASSIGN_GLBL:
-                compiler_cleartoplevelcallable(c, var);
-                ret=compiler_movetoglobal(c, node, right, reg);
-                ninstructions+=ret.ninstructions;
-                break;
-            case ASSIGN_INDEX:
-            {
-                // Make sure the rhs is in the register after the last index
-                if (!(CODEINFO_ISREGISTER(right) && right.dest==iend+1)) {
-                    registerindx last=compiler_regtempwithindx(c, iend+1);
-                    compiler_releaseoperand(c, right);
-                    right=compiler_movetoregister(c, node, right, last);
-                    ninstructions+=right.ninstructions;
-                }
-                compiler_regfreetoend(c, right.dest+1);
-                if (right.dest!=iend+1) {
-                    UNREACHABLE("Failed register allocation in compiling SIX instruction.");
-                }
-                compiler_addinstruction(c, ENCODE(OP_SIX, reg, istart, right.dest), node);
-                ninstructions++;
-            }
-                break;
-        }
-    } else {
-        compiler_error(c, node, COMPILE_INVALIDASSIGNMENT);
-        return CODEINFO_EMPTY;
-    }
-
-    if (tmp!=REGISTER_UNALLOCATED) compiler_regfreetemp(c, tmp);
-
-    // Make sure the correct number of instructions is returned
-    ret=right;
-    ret.ninstructions=ninstructions;
-
-    return ret;
-    */
+/* --------------------------------------
+ * Properties
+ * -------------------------------------- */
 
 /* Compiles property lookup */
 static codeinfo compiler_property(compiler *c, syntaxtreenode *node, registerindx reqout) {
@@ -5567,6 +5526,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_ARGSNOTSYMBOLS, ERROR_COMPILE, COMPILE_ARGSNOTSYMBOLS_MSG);
     morpho_defineerror(COMPILE_PROPERTYNAMERQD, ERROR_COMPILE, COMPILE_PROPERTYNAMERQD_MSG);
     morpho_defineerror(COMPILE_SELFOUTSIDECLASS, ERROR_COMPILE, COMPILE_SELFOUTSIDECLASS_MSG);
+    morpho_defineerror(COMPILE_SELFASSGN, ERROR_COMPILE, COMPILE_SELFASSGN_MSG);
     morpho_defineerror(COMPILE_RETURNININITIALIZER, ERROR_COMPILE, COMPILE_RETURNININITIALIZER_MSG);
     morpho_defineerror(COMPILE_SUPERCLASSNOTFOUND, ERROR_COMPILE, COMPILE_SUPERCLASSNOTFOUND_MSG);
     morpho_defineerror(COMPILE_SUPEROUTSIDECLASS, ERROR_COMPILE, COMPILE_SUPEROUTSIDECLASS_MSG);
@@ -5575,6 +5535,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_CLASSINHERITSELF, ERROR_COMPILE, COMPILE_CLASSINHERITSELF_MSG);
     morpho_defineerror(COMPILE_TOOMANYPARAMS, ERROR_COMPILE, COMPILE_TOOMANYPARAMS_MSG);
     morpho_defineerror(COMPILE_TOOMANYASSGNTRGTS, ERROR_COMPILE, COMPILE_TOOMANYASSGNTRGTS_MSG);
+    morpho_defineerror(COMPILE_PRPRTYNMEXPCTD, ERROR_COMPILE, COMPILE_PRPRTYNMEXPCTD_MSG);
     morpho_defineerror(COMPILE_VARALREADYDECLARED, ERROR_COMPILE, COMPILE_VARALREADYDECLARED_MSG);
     morpho_defineerror(COMPILE_FILENOTFOUND, ERROR_COMPILE, COMPILE_FILENOTFOUND_MSG);
     morpho_defineerror(COMPILE_MODULENOTFOUND, ERROR_COMPILE, COMPILE_MODULENOTFOUND_MSG);

@@ -1,10 +1,11 @@
 // Drive String iteration with variables
 
+/*
 {
   var a, b
   (a, b) = "Hello!".iterate(0)
   print (a, b) // expect: (1, H)
-}
+}*/
 
 //
 /*

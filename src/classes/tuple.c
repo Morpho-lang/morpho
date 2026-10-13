@@ -295,6 +295,20 @@ value Tuple_enumerate__err(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Iterate protocol */
+value Tuple_iterate(vm *v, int nargs, value *args) {
+    objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
+    int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    if (i<0) { morpho_runtimeerror(v, VM_INVALIDARGS); return MORPHO_NIL; }
+    
+    if (i < slf->length) {
+        value ret[3] = { MORPHO_INTEGER(i+1), slf->tuple[i], MORPHO_INTEGER(i) };
+        return morpho_return(v, 3, ret);
+    }
+    value ret[3] = { MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };
+    return morpho_return(v, 3, ret);
+}
+
 /** Joins two tuples together  */
 value Tuple_join(vm *v, int nargs, value *args) {
     objecttuple *slf = MORPHO_GETTUPLE(MORPHO_SELF(args));
@@ -421,6 +435,7 @@ MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Tuple_getindex, MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Tuple_setindex, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Tuple_enumerate, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "Nil (...)", Tuple_enumerate__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ITERATE_METHOD, " (Int)", Tuple_iterate, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Tuple (Tuple)", Tuple_join, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "Nil (...)", Tuple_join__err, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ROLL_METHOD, "Tuple (Int)", Tuple_roll, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),

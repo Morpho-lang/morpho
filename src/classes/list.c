@@ -550,6 +550,20 @@ value List_enumerate__err(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
 }
 
+/** Iterate protocol */
+value List_iterate(vm *v, int nargs, value *args) {
+    objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
+    int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    if (i<0) { morpho_runtimeerror(v, VM_INVALIDARGS); return MORPHO_NIL; }
+    
+    if (i < slf->val.count) {
+        value ret[3] = { MORPHO_INTEGER(i+1), slf->val.data[i], MORPHO_INTEGER(i) };
+        return morpho_return(v, 3, ret);
+    }
+    value ret[3] = { MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };
+    return morpho_return(v, 3, ret);
+}
+
 /** Get number of entries */
 value List_count(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
@@ -723,6 +737,7 @@ MORPHO_METHOD(MORPHO_PRINT_METHOD, List_print, MORPHO_FN_IO),
 MORPHO_METHOD_SIGNATURE(MORPHO_TOSTRING_METHOD, "String ()", List_tostring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", List_enumerate, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "Nil (...)", List_enumerate__err, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ITERATE_METHOD, "(Int)", List_iterate, MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", List_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(LIST_TUPLES_METHOD, "List ()", List_tuples, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(LIST_TUPLES_METHOD, "List (Int)", List_tuples__int, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),

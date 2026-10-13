@@ -183,6 +183,20 @@ value Range_enumerate(vm *v, int nargs, value *args) {
     return range_iterate(slf, n);
 }
 
+/** Iterate protocol */
+value Range_iterate(vm *v, int nargs, value *args) {
+    objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
+    int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    if (i<0) { morpho_runtimeerror(v, VM_INVALIDARGS); return MORPHO_NIL; }
+    
+    if (i < slf->nsteps) {
+        value ret[3] = { MORPHO_INTEGER(i+1), range_iterate(slf, i), MORPHO_INTEGER(i) };
+        return morpho_return(v, 3, ret);
+    }
+    value ret[3] = { MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };
+    return morpho_return(v, 3, ret);
+}
+
 /** Count number of items in a range */
 value Range_count(vm *v, int nargs, value *args) {
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));

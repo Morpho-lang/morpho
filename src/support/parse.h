@@ -126,6 +126,9 @@ struct sparser {
 #define PARSE_SYMBLEXPECTED               "SymblExpct"
 #define PARSE_SYMBLEXPECTED_MSG           "Symbol expected."
 
+#define PARSE_EXPECTASSGN                 "ExpAssgn"
+#define PARSE_EXPECTASSGN_MSG             "Expected `=` in multiple assignment expression."
+
 #define PARSE_BLOCKTERMINATOREXP          "MssngBrc"
 #define PARSE_BLOCKTERMINATOREXP_MSG      "Expected '}' to finish block."
 

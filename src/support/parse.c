@@ -375,6 +375,23 @@ bool parse_synchronize(parser *p);
  * Utility functions for this parser
  * ------------------------------------------- */
 
+/** Adds the contents of a varray into the syntaxtree
+ * @param[in] p     the parser
+ * @param[in] tok token to pass to addnode
+ * @param[in] type node type to use to create syntaxtree chain
+ * @param[in] elements the varray to wrap
+ * @param[out] out syntaxtreeindex of the head */
+bool parse_wraplist(parser *p, token *tok, syntaxtreenodetype type, varray_syntaxtreeindx *elements, syntaxtreeindx *out) {
+    syntaxtreeindx prev=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
+
+    for (unsigned int i=0; i<elements->count; i++) {
+        PARSE_CHECK(parse_addnode(p, type, MORPHO_NIL, tok, prev, elements->data[i], &current));
+        prev=current;
+    }
+    *out = prev;
+    return true;
+}
+
 /** @brief Parses a list of expressions
  * @param[in]  p     the parser
  * @param[in]  rightdelimiter  token type that denotes the end of the arguments list
@@ -401,12 +418,7 @@ bool parse_expressionlist(parser *p, tokentype rightdelimiter, bool wrapsingleto
     
     // Now wrap the list
     if (elements.count>1 || (wrapsingleton && elements.count==1)) {
-        syntaxtreeindx prev=SYNTAXTREE_UNCONNECTED;
-
-        for (int i=0; i<elements.count; i++) {
-            PARSE_CHECKGOTO(parse_addnode(p, NODE_ARGLIST, MORPHO_NIL, &start, prev, elements.data[i], &current), parse_expressionlist_cleanup);
-            prev=current;
-        }
+        PARSE_CHECKGOTO(parse_wraplist(p, &start, NODE_ARGLIST, &elements, &current), parse_expressionlist_cleanup);
     }
     
     *((syntaxtreeindx *) out)=current;
@@ -1251,12 +1263,43 @@ bool parse_printstatement(parser *p, void *out) {
     return parse_addnode(p, NODE_PRINT, MORPHO_NIL, &start, left, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
 
+/** Parse a multiple assignment expression */
+bool parse_assignmulti(parser *p, syntaxtreeindx first, void *out) {
+    token start = p->previous;
+    syntaxtreeindx new, left, right;
+    bool success=false;
+    varray_syntaxtreeindx lhs;
+    varray_syntaxtreeindxinit(&lhs);
+    varray_syntaxtreeindxwrite(&lhs, first);
+    
+    do { // Parse multiple assignments
+        PARSE_CHECKGOTO(parse_precedence(p, PREC_ASSIGN+1, &new), parse_assignmulti_cleanup);
+        varray_syntaxtreeindxwrite(&lhs, new);
+    } while (parse_checktokenadvance(p, TOKEN_COMMA));
+    
+    PARSE_CHECKGOTO(parse_checkrequiredtoken(p, TOKEN_EQUAL, PARSE_EXPECTASSGN), parse_assignmulti_cleanup);
+    
+    PARSE_CHECKGOTO(parse_expressionlist(p, TOKEN_NONE, false, NULL, &right), parse_assignmulti_cleanup);
+    
+    // Assemble
+    PARSE_CHECKGOTO(parse_wraplist(p, &start, NODE_ARGLIST, &lhs, &left), parse_assignmulti_cleanup);
+    PARSE_CHECKGOTO(parse_addnode(p, NODE_ASSIGN, MORPHO_NIL, &start, left, right, out), parse_assignmulti_cleanup);
+    
+    success=true;
+    
+parse_assignmulti_cleanup:
+    varray_syntaxtreeindxclear(&lhs);
+    return success;
+}
+
 /** Parse an expression statement */
 bool parse_expressionstatement(parser *p, void *out) {
     syntaxtreeindx new;
     PARSE_CHECK(parse_expression(p, &new));
-    PARSE_CHECK(parse_statementterminator(p));
-    *((syntaxtreeindx *) out) = new;
+    if (!parse_checktokenadvance(p, TOKEN_COMMA)) {
+        PARSE_CHECK(parse_statementterminator(p));
+        *((syntaxtreeindx *) out) = new;
+    } else PARSE_CHECK(parse_assignmulti(p, new, out));
     return true;
 }
 
@@ -1874,6 +1917,7 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_MISSINGSEMICOLONEXP, ERROR_PARSE, PARSE_MISSINGSEMICOLONEXP_MSG);
     morpho_defineerror(PARSE_VAREXPECTED, ERROR_PARSE, PARSE_VAREXPECTED_MSG);
     morpho_defineerror(PARSE_SYMBLEXPECTED, ERROR_PARSE, PARSE_SYMBLEXPECTED_MSG);
+    morpho_defineerror(PARSE_EXPECTASSGN, ERROR_PARSE, PARSE_EXPECTASSGN_MSG);
     morpho_defineerror(PARSE_BLOCKTERMINATOREXP, ERROR_PARSE, PARSE_BLOCKTERMINATOREXP_MSG);
     morpho_defineerror(PARSE_MSSNGSQBRC, ERROR_PARSE, PARSE_MSSNGSQBRC_MSG);
     morpho_defineerror(PARSE_MSSNGCOMMA, ERROR_PARSE, PARSE_MSSNGCOMMA_MSG);

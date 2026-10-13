@@ -822,6 +822,54 @@ static inline bool vm_typecheck(vm *v, value val, value match) {
     return value_istype(val, match);
 }
 
+/** Clears error handlers associated with a callframe
+ * @param[in] v - the VM in use
+ * @param[in] fp - frame pointer to check */
+static inline void vm_clearerrorhandlers(vm *v, callframe *fp) {
+    while (v->ehp && v->ehp->fp==fp) {
+        if (v->ehp==v->errorhandlers) {
+            v->ehp=NULL; break;
+        }
+        v->ehp--;
+    }
+}
+
+/** Deliver a set of return values into a callframe
+ * @param[in] v - the VM in use
+ * @param[in] fp - frame pointer to return them to
+ * @param[in] nret - number of return values to deliver
+ * @param[in] ret - list of return values */
+static value vm_returnvalues(vm *v, callframe *fp, int nret, value *ret) {
+    if (fp->expect) {
+        instruction expect = fp->expect;
+        fp->expect = 0; // Reset expect in this callframe
+        
+        int nexp = DECODE_A(expect);
+        if (nret<nexp) {
+            morpho_runtimeerror(v, VM_TOOFEWRTRNS, nexp, nret);
+            return MORPHO_NIL;
+        }
+        
+        value *reg = v->stack.data + fp->roffset;
+        if (nexp>0) reg[DECODE_B(expect)] = ret[0]; // First return has an arbitrary destination
+
+        if (nexp>1) {
+            registerindx r = DECODE_C(expect);
+            for (int i=1; i<nexp; i++) reg[r+i-1] = ret[i];
+        }
+
+        return MORPHO_NIL;
+    }
+    if (nret==0) return MORPHO_NIL; // Conventional return
+    if (nret==1) return ret[0];
+    
+    objecttuple *new = object_newtuple(nret, ret);
+    if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
+    value out = MORPHO_OBJECT(new);
+    vm_bindobjectwithoutcollect(v, out); // Avoid triggering garbage collection
+    return out;
+}
+
 /** @brief   Executes a sequence of code
  *  @param   v       The virtual machine to use
  *  @param   rstart  Starting register pointer
@@ -1437,45 +1485,34 @@ callfunction: // Jump here if an instruction becomes a call
             DISPATCH();
 
         CASE_CODE(RETURN):
-            a=DECODE_A(bc);
+        {
+            int nret=DECODE_A(bc);
+            registerindx rret=(nret>0 ? DECODE_B(bc) : 0);
+            value *ret=(nret>0 ? reg+rret : NULL);
+            
+            if (v->openupvalues) vm_closeupvalues(v, reg);
+            if (v->ehp) vm_clearerrorhandlers(v, v->fp); // Clear any error handlers
+            
+            if (v->fp<=v->frame) ERROR(VM_GLBLRTRN);
 
-            if (v->openupvalues) { /* Close upvalues */
-                vm_closeupvalues(v, reg);
-            }
-        
-            if (v->ehp) { /* Remove any error handlers from this call frame */
-                while (v->ehp->fp==v->fp &&
-                       v->ehp>=v->errorhandlers) v->ehp--;
-                if (v->ehp<v->errorhandlers) v->ehp=NULL; // If the stack is empty rest to NULL
-            }
+            bool shouldreturn=v->fp->ret; // Preserve callee state needed after popping it
 
-            value retvalue;
+            // Restore calling frame
+            v->fp--;
+            v->konst=v->fp->function->konst.data; // Restore the constant table
+            reg=v->stack.data+v->fp->roffset; // Restore registers
+            v->stack.count=v->fp->stackcount; // Restore the stack size
+            pc=v->fp->pc; // Jump back
 
-            if (a>0) {
-                b=DECODE_B(bc);
-                retvalue = reg[b];
-            } else {
-                retvalue = MORPHO_NIL; /* No return value; returns nil */
-            }
+            // Deliver the returned values
+            value retvalue=vm_returnvalues(v, v->fp, nret, ret);
+            ERRORCHK();
 
-            if (v->fp>v->frame) {
-                bool shouldreturn = (v->fp->ret);
-                // value *or = reg + v->fp->function->nargs;
-                v->fp--;
-                v->konst=v->fp->function->konst.data; /* Restore the constant table */
-                reg=v->fp->roffset+v->stack.data; /* Restore registers */
-                v->stack.count=v->fp->stackcount; /* Restore the stack size */
+            reg[v->fp->returnreg]=retvalue; // Single return value
 
-                reg[v->fp->returnreg]=retvalue; /* Copy the return value */
-                // Clear registers
-                // for (value *r = reg + v->fp->function->nregs-1; r > or; r--) *r = MORPHO_INTEGER(0);
-
-                pc=v->fp->pc; /* Jump back */
-                if (shouldreturn) return true;
-                DISPATCH();
-            } else {
-                ERROR(VM_GLBLRTRN);
-            }
+            if (shouldreturn) return true;
+            DISPATCH();
+        }
 
         CASE_CODE(EXPECT):
         {
@@ -2019,33 +2056,7 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
 
 /** API to provide return values */
 value morpho_return(vm *v, int nret, value *ret) {
-    value out = MORPHO_NIL;
-    if (v->fp->expect) {
-        instruction expect = v->fp->expect;
-        v->fp->expect = 0; // Reset expect in this callframe
-        
-        int nexp = DECODE_A(expect);
-        if (nret<nexp) {
-            morpho_runtimeerror(v, VM_TOOFEWRTRNS, nexp, nret);
-            return MORPHO_NIL;
-        }
-        
-        value *reg = v->stack.data + v->fp->roffset;
-        if (nexp>0) reg[DECODE_B(expect)] = ret[0]; // First return has an arbitrary destination
-
-        if (nexp>1) {
-            registerindx r = DECODE_C(expect);
-            for (int i=1; i<nexp; i++) reg[r+i-1] = ret[i];
-        }
-
-        return MORPHO_NIL;
-    } else {
-        objecttuple *new = object_newtuple(nret, ret);
-        if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
-        out = MORPHO_OBJECT(new);
-        vm_bindobjectwithoutcollect(v, out); // Avoid triggering garbage collection
-        return out;
-    }
+    vm_returnvalues(v, v->fp, nret, ret);
 }
 
 /** Find the class associated with a value */

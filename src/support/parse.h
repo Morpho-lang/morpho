@@ -72,6 +72,7 @@ DECLARE_VARRAY(parserule, parserule)
 
 /** Macro to check return of a bool function */
 #define PARSE_CHECK(f) if (!(f)) return false;
+#define PARSE_CHECKGOTO(f, label) if (!(f)) goto label;
 
 /* -------------------------------------------------------
  * Define a Parser

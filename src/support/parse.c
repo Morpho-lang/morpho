@@ -378,29 +378,43 @@ bool parse_synchronize(parser *p);
 /** @brief Parses a list of expressions
  * @param[in]  p     the parser
  * @param[in]  rightdelimiter  token type that denotes the end of the arguments list
+ * @param[in]  wrapsingleton whether to wrap a singleton
  * @param[out] nel the number of elements
  * @details Note that the arguments are output in reverse order, i.e. the
  *          first argument is deepest in the tree. */
-bool parse_expressionlist(parser *p, tokentype rightdelimiter, unsigned int *nel, void *out) {
-    syntaxtreeindx prev=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
+bool parse_expressionlist(parser *p, tokentype rightdelimiter, bool wrapsingleton, unsigned int *nel, void *out) {
     token start = p->current;
-    unsigned int n=0;
+    bool success=false;
+    syntaxtreeindx current=SYNTAXTREE_UNCONNECTED;
+    varray_syntaxtreeindx elements;
+    varray_syntaxtreeindxinit(&elements);
     
     if (!parse_checktoken(p, rightdelimiter)) {
         do {
-            PARSE_CHECK(parse_pseudoexpression(p, &current));
-            PARSE_CHECK(parse_addnode(p, NODE_ARGLIST, MORPHO_NIL, &start, prev, current, &current));
-            prev = current;
-            n++;
+            PARSE_CHECKGOTO(parse_pseudoexpression(p, &current), parse_expressionlist_cleanup);
+            varray_syntaxtreeindxwrite(&elements, current);
         } while (parse_checktokenadvance(p, TOKEN_COMMA));
     }
     
-    /* Output the number of args */
-    if (nel) *nel=n;
+    // Output the number of args
+    if (nel) *nel = elements.count;
+    
+    // Now wrap the list
+    if (elements.count>1 || (wrapsingleton && elements.count==1)) {
+        syntaxtreeindx prev=SYNTAXTREE_UNCONNECTED;
+
+        for (int i=0; i<elements.count; i++) {
+            PARSE_CHECKGOTO(parse_addnode(p, NODE_ARGLIST, MORPHO_NIL, &start, prev, elements.data[i], &current), parse_expressionlist_cleanup);
+            prev=current;
+        }
+    }
     
     *((syntaxtreeindx *) out)=current;
+    success=true;
     
-    return true;
+parse_expressionlist_cleanup:
+    varray_syntaxtreeindxclear(&elements);
+    return success;
 }
 
 /** @brief Parses an argument list
@@ -901,7 +915,7 @@ bool parse_call(parser *p, void *out) {
     syntaxtreeindx right;
     unsigned int nargs;
     
-    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTPAREN, &nargs, &right));
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTPAREN, true, &nargs, &right));
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_CALLRGHTPARENMISSING));
     
     return parse_addnode(p, NODE_CALL, MORPHO_NIL, &start, left, right, out);
@@ -918,7 +932,7 @@ bool parse_index(parser *p, void *out) {
     syntaxtreeindx right;
     unsigned int nindx;
     
-    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTSQBRACKET, &nindx, &right));
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTSQBRACKET, true, &nindx, &right));
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_CALLRGHTPARENMISSING));
     
     return parse_addnode(p, NODE_INDEX, MORPHO_NIL, &start, left, right, (syntaxtreeindx *) out);
@@ -928,7 +942,7 @@ bool parse_index(parser *p, void *out) {
 bool parse_list(parser *p, void *out) {
     token start = p->previous;
     syntaxtreeindx right;
-    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTSQBRACKET, NULL, &right));
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTSQBRACKET, true, NULL, &right));
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_MSSNGSQBRC));
 
     return parse_addnode(p, NODE_LIST, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, right, out);
@@ -1423,15 +1437,13 @@ bool parse_breakstatement(parser *p, void *out) {
 
 /** Parse a return statement */
 bool parse_returnstatement(parser *p, void *out) {
-    token start = p->previous;
-    syntaxtreeindx left = SYNTAXTREE_UNCONNECTED;
-    
-    if (!parse_checkstatementterminator(p)) {
-        PARSE_CHECK(parse_pseudoexpression(p, &left));
-    }
-    
+    token start=p->previous;
+    syntaxtreeindx left=SYNTAXTREE_UNCONNECTED;
+
+    if (!parse_checkstatementterminator(p)) PARSE_CHECK(parse_expressionlist(p, TOKEN_NONE, false, NULL, &left));
+
     PARSE_CHECK(parse_statementterminator(p));
-    
+
     return parse_addnode(p, NODE_RETURN, MORPHO_NIL, &start, left, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
 

@@ -39,8 +39,11 @@
 #define COMPILE_SELFASSGN                 "SlfAssgn"
 #define COMPILE_SELFASSGN_MSG             "You cannot modify 'self'."
 
-#define COMPILE_RETURNININITIALIZER       "InitRtn"
+#define COMPILE_RETURNININITIALIZER       "InitRtrn"
 #define COMPILE_RETURNININITIALIZER_MSG   "Cannot return a value in an initializer."
+
+#define COMPILE_TOOMNYRTRN                "TooMnyRtrn"
+#define COMPILE_TOOMNYRTRN_MSG            "Too many return values."
 
 #define COMPILE_SUPERCLASSNOTFOUND        "SprNtFnd"
 #define COMPILE_SUPERCLASSNOTFOUND_MSG    "Superclass '%s' not found."

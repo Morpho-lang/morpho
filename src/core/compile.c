@@ -4171,8 +4171,58 @@ static codeinfo compiler_callexpect(compiler *c, syntaxtreenode *node,
     return _call(c, node, REGISTER_UNALLOCATED, &expect);
 }
 
+/** Handle an empty return statement */
+static void _returnempty(compiler *c, syntaxtreenode *node) {
+    objectclass *klass = compiler_getcurrentclass(c);
+    // Methods return self if no return value
+    compiler_addreturntype(c, (klass ? MORPHO_OBJECT(klass) : _niltype));
+    compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, (klass ? 1 : 0), 0), node);
+}
+
 /** Compile a return statement */
 static codeinfo compiler_return(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    codeinfo out=CODEINFO_EMPTY;
+    instructionindx start = compiler_currentinstructionindex(c);
+    syntaxtreenodetype flattentypes[] = { NODE_ARGLIST };
+    
+    varray_syntaxtreeindx vals;
+    varray_syntaxtreeindxinit(&vals);
+    syntaxtree_flatten(compiler_getsyntaxtree(c), node->left, sizeof(flattentypes)/sizeof(syntaxtreenodetype), flattentypes, &vals);
+    
+    if (vals.count>0) {
+        if (compiler_ininitializer(c)) {
+            compiler_error(c, node, COMPILE_RETURNININITIALIZER); goto compiler_return_cleanup;
+        } else if (vals.count>MORPHO_MAXRETURN) {
+            compiler_error(c, node, COMPILE_TOOMNYRTRN); goto compiler_return_cleanup;
+        }
+        
+        registerindx rstart;
+        compiler_compileregistersequence(c, vals.count, vals.data, &rstart, NULL);
+
+        if (compiler_haserror(c)) goto compiler_return_cleanup;
+
+        // Track return type
+        if (vals.count==1) {
+            compiler_addreturntypefromregister(c, rstart);
+        } else {
+            compiler_addreturntype(c, _tupletype);
+        }
+
+        compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, vals.count, rstart), node);
+
+        compiler_regfreetoend(c, rstart);
+    } else _returnempty(c, node);
+    
+    out.ninstructions = (unsigned int) (compiler_currentinstructionindex(c)-start);
+    if (out.ninstructions>0 && !compiler_incontrolflow(c)) compiler_sethasreturn(c); // Set unconditional return
+    
+compiler_return_cleanup:
+    varray_syntaxtreeindxclear(&vals);
+    return out;
+}
+
+/** Compile a return statement */
+static codeinfo xcompiler_return(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo left = CODEINFO_EMPTY;
     unsigned int ninstructions=0;
     bool isinitializer = compiler_ininitializer(c);
@@ -5590,6 +5640,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_SELFOUTSIDECLASS, ERROR_COMPILE, COMPILE_SELFOUTSIDECLASS_MSG);
     morpho_defineerror(COMPILE_SELFASSGN, ERROR_COMPILE, COMPILE_SELFASSGN_MSG);
     morpho_defineerror(COMPILE_RETURNININITIALIZER, ERROR_COMPILE, COMPILE_RETURNININITIALIZER_MSG);
+    morpho_defineerror(COMPILE_TOOMNYRTRN, ERROR_COMPILE, COMPILE_TOOMNYRTRN_MSG);
     morpho_defineerror(COMPILE_SUPERCLASSNOTFOUND, ERROR_COMPILE, COMPILE_SUPERCLASSNOTFOUND_MSG);
     morpho_defineerror(COMPILE_SUPEROUTSIDECLASS, ERROR_COMPILE, COMPILE_SUPEROUTSIDECLASS_MSG);
     morpho_defineerror(COMPILE_NOSUPER, ERROR_COMPILE, COMPILE_NOSUPER_MSG);

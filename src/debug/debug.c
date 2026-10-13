@@ -355,7 +355,7 @@ assemblyrule assemblyrules[] ={
     { OP_INVOKE, "invoke", "rA, B, C" }, // b, c literal
     { OP_METHOD, "method", "rA, B, C" }, // b, c literal
     
-    { OP_RETURN, "return", "?rB" }, // Return register B is A nonzero
+    { OP_RETURN, "return", "?A ?rB" }, // Return register B is A nonzero
     { OP_EXPECT, "expect", "A, rB, rC" }, // Set up for multiple returns
 
     { OP_CLOSURE, "closure", "rA, pB" }, // b prototype

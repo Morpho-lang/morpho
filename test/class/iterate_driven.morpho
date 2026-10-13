@@ -1,0 +1,28 @@
+// Class implementing the iterate() protocol
+
+class Squares {
+    init(max) { self.max = max }
+
+    iterate(i) {
+        var sq = i*i
+        if (sq <= self.max) return i + 1, sq, i
+        return nil, nil, nil
+    }
+
+    index(i) {
+        var sq = i*i
+        if (sq <= self.max) return sq
+        return nil
+    }
+}
+
+{
+    var s = Squares(120)
+    var i, sq
+
+    for (k in 0...20) {
+        (i, sq) = s.iterate(k)
+        print (i, sq)
+        if (!i) break
+    }
+}

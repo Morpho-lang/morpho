@@ -6,7 +6,7 @@ class Squares {
     iterate(i) {
         var sq = i*i
         if (sq <= self.max) return i + 1, sq, i
-        return nil, nil
+        return nil, nil, nil
     }
 
     index(i) {
@@ -17,12 +17,11 @@ class Squares {
 }
 
 {
-    var s = Squares(120)
-    var i, sq
+    var s = Squares(150)
+    var i=0, sq
 
-    for (k in 0...20) {
-        (i, sq) = s.iterate(k)
+    do {
+        (i, sq) = s.iterate(i)
         print (i, sq)
-        if (!i) break
-    }
+    } while (i)
 }

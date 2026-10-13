@@ -839,7 +839,7 @@ static inline void vm_clearerrorhandlers(vm *v, callframe *fp) {
  * @param[in] fp - frame pointer to return them to
  * @param[in] nret - number of return values to deliver
  * @param[in] ret - list of return values */
-static value vm_returnvalues(vm *v, callframe *fp, int nret, value *ret) {
+static inline value vm_returnvalues(vm *v, callframe *fp, int nret, value *ret) {
     if (fp->expect) {
         instruction expect = fp->expect;
         fp->expect = 0; // Reset expect in this callframe

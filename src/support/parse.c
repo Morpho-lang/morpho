@@ -1013,10 +1013,54 @@ bool parse_switch(parser *p, void *out) {
  * Declarations
  * ------------------------------- */
 
+/** Parse a variable declaration with destructuring */
+bool parse_vardestructuring(parser *p, void *out) {
+    bool success=false;
+    token start = p->current;
+    syntaxtreeindx vars=SYNTAXTREE_UNCONNECTED, initializer=SYNTAXTREE_UNCONNECTED;
+    
+    if (parse_checktoken(p, TOKEN_RIGHTPAREN)) { parse_error(p, false, PARSE_VAREXPECTED); return false; }
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTPAREN, false, NULL, &vars));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_MISSINGPARENTHESIS));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_EQUAL, PARSE_EXPECTEXPRESSION));
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_NONE, false, NULL, &initializer));
+    
+    PARSE_CHECK(parse_statementterminator(p));
+    
+    syntaxtreenodetype flatten[] = { NODE_ARGLIST };
+    varray_syntaxtreeindx varnames;
+    varray_syntaxtreeindxinit(&varnames);
+    syntaxtree_flatten((syntaxtree *) p->out, vars, sizeof(flatten)/sizeof(syntaxtreenodetype), flatten, &varnames);
+    
+    syntaxtreeindx vindx, vardec=SYNTAXTREE_UNCONNECTED, assign=SYNTAXTREE_UNCONNECTED;
+    while (varray_syntaxtreeindxpop(&varnames, &vindx)) {
+        syntaxtreenode *var=parse_lookupnode(p, vindx);
+        if (!var || var->type!=NODE_SYMBOL) {
+            parse_error(p, false, PARSE_VAREXPECTED);
+            goto parse_vardestructuring_cleanup;
+        }
+        
+        syntaxtreeindx dec;
+        PARSE_CHECKGOTO(parse_addnode(p, NODE_DECLARATION, MORPHO_NIL, &start, vindx, SYNTAXTREE_UNCONNECTED, &dec), parse_vardestructuring_cleanup);
+        PARSE_CHECKGOTO(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, dec, vardec, &vardec), parse_vardestructuring_cleanup);
+    }
+    
+    PARSE_CHECKGOTO(parse_addnode(p, NODE_ASSIGN, MORPHO_NIL, &start, vars, initializer, &assign), parse_vardestructuring_cleanup);
+    PARSE_CHECKGOTO(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, vardec, assign, out), parse_vardestructuring_cleanup);
+    
+    success=true;
+    
+parse_vardestructuring_cleanup:
+    varray_syntaxtreeindxclear(&varnames);
+    return success;
+}
+
 /** Parses a variable declaration */
 bool parse_vardeclaration(parser *p, void *out) {
-    syntaxtreeindx symbol, initializer, new=SYNTAXTREE_UNCONNECTED, last=SYNTAXTREE_UNCONNECTED;
+    // Reroute if the declaration involves destructuring
+    if (parse_checktokenadvance(p, TOKEN_LEFTPAREN)) return parse_vardestructuring(p, out);
     
+    syntaxtreeindx symbol, initializer, new=SYNTAXTREE_UNCONNECTED, last=SYNTAXTREE_UNCONNECTED;
     do {
         token start = p->previous;
         

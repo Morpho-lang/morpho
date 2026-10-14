@@ -4827,13 +4827,13 @@ bool _processrvalue(compiler *c, syntaxtreeindx indx, rvalue_t *out) {
 }
 
 /** Flattens a collection of nodes at indx into a list of lvalues; returning the number of lvalues obtained */
-bool _flattenrvalues(compiler *c, syntaxtreeindx indx, rvalue_t *rvalues, int *count) {
+bool _flattenrvalues(compiler *c, syntaxtreeindx indx, bool destructure, rvalue_t *rvalues, int *count) {
     bool success=true;
-    syntaxtreenodetype flattentype[] = { NODE_TUPLE, NODE_ARGLIST }; // Types of node to flatten
+    syntaxtreenodetype flattentype[] = { NODE_ARGLIST, NODE_TUPLE }; // Types of node to flatten
     varray_syntaxtreeindx nodeindx; // Find child nodes corresponding to rvalues
     varray_syntaxtreeindxinit(&nodeindx);
     
-    syntaxtree_flatten(&c->tree, indx, sizeof(flattentype)/sizeof(syntaxtreenodetype), flattentype, &nodeindx);
+    syntaxtree_flatten(&c->tree, indx, (destructure ? 2 : 1), flattentype, &nodeindx);
     
     if (rvalues) for (int i=0; i<nodeindx.count && success; i++) {
         if (!_processrvalue(c, nodeindx.data[i], &rvalues[i])) success=false;
@@ -4934,7 +4934,7 @@ bool _assign(compiler *c, lvalue_t *left, rvalue_t *right, codeinfo *out) {
 }
 
 /** Evaluate a call expecting multiple return values */
-static bool _evalrvalueexpect(compiler *c, rvalue_t *rvalue, int nret, rvalue_t *returns) {
+static bool _evalrvalueexpect(compiler *c, rvalue_t *rvalue, syntaxtreenode *call, int nret, rvalue_t *returns) {
     // Allocate consecutive registers for the returned values
     for (int i=0; i<nret; i++) {
         rvalue_init(&returns[i]);
@@ -4944,9 +4944,15 @@ static bool _evalrvalueexpect(compiler *c, rvalue_t *rvalue, int nret, rvalue_t 
     }
 
     // Compile call preceeded by an EXPECT
-    rvalue->ret=compiler_callexpect(c, rvalue->node, nret, returns[0].ret.dest, returns[1].ret.dest);
+    rvalue->ret=compiler_callexpect(c, call, nret, returns[0].ret.dest, returns[1].ret.dest);
 
     return !compiler_haserror(c);
+}
+
+/** Finds the first non-structure node from a node */
+static syntaxtreenode *compiler_ungroup(compiler *c, syntaxtreenode *node) {
+    while (node && node->type==NODE_GROUPING) node=compiler_getnode(c, node->left);
+    return node;
 }
 
 /** Compile an assignment  */
@@ -4957,7 +4963,7 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
     
     // Count lvalues and rvalues
     _flattenlvalues(c, node->left, NULL, &nlvalues);
-    _flattenrvalues(c, node->right, NULL, &nrvalues);
+    _flattenrvalues(c, node->right, nlvalues>1, NULL, &nrvalues);
     if (nlvalues>MORPHO_MAXRETURN || nrvalues > MORPHO_MAXRETURN) { compiler_error(c, node, COMPILE_TOOMANYASSGNTRGTS); return CODEINFO_EMPTY; }
     
     lvalue_t lvalues[nlvalues+1];
@@ -4973,14 +4979,16 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
     }
     
     // Obtain a list of rvalues
-    if (!_flattenrvalues(c, node->right, rvalues, NULL)) goto compiler_assign_cleanup;
+    if (!_flattenrvalues(c, node->right, nlvalues>1, rvalues, NULL)) goto compiler_assign_cleanup;
     
     // Detect assignment due to a call with multiple return values
-    bool multireturn = nlvalues>1 && nrvalues==1 && rvalues[0].node && rvalues[0].node->type==NODE_CALL;
+    syntaxtreenode *call = (nrvalues==1 ? compiler_ungroup(c, rvalues[0].node) : NULL);
+    
+    bool multireturn = nlvalues>1 && call && call->type==NODE_CALL;
     
     if (multireturn) { // Evaluate the call with an EXPECT
-        if (!_evalrvalueexpect(c, &rvalues[0], nlvalues, returns)) goto compiler_assign_cleanup;
-
+        if (!_evalrvalueexpect(c, &rvalues[0], call, nlvalues, returns)) goto compiler_assign_cleanup;
+        
         for (int i=0; i<nlvalues; i++) { // Assign each returned value
             if (!_assign(c, &lvalues[i], &returns[i], NULL)) goto compiler_assign_cleanup;
         }

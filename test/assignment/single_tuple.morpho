@@ -1,0 +1,27 @@
+// Assign a Tuple to a single variable
+
+fn foo() { return 1, 2 }
+fn goo() { return 3, 4 }
+
+var a, b
+
+a=(1,2)
+print a // expect: (1,2)
+
+(a,b)=(1,2)
+print (a,b) // expect: (1,2)
+
+a,b=1,2
+print (a,b) // expect: (1,2)
+
+(a,b)=foo()
+print (a,b) // expect: (1,2)
+
+a,b=(foo())
+print (a,b) // expect: (1,2)
+
+(a,b)=(((foo())))
+print (a,b) // expect: (1,2)
+
+a,b=(foo(),goo())
+print (a,b) // expect: ((1,2),(3,4))

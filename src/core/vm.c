@@ -1278,6 +1278,8 @@ callfunction: // Jump here if an instruction becomes a call
 #endif
                 ERRORCHK();
                 reg=v->stack.data+v->fp->roffset; /* Ensure register pointer is correct */
+                if (v->fp->expect) ret=vm_returnvalues(v, v->fp, 1, &ret);
+                ERRORCHK();
                 reg[a]=ret;
 
             } else if (MORPHO_ISCLASS(left)) {
@@ -1300,7 +1302,9 @@ callfunction: // Jump here if an instruction becomes a call
                         /* If so, call it */
                         if (MORPHO_ISFUNCTION(ifunc)) {
                             if (!vm_call(v, ifunc, a, b, c, NULL, &pc, &reg)) goto vm_error;
+                            DISPATCH();
                         } else if (MORPHO_ISBUILTINFUNCTION(ifunc)) {
+                            // C initializers must not re-enter the VM; their return value is ignored
                             v->fp->nopt=c;
 #ifdef MORPHO_PROFILER
                             v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
@@ -1312,16 +1316,16 @@ callfunction: // Jump here if an instruction becomes a call
                             ERRORCHK();
                         }
                     } else {
-                        if (b>0) {
-                            VERROR(VM_NOINITIALIZER, MORPHO_GETCSTRING(klass->name));
-                        }
+                        if (b>0) VERROR(VM_NOINITIALIZER, MORPHO_GETCSTRING(klass->name));
                     }
-                } else {
-                    ERROR(VM_INSTANTIATEFAILED);
-                }
-            } else {
-                ERROR(VM_UNCALLABLE);
-            }
+                    
+                    // Handle an expect: the constructor returns exactly one value
+                    if (v->fp->expect) {
+                        vm_returnvalues(v, v->fp, 1, &reg[a]);
+                        ERRORCHK();
+                    }
+                } else ERROR(VM_INSTANTIATEFAILED);
+            } else ERROR(VM_UNCALLABLE);
             DISPATCH();
         
         CASE_CODE(METHOD): // Direct method call
@@ -1343,16 +1347,20 @@ callfunction: // Jump here if an instruction becomes a call
                 if (!vm_call(v, right, a+1, b, c, NULL, &pc, &reg)) goto vm_error;
             } else if (MORPHO_ISBUILTINFUNCTION(right)) {
                 v->fp->nopt=c;
-    #ifdef MORPHO_PROFILER
+#ifdef MORPHO_PROFILER
                 v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(right);
-    #endif
+#endif
                 value ret = (MORPHO_GETBUILTINFUNCTION(right)->function) (v, b, reg+a+1);
-                reg=v->fp->roffset+v->stack.data; /* Restore registers */
-                reg[a+1] = ret;
-    #ifdef MORPHO_PROFILER
+#ifdef MORPHO_PROFILER
                 v->fp->inbuiltinfunction=NULL;
-    #endif
+#endif
                 ERRORCHK();
+                reg=v->fp->roffset+v->stack.data; // Restore registers
+                if (v->fp->expect) { // Handle multiple returns
+                    ret=vm_returnvalues(v, v->fp, 1, &ret);
+                    ERRORCHK();
+                }
+                reg[a+1] = ret;
             }
         
         DISPATCH();
@@ -1387,12 +1395,16 @@ callfunction: // Jump here if an instruction becomes a call
                         v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
 #endif
                         value ret = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, b, reg+a+1);
-                        reg=v->fp->roffset+v->stack.data; /* Restore registers */
-                        reg[a+1] = ret;
 #ifdef MORPHO_PROFILER
                         v->fp->inbuiltinfunction=NULL;
 #endif
                         ERRORCHK();
+                        reg=v->fp->roffset+v->stack.data; /* Restore registers */
+                        if (v->fp->expect) {
+                            ret=vm_returnvalues(v, v->fp, 1, &ret);
+                            ERRORCHK();
+                        }
+                        reg[a+1] = ret;
                     }
                 } else if (dictionary_getintern(&instance->fields, right, &left)) {
                     
@@ -1432,12 +1444,16 @@ callfunction: // Jump here if an instruction becomes a call
                         v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
 #endif
                         value ret = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, b, reg+a+1);
-                        reg=v->fp->roffset+v->stack.data; /* Restore registers */
-                        reg[a+1] = ret;
 #ifdef MORPHO_PROFILER
                         v->fp->inbuiltinfunction=NULL;
 #endif
                         ERRORCHK();
+                        reg=v->fp->roffset+v->stack.data; /* Restore registers */
+                        if (v->fp->expect) {
+                            ret=vm_returnvalues(v, v->fp, 1, &ret);
+                            ERRORCHK();
+                        }
+                        reg[a+1] = ret;
                     }
                 } else {
                     /* Otherwise, raise an error */
@@ -1466,12 +1482,16 @@ callfunction: // Jump here if an instruction becomes a call
                             v->fp->inbuiltinfunction=MORPHO_GETBUILTINFUNCTION(ifunc);
 #endif
                             value ret = (MORPHO_GETBUILTINFUNCTION(ifunc)->function) (v, b, reg+a+1);
-                            reg=v->fp->roffset+v->stack.data; /* Restore registers */
-                            reg[a+1] = ret;
 #ifdef MORPHO_PROFILER
                             v->fp->inbuiltinfunction=NULL;
 #endif
                             ERRORCHK();
+                            reg=v->fp->roffset+v->stack.data; /* Restore registers */
+                            if (v->fp->expect) {
+                                ret=vm_returnvalues(v, v->fp, 1, &ret);
+                                ERRORCHK();
+                            }
+                            reg[a+1] = ret;
                         }
                     } else {
                         char *p = (MORPHO_ISSTRING(right) ? MORPHO_GETCSTRING(right) : "");
@@ -1856,6 +1876,7 @@ vm_error:
 
                     // Jump to the error handler
                     v->fp=eh->fp;
+                    v->fp->expect=0; // Call associated with expect failed, so ignore it
                     v->konst=v->fp->function->konst.data;
                     pc=v->instructions+MORPHO_GETINTEGERVALUE(branchto);
                     reg=v->stack.data+v->fp->roffset;
@@ -1975,9 +1996,13 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
     bool success=false;
     value fn=f;
     value r0=f;
+    
+    // Preserve expect across the call
+    callframe *caller=v->fp; // Save caller's frame pointer
+    instruction expect=caller->expect;
+    caller->expect=0;
 
-    if (MORPHO_ISINVOCATION(fn)) {
-        /* An method invocation */
+    if (MORPHO_ISINVOCATION(fn)) { // A method invocation
         objectinvocation *inv = MORPHO_GETINVOCATION(f);
         fn=inv->method;
         r0=inv->receiver;
@@ -1986,7 +2011,7 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
     if (MORPHO_ISMETAFUNCTION(fn) &&
         !metafunction_resolve(MORPHO_GETMETAFUNCTION(fn), nargs, args, &v->err, &fn)) {
         if (!morpho_checkerror(&v->err)) morpho_runtimeerror(v, VM_MLTPLDSPTCHFLD);
-        return false;
+        goto morpho_call_cleanup;
     }
     
     if (MORPHO_ISBUILTINFUNCTION(fn)) {
@@ -2005,7 +2030,7 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
 #ifdef MORPHO_PROFILER
         v->fp->inbuiltinfunction=NULL;
 #endif
-        success=true;
+        success=!morpho_checkerror(&v->err);
     } else if (MORPHO_ISFUNCTION(fn) || MORPHO_ISCLOSURE(fn)) {
         value *reg=v->stack.data+v->fp->roffset;
         instruction *pc=v->fp->pc;
@@ -2051,12 +2076,14 @@ bool morpho_call(vm *v, value f, int nargs, value *args, value *ret) {
         } else morpho_runtimeerror(v, VM_INSTANTIATEFAILED);
     }
 
+morpho_call_cleanup:
+    caller->expect=expect;
     return success;
 }
 
 /** API to provide return values */
 value morpho_return(vm *v, int nret, value *ret) {
-    vm_returnvalues(v, v->fp, nret, ret);
+    return vm_returnvalues(v, v->fp, nret, ret);
 }
 
 /** Find the class associated with a value */

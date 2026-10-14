@@ -1340,10 +1340,12 @@ parse_assignmulti_cleanup:
 bool parse_expressionstatement(parser *p, void *out) {
     syntaxtreeindx new;
     PARSE_CHECK(parse_expression(p, &new));
-    if (!parse_checktokenadvance(p, TOKEN_COMMA)) {
-        PARSE_CHECK(parse_statementterminator(p));
-        *((syntaxtreeindx *) out) = new;
-    } else PARSE_CHECK(parse_assignmulti(p, new, out));
+
+    if (parse_checktokenadvance(p, TOKEN_COMMA)) PARSE_CHECK(parse_assignmulti(p, new, &new));
+
+    PARSE_CHECK(parse_statementterminator(p));
+
+    *((syntaxtreeindx *) out)=new;
     return true;
 }
 

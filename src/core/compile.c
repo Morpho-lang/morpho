@@ -240,6 +240,7 @@ bool compiler_hasreturn(compiler *c) {
 }
 
 bool compiler_regcurrenttype(compiler *c, registerindx reg, value *type);
+bool compiler_regcurrenttypeinfunction(compiler *c, functionstate *f, registerindx reg, value *type);
 
 /** Sets the return type of a function */
 void compiler_addreturntype(compiler *c, value type) {
@@ -821,12 +822,17 @@ void compiler_typeviolation(compiler *c, syntaxtreenode *node, value type, value
     compiler_error(c, node, COMPILE_TYPEVIOLATION, bname, tname, sym);
 }
 
-/** Gets the current type of a register */
-bool compiler_regcurrenttype(compiler *c, registerindx reg, value *type) {
-    functionstate *f = compiler_currentfunctionstate(c);
-    if (reg>=f->registers.count) return false;
+/** Gets the current type of a register in a given function state */
+bool compiler_regcurrenttypeinfunction(compiler *c, functionstate *f, registerindx reg, value *type) {
+    (void) c;
+    if (!f || reg>=f->registers.count) return false;
     *type = f->registers.data[reg].currenttype;
     return true;
+}
+
+/** Gets the current type of a register in the function being compiled */
+bool compiler_regcurrenttype(compiler *c, registerindx reg, value *type) {
+    return compiler_regcurrenttypeinfunction(c, compiler_currentfunctionstate(c), reg, type);
 }
 
 /** Sets the current type of a register.  */
@@ -1759,7 +1765,7 @@ static void _findfunctionref(compiler *c, value symbol, bool *hasclosure, varray
         registerindx rsym = compiler_findsymbol(f, symbol);
         value type;
         if (rsym>=0 &&
-            compiler_regcurrenttype(c, rsym, &type) &&
+            compiler_regcurrenttypeinfunction(c, f, rsym, &type) &&
             !MORPHO_ISEQUAL(type, _closuretype)) {
             halted=true;
             break; // If there is, then we halt the search

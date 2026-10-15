@@ -4908,7 +4908,7 @@ static syntaxtreenode *compiler_ungroup(compiler *c, syntaxtreenode *node) {
     return node;
 }
 
-/** Compile an assignment  */
+/** Compile an assignment. */
 static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo out = CODEINFO_EMPTY;
     int nlvalues, nrvalues;
@@ -4952,10 +4952,17 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
         // Perform assignment
         for (int i=0; i<nlvalues && i<nrvalues; i++) if (!_assign(c, &lvalues[i], &rvalues[i], NULL)) goto compiler_assign_cleanup;
     }
-    
-    instructionindx end = compiler_currentinstructionindex(c);
-    out = CODEINFO(REGISTER, REGISTER_UNALLOCATED, (unsigned int) (end-start));
-    
+
+    if (!multireturn && nrvalues==1) { // Return a single value
+        codeinfo val = rvalues[0].ret;
+        rvalues[0].ret = CODEINFO_EMPTY; // Caller owns this register
+        if (reqout!=REGISTER_UNALLOCATED && val.dest!=reqout) {
+            out = compiler_movetoregister(c, node, val, reqout);
+            compiler_releaseoperand(c, val);
+        } else out = val; 
+    }
+    out.ninstructions = (unsigned int) (compiler_currentinstructionindex(c)-start);
+
 compiler_assign_cleanup:
     for (int i=0; i<nrvalues; i++) compiler_releaseoperand(c, rvalues[i].ret);
     for (int i=0; i<nlvalues; i++) {

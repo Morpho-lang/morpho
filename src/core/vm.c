@@ -1702,6 +1702,7 @@ callfunction: // Jump here if an instruction becomes a call
                 }
             } else {
                 if (!vm_invoke(v, left, indexselector, c-b+1, &reg[b], &reg[b])) {
+                    ERRORCHK();
                     ERROR(VM_NOTINDEXABLE);
                 }
                 ERRORCHK();
@@ -1739,6 +1740,7 @@ callfunction: // Jump here if an instruction becomes a call
                 if (err!=ARRAY_OK) ERROR( array_error(err) );
             } else {
                 if (!vm_invoke(v, left, setindexselector, c-b+1, &reg[b], &right)) {
+                    ERRORCHK();
                     ERROR(VM_NOTINDEXABLE);
                 }
                 ERRORCHK();

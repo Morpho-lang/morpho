@@ -4221,53 +4221,6 @@ compiler_return_cleanup:
     return out;
 }
 
-/** Compile a return statement */
-static codeinfo xcompiler_return(compiler *c, syntaxtreenode *node, registerindx reqout) {
-    codeinfo left = CODEINFO_EMPTY;
-    unsigned int ninstructions=0;
-    bool isinitializer = compiler_ininitializer(c);
-
-    if (node->left!=SYNTAXTREE_UNCONNECTED) {
-        if (isinitializer) {
-            compiler_error(c, node, COMPILE_RETURNININITIALIZER);
-        } else {
-            left=compiler_nodetobytecode(c, node->left, REGISTER_UNALLOCATED);
-            ninstructions=left.ninstructions;
-
-            /* Ensure we're working with a register */
-            if (!(CODEINFO_ISREGISTER(left))) {
-                left=compiler_movetoregister(c, node, left, REGISTER_UNALLOCATED);
-                ninstructions+=left.ninstructions;
-            }
-
-            compiler_addreturntypefromregister(c, left.dest);
-            compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1,  left.dest), node);
-            ninstructions++;
-        }
-        compiler_releaseoperand(c, left);
-    } else {
-        objectclass *klass = compiler_getcurrentclass(c);
-        /* Methods return self unless a return value is specified */
-        if (klass) {
-            compiler_addreturntype(c, MORPHO_OBJECT(klass));
-            compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 1, 0), node); /* Add a return */
-        } else {
-            compiler_addreturntype(c, _niltype);
-            compiler_addinstruction(c, ENCODE_DOUBLE(OP_RETURN, 0, 0), node);
-        }
-        ninstructions++;
-    }
-
-    /* If we generated a return instruction and we are not in a control flow statement,
-       set the unconditional return flag */
-    if (ninstructions>0 &&
-        !compiler_incontrolflow(c)) {
-        compiler_sethasreturn(c);
-    }
-    
-    return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
-}
-
 /** Defining class of a method implementation (function or builtin), or NULL. */
 static objectclass *compiler_implementationclass(value fn) {
     if (MORPHO_ISFUNCTION(fn)) return MORPHO_GETFUNCTION(fn)->klass;

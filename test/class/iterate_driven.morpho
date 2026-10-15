@@ -26,3 +26,15 @@ class Squares {
         if (!i) break
     }
 }
+// expect: (1, 0)
+// expect: (2, 1)
+// expect: (3, 4)
+// expect: (4, 9)
+// expect: (5, 16)
+// expect: (6, 25)
+// expect: (7, 36)
+// expect: (8, 49)
+// expect: (9, 64)
+// expect: (10, 81)
+// expect: (11, 100)
+// expect: (nil, nil)

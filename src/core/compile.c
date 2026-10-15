@@ -1121,20 +1121,6 @@ static registerindx compiler_getlocal(compiler *c, value symbol) {
     return compiler_findsymbol(f, symbol);
 }
 
-/** @brief Determines is a register is a local variable
- *  @param c      the current compiler
- *  @param reg    Register to examine */
-/*static bool compiler_islocal(compiler *c, registerindx reg) {
-    functionstate *f = compiler_currentfunctionstate(c);
-
-    if (f && reg!=REGISTER_UNALLOCATED) {
-        if (f->registers.data[reg].isallocated &&
-            !MORPHO_ISNIL(f->registers.data[reg].symbol)) return true;
-    }
-
-    return false;
-}*/
-
 bool compiler_getglobaltype(compiler *c, globalindx indx, value *type);
 bool compiler_getglobalsymbol(compiler *c, globalindx indx, value *symbol);
 bool compiler_getupvaluetype(compiler *c, registerindx ix, value *type);
@@ -1205,10 +1191,12 @@ static codeinfo compiler_movetoregister(compiler *c, syntaxtreenode *node, codei
             if (compiler_regtype(c, out.dest, &type) &&
                 compiler_regsymbol(c, out.dest, &symbol) &&
                 compiler_regtypecheck(c, node, info.dest, type, symbol, &out) &&
-                compiler_regcurrenttype(c, info.dest, &ctype) &&
-                compiler_mostspecifictype(c, type, ctype, &type)) {
-                
-                compiler_regsetcurrenttype(c, out.dest, type);
+                compiler_regcurrenttype(c, info.dest, &ctype)) {
+                if (MORPHO_ISNIL(type)) { // No declared type: keep what's known about the value
+                    compiler_regsetcurrenttype(c, out.dest, ctype);
+                } else if (compiler_mostspecifictype(c, type, ctype, &type)) {
+                    compiler_regsetcurrenttype(c, out.dest, type);
+                }
             }
             
             compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, out.dest, info.dest), node);
@@ -4908,6 +4896,17 @@ static syntaxtreenode *compiler_ungroup(compiler *c, syntaxtreenode *node) {
     return node;
 }
 
+/** Check if an rvalue is known to produce a tuple */
+static bool _rvalueistuple(compiler *c, rvalue_t *rv) {
+    syntaxtreenode *node = compiler_ungroup(c, rv->node);
+    if (node && node->type==NODE_TUPLE) return true;
+
+    value cur=MORPHO_NIL;
+    return CODEINFO_ISREGISTER(rv->ret) &&
+           compiler_regcurrenttype(c, rv->ret.dest, &cur) &&
+           MORPHO_ISEQUAL(cur, _tupletype);
+}
+
 /** Compile an assignment. */
 static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx reqout) {
     codeinfo out = CODEINFO_EMPTY;
@@ -4948,15 +4947,20 @@ static codeinfo compiler_assign(compiler *c, syntaxtreenode *node, registerindx 
     } else {
         // Evaluate rvalues
         for (int i=0; i<nrvalues; i++) if (!_evalrvalue(c, &rvalues[i])) goto compiler_assign_cleanup;
+
+        // A known tuple must be recorded before the value is moved into its target
+        if (nrvalues==1 && _rvalueistuple(c, &rvalues[0]) && CODEINFO_ISREGISTER(rvalues[0].ret)) {
+            compiler_regsetcurrenttype(c, rvalues[0].ret.dest, _tupletype);
+        }
         
         // Perform assignment
         for (int i=0; i<nlvalues && i<nrvalues; i++) if (!_assign(c, &lvalues[i], &rvalues[i], NULL)) goto compiler_assign_cleanup;
     }
 
-    if (!multireturn && nrvalues==1) { // Return a single value
+    if (!multireturn && nrvalues==1) { // Ensure a single return value is passed back to the caller
         codeinfo val = rvalues[0].ret;
-        rvalues[0].ret = CODEINFO_EMPTY; // Caller owns this register
-        if (reqout!=REGISTER_UNALLOCATED && val.dest!=reqout) {
+        rvalues[0].ret = CODEINFO_EMPTY; // Prevent cleanup 
+        if (reqout!=REGISTER_UNALLOCATED && val.dest!=reqout) { // Move to requested register
             out = compiler_movetoregister(c, node, val, reqout);
             compiler_releaseoperand(c, val);
         } else out = val; 

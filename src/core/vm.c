@@ -991,7 +991,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             if (!MORPHO_ISNIL(reg[a])) DISPATCH(); \
         } else if (morpho_matcherror(&v->err, VM_MLTPLDSPTCHFLD)) { \
             error_clear(&v->err); \
-        } \
+        } else ERRORCHK(); \
     } \
     if (MORPHO_ISOBJECT(right)) { \
         if (vm_invoke(v, right, rightselector, 1, &left, &reg[regout])) { \
@@ -999,7 +999,7 @@ bool morpho_interpret(vm *v, value *rstart, instructionindx istart) {
             DISPATCH(); \
         } else if (morpho_matcherror(&v->err, VM_MLTPLDSPTCHFLD)) { \
             error_clear(&v->err); \
-        } \
+        } else ERRORCHK(); \
     }
     
     INTERPRET_LOOP

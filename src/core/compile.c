@@ -4693,32 +4693,34 @@ bool _lvaluefromsymbol(compiler *c, syntaxtreenode *node, value symbol, lvalue_t
     return false;
 }
 
+/** Return true if a node contains a valid assignment target */
+static bool _isassignable(syntaxtreenode *node) {
+    return (node->type==NODE_SYMBOL || node->type==NODE_SELF || node->type==NODE_DOT || node->type==NODE_INDEX);
+}
+
 /** Recursively process assignment lvalue tree, emitting modifiers as necessary */
 bool _processlvaluerecursive(compiler *c, syntaxtreeindx indx, lvalue_t *out) {
     syntaxtreenode *node = compiler_getnode(c, indx);
+    value symbol = MORPHO_NIL;
     if (!node) return false;
 
     switch (node->type) {
-        case NODE_SYMBOL: {
-            return _lvaluefromsymbol(c, node, node->content, out);
-        }
+        case NODE_SYMBOL: return _lvaluefromsymbol(c, node, node->content, out);
         case NODE_SELF: {
             lvalue_set(out, ASSIGN_SELF, 0, MORPHO_NIL, node);
             return true;
         }
         case NODE_DOT: {
-            if (!_processlvaluerecursive(c, node->left, out)) return false; // Recursively process anything to the left
-            
-            // Check that the rhs is a property symbol
-            syntaxtreenode *property = compiler_getnode(c, node->right);
-            if (!property || property->type != NODE_SYMBOL) { compiler_error(c, node, COMPILE_PRPRTYNMEXPCTD); return false; }
-            
-            return lvalue_addmodifier(out, LVALUE_PROPERTY, indx, property->content);
+                syntaxtreenode *property = compiler_getnode(c, node->right);
+                if (!property || property->type != NODE_SYMBOL) { compiler_error(c, node, COMPILE_PRPRTYNMEXPCTD); return false; }
+                symbol = property->content;
         }
+            // v fallthrough
         case NODE_INDEX: {
-            if (!_processlvaluerecursive(c, node->left, out)) return false; // Recursively process anything to the left
-            
-            return lvalue_addmodifier(out, LVALUE_INDEX, indx, MORPHO_NIL);
+            syntaxtreenode *base = compiler_getnode(c, node->left);
+            if (base && _isassignable(base) && !_processlvaluerecursive(c, node->left, out)) return false;
+
+            return lvalue_addmodifier(out, (node->type==NODE_DOT ? LVALUE_PROPERTY : LVALUE_INDEX), indx, symbol);
         }
         default: compiler_error(c, node, COMPILE_INVALIDASSIGNMENT);
     }

@@ -20,8 +20,9 @@ void objectstring_printfn(object *obj, void *v) {
     morpho_printf(v, "%s", ((objectstring *) obj)->string);
 }
 
+/** Allocation size. length is the content, as strlen would report; the extra byte is the stored terminator. */
 size_t objectstring_sizefn(object *obj) {
-    return sizeof(objectstring)+((objectstring *) obj)->length+1;
+    return sizeof(objectstring) + ((objectstring *) obj)->length + 1;
 }
 
 hash objectstring_hashfn(object *obj) {
@@ -46,11 +47,13 @@ objecttypedefn objectstringdefn = {
     .cmpfn = objectstring_cmpfn
 };
 
-/** @brief Creates a string from an existing character array of given length
+/** @brief Creates a string from an existing character array of specified length
  *  @param in     the string to copy
- *  @param length length of string to copy
+ *  @param length length of string to copy (e.g. strlen(in))
  *  @returns the object or NULL on failure
- *  @warning Including an interior \0 character can cause issues where string contents are used with C APIs */
+ *  @warning A trailing \0 character is added to the string to ensure it is zero-terminated, 
+ *           however any interior \0 characters are part of the string content; these can
+ *           cause issues where string contents are used with C APIs. */
 objectstring *object_newstringwithlength(const char *in, size_t length) {
     objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
 
@@ -75,9 +78,9 @@ objectstring *object_newstring(const char *in) {
     return object_newstringwithlength(in, strlen(in));
 }
 
-/** @brief Creates a string from an existing character array with given length
+/** @brief Creates a string from an existing character array of specified length
  *  @param in     the string to copy
- *  @param length length of string to copy
+ *  @param length length of string to copy (e.g. strlen(in))
  *  @returns the object (as a value) which will be MORPHO_NIL on failure */
 value object_stringfromcstring(const char *in, size_t length) {
     objectstring *str = object_newstringwithlength(in, length);
@@ -102,11 +105,17 @@ objectstring *object_stringwithsize(size_t length) {
 
 /** @brief Converts a varray_char into a string.
  *  @param in  the varray to convert
- *  @returns the object (as a value) which will be MORPHO_NIL on failure */
+ *  @returns the object (as a value) which will be MORPHO_NIL on failure
+ *  @warning The varray_char should not be zero terminated; the resulting string will be. */
 value object_stringfromvarraychar(varray_char *in) {
     return object_stringfromcstring(in->data, in->count);
 }
 
+/** @brief Writes a trailing '\\0' so the buffer can be used as a C string.
+ *  The terminator is stored at data[count] and is not included in count. */
+void string_zeroterminatevarraychar(varray_char *string) {
+    if (string && varray_charresize(string, 1)) string->data[string->count] = '\0';
+}
 
 /* Clones a string object */
 value object_clonestring(value val) {

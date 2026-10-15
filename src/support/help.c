@@ -1119,7 +1119,6 @@ bool help_topictotext(const help_topic *t, varray_char *result) {
                 break;
         }
     }
-    varray_charwrite(result, '\0');
     return true;
 }
 
@@ -1135,6 +1134,7 @@ bool help_topicrawmd(const help_topic *t, varray_char *result) {
         varray_charadd(result, (char *) src + b->span.start, (int) len);
         if (src[b->span.start + len - 1] != '\n') varray_charadd(result, "\n", 1);
     }
+    string_zeroterminatevarraychar(result);
     return true;
 }
 
@@ -1188,7 +1188,7 @@ bool help_load(char *filename) {
         return false;
     }
     fclose(f);
-    size_t len = (contents.count > 0) ? contents.count - 1 : 0; // Keep contents.data; mdfile will own it (freed in md_file_clear). Do not clear contents.
+    size_t len = contents.count; // Content length; the buffer is also null terminated. Do not clear contents.
     md_file mdfile;
     md_file_init(&mdfile);
     mdfile.source = contents.data;
@@ -1279,7 +1279,7 @@ void help_queryhint(const char *query, varray_char *result) {
 
     if (help_parsequery(query, &parsed) == 0) {
         varray_charadd(result, MORPHO_HELP_NOTFOUND, strlen(MORPHO_HELP_NOTFOUND));
-        varray_charwrite(result, '\0');
+        string_zeroterminatevarraychar(result);
         return;
     }
     // Single segment: multi-match hint, or "not found" + closest, or NOTFOUND
@@ -1288,23 +1288,23 @@ void help_queryhint(const char *query, varray_char *result) {
         int n = help_findallbyname(parsed.segs[0], multi, MORPHO_HELP_MAX_MULTIMATCH);
         if (n >= 2) {
             help_hintappend_multi(result, query, multi, n);
-            varray_charwrite(result, '\0');
+            string_zeroterminatevarraychar(result);
             return;
         }
         if (n == 0) {
             help_hintappend(result, query, help_findclosesttopic(parsed.segs[0], -1));
-            varray_charwrite(result, '\0');
+            string_zeroterminatevarraychar(result);
             return;
         }
         varray_charadd(result, MORPHO_HELP_NOTFOUND, strlen(MORPHO_HELP_NOTFOUND));
-        varray_charwrite(result, '\0');
+        string_zeroterminatevarraychar(result);
         return;
     }
     // Multi-segment: resolve first, then walk subtopics; on first failure suggest path.closest
     int idx = help_findtopic(parsed.segs[0]);
     if (idx < 0) {
         help_hintappend(result, query, help_findclosesttopic(parsed.segs[0], -1));
-        varray_charwrite(result, '\0');
+        string_zeroterminatevarraychar(result);
         return;
     }
     char path[MORPHO_MAX_HELPQUERY_LENGTH];
@@ -1322,7 +1322,7 @@ void help_queryhint(const char *query, varray_char *result) {
                 if (n > 0 && n < (int) room) suggest = path;
             }
             help_hintappend(result, query, suggest);
-            varray_charwrite(result, '\0');
+            string_zeroterminatevarraychar(result);
             return;
         }
         idx = next;
@@ -1332,7 +1332,7 @@ void help_queryhint(const char *query, varray_char *result) {
         if (n > 0) path_len += (n < (int) sizeof(path) - path_len) ? n : (int) sizeof(path) - 1 - path_len;
     }
     varray_charadd(result, MORPHO_HELP_NOTFOUND, strlen(MORPHO_HELP_NOTFOUND));
-    varray_charwrite(result, '\0');
+    string_zeroterminatevarraychar(result);
 }
 
 /* **********************************************************************
@@ -1374,6 +1374,7 @@ bool morpho_helpastext(const char *query, varray_char *result) {
         if (success && help_parsequery(query, &parsed) == 1) {
             help_appendothertopics(parsed.segs[0], help_findtopic(parsed.segs[0]), result);
         }
+        string_zeroterminatevarraychar(result);
         return success;
     }
     help_queryhint(query, result);

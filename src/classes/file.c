@@ -106,7 +106,7 @@ void file_setworkingdirectory(const char *path) {
     workingdir.count=0; /* Clear any prior working directory */
     if (dirmarker>0) {
         varray_charadd(&workingdir, (char *) path, dirmarker);
-        varray_charwrite(&workingdir, '\0');
+        string_zeroterminatevarraychar(&workingdir);
     }
 }
 
@@ -115,12 +115,10 @@ void file_setworkingdirectory(const char *path) {
 void file_getworkingdirectory(varray_char *path)
 {
     if (workingdir.count>0) {
-        for (unsigned int i=0; i<workingdir.count && workingdir.data[i]!='\0'; i++) {
-            varray_charwrite(path, workingdir.data[i]);
-        }
+        varray_charadd(path, workingdir.data, (int) workingdir.count);
         varray_charwrite(path, MORPHO_DIRSEPARATOR);
     }
-    varray_charwrite(path, '\0');
+    string_zeroterminatevarraychar(path);
 }
 
 /** Gets the relative path for a given file */
@@ -129,14 +127,12 @@ void file_relativepath(const char *fname, varray_char *name) {
     if (fname[0]!='~' && fname[0]!='/' && 
         !(fname[0]!='\0' && fname[1]==':')) {
         if (workingdir.count>0) {
-            for (unsigned int i=0; i<workingdir.count && workingdir.data[i]!='\0'; i++) {
-                varray_charwrite(name, workingdir.data[i]);
-            }
+            varray_charadd(name, workingdir.data, (int) workingdir.count);
             varray_charwrite(name, MORPHO_DIRSEPARATOR);
         }
     }
     varray_charadd(name, (char *) fname, (int) strlen(fname));
-    varray_charwrite(name, '\0'); // Ensure string is null terminated.
+    string_zeroterminatevarraychar(name);
 }
 
 /** Open a file relative to the current working directory (usually the script directory) */
@@ -162,7 +158,7 @@ int file_readlineintovarray(FILE *f, varray_char *string) {
     }
     
     if (ic!=EOF || string->count>0) {
-        varray_charwrite(string, '\0');
+        string_zeroterminatevarraychar(string);
     }
     
     return ic;
@@ -177,8 +173,8 @@ bool file_readintovarray(FILE *f, varray_char *string) {
     
     if (varray_charresize(string, (int) size+1)) {
         size_t nread=fread(string->data, sizeof(char), size, f);
-        string->data[nread]='\0';
-        string->count=(unsigned int) nread+1;
+        string->count=(unsigned int) nread;
+        string_zeroterminatevarraychar(string);
     }
     
     return true;
@@ -376,7 +372,7 @@ value File_relativepath(vm *v, int nargs, value *args) {
     
     if (MORPHO_ISSTRING(fname)) {
         file_relativepath(MORPHO_GETCSTRING(fname), &path);
-        
+
         out = object_stringfromvarraychar(&path);
         morpho_bindobjects(v, 1, &out);
     }

@@ -72,10 +72,10 @@ void resources_matchbasefolder(resourceenumerator *en, char *path) {
     varray_charwrite(&fname, MORPHO_DIRSEPARATOR);
 
     if (en->folder) varray_charadd(&fname, en->folder, (int) strlen(en->folder));
-    varray_charwrite(&fname, '\0');
+    string_zeroterminatevarraychar(&fname);
 
     if (platform_isdirectory(fname.data)) {
-        value v = object_stringfromcstring(fname.data, fname.count);
+        value v = object_stringfromvarraychar(&fname);
         if (MORPHO_ISSTRING(v)) varray_valuewrite(&en->resources, v);
     }
 
@@ -258,7 +258,7 @@ void resources_loadpackagelist(void) {
 
     varray_charwrite(&line, MORPHO_DIRSEPARATOR);
     varray_charadd(&line, MORPHO_PACKAGELIST, (int) strlen(MORPHO_PACKAGELIST));
-    varray_charwrite(&line, '\0');
+    string_zeroterminatevarraychar(&line);
 
     FILE *f = fopen(line.data, "r");
     if (f) {

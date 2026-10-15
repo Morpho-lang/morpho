@@ -5283,7 +5283,7 @@ bool compiler_findmodule(char *name, varray_char *fname) {
         fname->count=0;
         if (MORPHO_ISSTRING(out)) {
             varray_charadd(fname, MORPHO_GETCSTRING(out), (int) MORPHO_GETSTRINGLENGTH(out));
-            varray_charwrite(fname, '\0');
+            string_zeroterminatevarraychar(fname);
         }
         morpho_freeobject(out);
     }
@@ -5382,9 +5382,9 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             file_getworkingdirectory(&wrkdir);
             varray_char fpath;
             varray_charinit(&fpath);
-            varray_charadd(&fpath, wrkdir.data, wrkdir.count-1);
+            varray_charadd(&fpath, wrkdir.data, (int) wrkdir.count);
             varray_charadd(&fpath, fname, (int) strlen(fname));
-            varray_charwrite(&fpath, '\0'); // Must null terminate
+            string_zeroterminatevarraychar(&fpath);
             file_setworkingdirectory(fpath.data);
 
             /* Remember the initial position of the code */

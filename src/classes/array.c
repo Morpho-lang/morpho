@@ -169,7 +169,7 @@ void array_print(vm *v, objectarray *a) {
 
     unsigned int indx[a->ndim];
     if (array_print_recurse(v, a, indx, 0, &out)) {
-        varray_charwrite(&out, '\0'); // Ensure zero terminated
+        string_zeroterminatevarraychar(&out);
         morpho_printf(v, "%s", out.data);
     }
 

@@ -59,8 +59,11 @@ value object_stringfromcstring(const char *in, size_t length);
 /** Create an empty string of specified size */
 objectstring *object_stringwithsize(size_t length);
 
-/** Create a string object from a character varray */
+/** Create a string object from a character varray. */
 value object_stringfromvarraychar(varray_char *in);
+
+/** Write a trailing '\\0' to a varray_char for C use without including it in count. */
+void string_zeroterminatevarraychar(varray_char *string);
 
 /** Clone a string */
 value object_clonestring(value val);

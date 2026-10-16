@@ -2051,6 +2051,33 @@ void compiler_clearnamespacelist(compiler *c) {
 }
 
 /* ------------------------------------------
+ * Emit code sequences
+ * ------------------------------------------- */
+
+/** Expect structure */
+typedef struct {
+    int nret;
+    registerindx first;
+    registerindx rest;
+} expect_t;
+
+/** Emits an expect instruction */
+unsigned int compiler_emitexpect(compiler *c, syntaxtreenode *node, expect_t *expect) {
+    if (!expect) return 0;
+    compiler_addinstruction(c, ENCODE(OP_EXPECT, expect->nret, expect->first, expect->rest), node);
+    return 1;
+}
+
+/** Emit an INVOKE instruction, optionally preceded by EXPECT. */
+static unsigned int compiler_emitinvoke(compiler *c, syntaxtreenode *node, registerindx selector, int nposn, int nopt, expect_t *expect) {
+    unsigned int n=0;
+
+    if (expect) n+=compiler_emitexpect(c, node, expect);
+    compiler_addinstruction(c, ENCODE(OP_INVOKE, selector, nposn, nopt), node);
+    return n+1;
+}
+
+/* ------------------------------------------
  * Compiler node implementation functions
  * ------------------------------------------- */
 
@@ -2989,6 +3016,61 @@ static codeinfo compiler_while(compiler *c, syntaxtreenode *node, registerindx r
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
 
+/** Helper to extract a variable node in a for..in loop */
+static syntaxtreenode *_getvarnode(compiler *c, syntaxtreeindx indx) {
+    syntaxtreenode *node=compiler_getnode(c, indx);
+    if (node && node->type==NODE_DECLARATION) node=compiler_getnode(c, node->left);
+    return node;
+}
+
+/** @brief Compile a for...in loop
+ * @details For..in loops enable looping over the contents of a collection without knowing how many elements are present
+ *                 forin
+ *                /     \
+ *               in      body
+ *              /   \
+ *            init     collection
+ * This works by calling iterate() successively on the collection, equivalent to:
+ *     var (i, p) = collection.iterate(0)
+ *     while (i) {
+ *       // body
+ *       (i, p) = str.iterate(i)
+ *     } */
+static codeinfo compiler_xfor(compiler *c, syntaxtreenode *node, registerindx reqout) {
+    instructionindx start = compiler_currentinstructionindex(c);
+    compiler_beginscope(c);
+    
+    // Get the IN node
+    syntaxtreenode *innode=compiler_getnode(c, node->left);
+    if (!innode || innode->type!=NODE_IN) UNREACHABLE("For..in syntax tree malformed.");
+    
+    varray_syntaxtreeindx initnodes; // Unpack the initializer
+    varray_syntaxtreeindxinit(&initnodes);
+    
+    syntaxtreenodetype flatten[] = { NODE_SEQUENCE };
+    syntaxtree_flatten(compiler_getsyntaxtree(c), innode->left, sizeof(flatten)/sizeof(syntaxtreenodetype), flatten, &initnodes);
+    
+    if (initnodes.count<1 || initnodes.count>2) { // Ensure we have 
+        compiler_error(c, node, COMPILE_FORINVAR);
+        goto compiler_for_cleanup;
+    }
+    
+    // Extract the value, key and collection nodes
+    syntaxtreenode *valnode = _getvarnode(c, initnodes.data[0]);
+    syntaxtreenode *keynode = (initnodes.count>1 ? _getvarnode(c, initnodes.data[1]) : NULL);
+    syntaxtreenode *collnode = compiler_getnode(c, innode->right);
+    
+    // Register layout:
+    // iterate | collection | cursor | item | key
+    
+    
+compiler_for_cleanup:
+    compiler_endscope(c);
+    varray_syntaxtreeindxclear(&initnodes);
+    
+    return CODEINFO(REGISTER, REGISTER_UNALLOCATED, (unsigned int) (compiler_currentinstructionindex(c) - start));
+}
+
 /** @brief Compiles a for .. in loop
  * @details For..in loops enable looping over the contents of a collection without knowing how many elements are present
  *                 forin
@@ -3907,20 +3989,6 @@ static bool compiler_specializemetafunctioncall(compiler *c, syntaxtreenode *nod
     if (MORPHO_ISOBJECT(reduced)) program_bindobject(c->out, MORPHO_GETOBJECT(reduced));
 
     return true;
-}
-
-/** Expect structure */
-typedef struct {
-    int nret;
-    registerindx first;
-    registerindx rest;
-} expect_t;
-
-/** Emits an expect instruction */
-unsigned int compiler_emitexpect(compiler *c, syntaxtreenode *node, expect_t *expect) {
-    if (!expect) return 0;
-    compiler_addinstruction(c, ENCODE(OP_EXPECT, expect->nret, expect->first, expect->rest), node);
-    return 1;
 }
 
 /** Prototype needed for _call.*/
@@ -5661,6 +5729,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_UNKNWNTYPENMSPC, ERROR_COMPILE, COMPILE_UNKNWNTYPENMSPC_MSG);
     morpho_defineerror(COMPILE_CLSSLNRZ, ERROR_COMPILE, COMPILE_CLSSLNRZ_MSG);
     morpho_defineerror(COMPILE_CLSSDPLCTIMPL, ERROR_COMPILE, COMPILE_CLSSDPLCTIMPL_MSG);
+    morpho_defineerror(COMPILE_FORINVAR, ERROR_COMPILE, COMPILE_FORINVAR_MSG);
     
     morpho_addfinalizefn(compile_finalize);
 }

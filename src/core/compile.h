@@ -132,6 +132,9 @@
 #define COMPILE_CLSSDPLCTIMPL             "ClssDplctImpl"
 #define COMPILE_CLSSDPLCTIMPL_MSG         "Duplicate implementation of method %s with same signature in class %s"
 
+#define COMPILE_FORINVAR                  "ForInVar"
+#define COMPILE_FORINVAR_MSG              "The `in` keyword must be preceded by an iteration variable and an optional key variable."
+
 /* **********************************************************************
  * Compiler typedefs
  * ********************************************************************** */

@@ -3035,19 +3035,27 @@ static syntaxtreenode *_getvarnode(compiler *c, syntaxtreeindx indx) {
  *     while (i) {
  *       // body
  *       (i, p) = str.iterate(i)
- *     } */
-static codeinfo compiler_xfor(compiler *c, syntaxtreenode *node, registerindx reqout) {
+ *     }
+ * compiled core is:
+ *      EXPECT  2 [3], rCursor, rVal //
+ *      INVOKE  rIter, 1, 0
+ *      BIFF    rCursor, end
+ *      ... body ...
+ *      B       loop */
+static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx reqout) {
     instructionindx start = compiler_currentinstructionindex(c);
+    codeinfo coll=CODEINFO_EMPTY, body=CODEINFO_EMPTY;
+    
     compiler_beginscope(c);
     
-    // Get the IN node
+    // Get the node associated with the in keyword
     syntaxtreenode *innode=compiler_getnode(c, node->left);
     if (!innode || innode->type!=NODE_IN) UNREACHABLE("For..in syntax tree malformed.");
     
     varray_syntaxtreeindx initnodes; // Unpack the initializer
     varray_syntaxtreeindxinit(&initnodes);
     
-    syntaxtreenodetype flatten[] = { NODE_SEQUENCE };
+    syntaxtreenodetype flatten[] = { NODE_SEQUENCE }; // Collapse sequence nodes to support (var, key in collection)
     syntaxtree_flatten(compiler_getsyntaxtree(c), innode->left, sizeof(flatten)/sizeof(syntaxtreenodetype), flatten, &initnodes);
     
     if (initnodes.count<1 || initnodes.count>2) { // Ensure we have 
@@ -3060,176 +3068,87 @@ static codeinfo compiler_xfor(compiler *c, syntaxtreenode *node, registerindx re
     syntaxtreenode *keynode = (initnodes.count>1 ? _getvarnode(c, initnodes.data[1]) : NULL);
     syntaxtreenode *collnode = compiler_getnode(c, innode->right);
     
-    // Register layout:
-    // iterate | collection | cursor | item | key
+    if (!valnode || valnode->type!=NODE_SYMBOL || (keynode && keynode->type!=NODE_SYMBOL)) {
+        compiler_error(c, node, COMPILE_FORINVAR);
+        goto compiler_for_cleanup;
+    }
     
+    // Evaluate collection first
+    coll=compiler_nodetobytecode(c, innode->right, REGISTER_UNALLOCATED);
+    
+    // Register layout:
+    // iterate | collection | cursor | item | (key)
+    registerindx rIter=compiler_regalloctop(c),
+                 rObj=compiler_regalloctop(c),
+                 rCursor=compiler_regalloctop(c),
+                 rVal=compiler_regalloctop(c);
+    
+    compiler_regsetsymbol(c, rVal, valnode->content);
+    
+    registerindx rKey=REGISTER_UNALLOCATED; // Optional key register
+    if (keynode) {
+        rKey=compiler_regalloctop(c);
+        compiler_regsetsymbol(c, rKey, keynode->content);
+    }
+    
+    // Load the iterate selector.
+    objectstring iteratestr=MORPHO_STATICSTRING(MORPHO_ITERATE_METHOD);
+    registerindx cIter=compiler_addsymbol(c, node, MORPHO_OBJECT(&iteratestr));
+    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rIter, cIter), node);
+    
+    // Move collection into correct slot
+    compiler_movetoregister(c, collnode, coll, rObj);
+    compiler_releaseoperand(c, coll);
+    coll=CODEINFO_EMPTY;
+    
+    if (compiler_haserror(c)) goto compiler_for_cleanup;
+    
+    // Intialize cursor
+    registerindx cZero=compiler_addconstant(c, node, MORPHO_INTEGER(0), false, false);
+    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rCursor, cZero), node);
+    
+    // Start of loop
+    instructionindx loopstart=compiler_currentinstructionindex(c);
+    
+    // Method call to iterate()
+    expect_t expect = { .nret  = (keynode ? 3 : 2), .first = rCursor, .rest  = rVal };
+    compiler_emitinvoke(c, collnode, rIter, 1, 0, &expect);
+    
+    // Placeholder for branch
+    instructionindx condindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node);
+
+    instructionindx bodystart=compiler_currentinstructionindex(c);
+    
+    compiler_beginloop(c);
+    
+    // Compile loop body
+    if (node->right!=SYNTAXTREE_UNCONNECTED) {
+        body = compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
+        compiler_releaseoperand(c, body);
+    } else {
+        compiler_error(c, node, COMPILE_MSSNGLOOPBDY);
+        goto compiler_for_cleanup;
+    }
+    
+    compiler_endloop(c);
+
+    // Unconditional branch back to loop start
+    instructionindx back=compiler_currentinstructionindex(c);
+    compiler_addinstruction(c, ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, loopstart-back-1), node);
+
+    instructionindx loopend=compiler_currentinstructionindex(c);
+    
+    // Fix conditional branch instruction
+    compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIFF, rCursor, loopend-condindx-1));
+
+    // Process break and continue in loop
+    compiler_fixloop(c, loopstart, loopstart, loopend);
     
 compiler_for_cleanup:
     compiler_endscope(c);
     varray_syntaxtreeindxclear(&initnodes);
     
     return CODEINFO(REGISTER, REGISTER_UNALLOCATED, (unsigned int) (compiler_currentinstructionindex(c) - start));
-}
-
-/** @brief Compiles a for .. in loop
- * @details For..in loops enable looping over the contents of a collection without knowing how many elements are present
- *                 forin
- *                /     \
- *               in      body
- *              /   \
- *            init     collection
- * This works by successively calling enumerate() on the collections, first with no arguments to get the bound, then
- * with the integer counter as in the below code
- *
- * Register allocation
- *  |  rObj  | rIndx  | | rMax  | rEnum |  rVal   | rTmp   |  ...
- *
- *  Find maximum value of counter
- *   lct   rEnum,  c             ; "enumerate"
- *   mov   rVal,   rObj          ;
- *   lct   rTmp, c               ; -1
- *   invoke rEnum, 1, 0
- *   mov   rMax, rVal
-
- *  loopstart:
- *   lt    rTmp,  rIndx,  rMax
- *   biff  rTmp,  <loopend>
-
- *   mov   rVal, rObj
- *   mov   rTmp, rIndx
- *   invoke rEnum, 1, 0
-
- *   ... Loop body ...
-
- *   lct   rTmp, c               ; 1
- *   add   rIndx, rIndx, rTmp    ;
-
- *   b     <loopstart>
- *  loopend:
- */
-static codeinfo compiler_for(compiler *c, syntaxtreenode *node, registerindx reqout) {
-    codeinfo body;
-    unsigned int ninstructions=0;
-    syntaxtreenode *innode=NULL, *initnode=NULL, *indxnode=NULL, *collnode=NULL;
-    instructionindx condindx=REGISTER_UNALLOCATED; /* Where is the condition located */
-
-    compiler_beginscope(c);
-
-    /* Collect the syntaxtree nodes */
-    innode=compiler_getnode(c, node->left);
-    if (innode) {
-        initnode=compiler_getnode(c, innode->left);
-
-        if (initnode->type==NODE_SEQUENCE) { // Unpack a variable, indx sequence
-            indxnode=compiler_getnode(c, initnode->right);
-            initnode=compiler_getnode(c, initnode->left);
-        }
-
-        if (initnode->type==NODE_DECLARATION) initnode=compiler_getnode(c, initnode->left);
-        if (indxnode && indxnode->type==NODE_DECLARATION) indxnode=compiler_getnode(c, indxnode->left);
-
-        collnode=compiler_getnode(c, innode->right);
-    }
-
-    // Register allocation for the loop
-    // |  rObj  | rIndx  || rMax  | rEnum |  rVal   | rTmp   |  ...
-
-    // Fetch the collection object
-    codeinfo coll=compiler_nodetobytecode(c, innode->right, REGISTER_UNALLOCATED);
-    ninstructions+=coll.ninstructions;
-    if (!CODEINFO_ISREGISTER(coll)) {
-        coll=compiler_movetoregister(c, collnode, coll, REGISTER_UNALLOCATED);
-        ninstructions+=coll.ninstructions;
-    }
-    registerindx rObj = coll.dest;
-    
-    // Initialize the index variable
-    registerindx rIndx=compiler_regalloc(c, MORPHO_NIL);
-    if (indxnode) compiler_regsetsymbol(c, rIndx, indxnode->content);
-    int cNil = compiler_addconstant(c, node, MORPHO_INTEGER(0), false, false);
-    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rIndx, cNil), node);
-    ninstructions++;
-    
-    if (!compiler_regcheckandsetcurrenttype(c, node, rIndx, _inttype)) return CODEINFO_EMPTY;
-    
-    /* Obtain the maximum value of rIndx by invoking enumerate */
-    
-    // Allocate register to contain maximum value of the counter
-    registerindx rMax=compiler_regalloctop(c);
-    
-    // Initialize enumerate selector
-    registerindx rEnum=compiler_regalloctop(c);
-    int cEnum = compiler_addconstant(c, node, enumerateselector, false, false);
-    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rEnum, cEnum), node);
-    ninstructions++;
-
-    // Place the object into the register after rEnum
-    registerindx rVal=compiler_regalloctop(c);
-    compiler_regsetsymbol(c, rVal, initnode->content);
-    compiler_addinstruction(c, ENCODE_LONG(OP_MOV, rVal, rObj), node);
-    ninstructions++;
-
-    // Parameter is -1 to query size of collection
-    registerindx rTmp=compiler_regalloctop(c);
-    registerindx cNegOne = compiler_addconstant(c, node, MORPHO_INTEGER(-1), false, false);
-    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rTmp, cNegOne), node);
-    ninstructions++;
-    
-    compiler_addinstruction(c, ENCODE(OP_INVOKE, rEnum, 1, 0), collnode);
-    ninstructions++;
-    
-    // Store the maximum value
-    compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, rMax, rVal), collnode);
-    ninstructions++;
-    
-    /* Test index against the maximum value */
-    instructionindx tst=compiler_addinstruction(c, ENCODE(OP_LT, rTmp, rIndx, rMax), node);
-    condindx=compiler_addinstruction(c, ENCODE_BYTE(OP_NOP), node); // Placeholder for branch
-    ninstructions+=2;
-    
-    /* Load enumerated value */
-    compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, rVal, rObj), node);
-    compiler_addinstruction(c, ENCODE_DOUBLE(OP_MOV, rTmp, rIndx), node);
-    compiler_addinstruction(c, ENCODE(OP_INVOKE, rEnum, 1, 0), collnode);
-    ninstructions+=3;
-    
-    compiler_beginloop(c);
-
-    /* Compile the body */
-    if (node->right==SYNTAXTREE_UNCONNECTED) {
-        compiler_error(c, node, COMPILE_MSSNGLOOPBDY);
-    } else {
-        body=compiler_nodetobytecode(c, node->right, REGISTER_UNALLOCATED);
-        ninstructions+=body.ninstructions;
-        compiler_releaseoperand(c, body);
-    }
-
-    compiler_endloop(c);
-
-    /* Increment the counter */
-    instructionindx inc=compiler_currentinstructionindex(c);
-
-    int cOne = compiler_addconstant(c, node, MORPHO_INTEGER(1), false, false);
-    compiler_addinstruction(c, ENCODE_LONG(OP_LCT, rTmp, cOne), node);
-    instructionindx add=compiler_addinstruction(c, ENCODE(OP_ADD, rIndx, rIndx, rTmp), node);
-    ninstructions+=2;
-    
-    /* Compile the unconditional branch back to the test instruction */
-    instructionindx end=compiler_addinstruction(c, ENCODE_LONG(OP_B, REGISTER_UNALLOCATED, -(add-tst)-2), node);
-    ninstructions++;
-
-    /* Go back and generate the condition instruction */
-    compiler_setinstruction(c, condindx, ENCODE_LONG(OP_BIFF, rTmp, (add-tst) ));
-
-    compiler_fixloop(c, tst, inc, end+1);
-
-    compiler_regfreetemp(c, rObj);
-    compiler_regfreetemp(c, rIndx);
-    compiler_regfreetoend(c, rMax);
-
-    compiler_endscope(c);
-
-    return CODEINFO(REGISTER, REGISTER_UNALLOCATED, ninstructions);
 }
 
 /** @brief   Compiles a do...while statement

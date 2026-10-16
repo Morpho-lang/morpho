@@ -40,7 +40,7 @@ objecttypedefn objectrangedefn = {
 
 /** Determine the number of steps in a range */
 bool _range_count(objectrange *range) {
-    range->nsteps=0;
+    int nsteps=0;
     if (MORPHO_ISFLOAT(range->start)) {
         double diff=MORPHO_GETFLOATVALUE(range->end)-MORPHO_GETFLOATVALUE(range->start);
         
@@ -49,25 +49,28 @@ bool _range_count(objectrange *range) {
         
         if (cnt>(double) INT_MAX) return false;
         
-        if (isfinite(cnt)) range->nsteps = (int) cnt;
+        bool adjust = !(isfinite(cnt) && cnt < (double) INT_MIN);
+        if (adjust && isfinite(cnt)) nsteps = (int) cnt;
+        else if (!adjust) nsteps = -1;
         
         if (range->inclusive) {
-            if (MORPHO_ISEQUAL(range->start, range->end)) range->nsteps=1;
-            else while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(range->nsteps*stp)))<=0) range->nsteps++;
+            if (MORPHO_ISEQUAL(range->start, range->end)) nsteps=1;
+            else if (adjust) while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(nsteps*stp)))<=0) nsteps++;
             
-        } else {
-            while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(range->nsteps*stp)))<0) range->nsteps++;
+        } else if (adjust) {
+            while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(nsteps*stp)))<0) nsteps++;
         }
     } else {
         int diff=MORPHO_GETINTEGERVALUE(range->end)-MORPHO_GETINTEGERVALUE(range->start);
         int stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETINTEGERVALUE(range->step));
-        if (stp) range->nsteps = diff / stp ;
+        if (stp) nsteps = diff / stp ;
         if (range->inclusive) {
-            if (diff==0) range->nsteps=1;
-            else if (range->nsteps*stp<=diff) range->nsteps++;
+            if (diff==0) nsteps=1;
+            else if (nsteps*stp<=diff) nsteps++;
         }
     }
-    if (range->nsteps < 0) range->nsteps=0;
+    if (nsteps < 0) nsteps=0;
+    range->nsteps = (unsigned int) nsteps;
 
     return true;
 }

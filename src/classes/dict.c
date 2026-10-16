@@ -200,7 +200,7 @@ value Dictionary_iterate(vm *v, int nargs, value *args) {
     
     for (int i=n; i<slf->dict.capacity; i+=1) {
         if (!MORPHO_ISNIL(slf->dict.contents[i].key)) {
-            value ret[3]={ MORPHO_INTEGER(i+1), slf->dict.contents[i].val, slf->dict.contents[i].key };
+            value ret[3]={ MORPHO_INTEGER(i+1), slf->dict.contents[i].key, slf->dict.contents[i].val };
             return morpho_return(v, 3, ret);
         }
     }

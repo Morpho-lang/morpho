@@ -276,6 +276,29 @@ value Object_enumerate(vm *v, int nargs, value *args) {
      return out;
 }
 
+/** Iterate protocol */
+value Object_iterate(vm *v, int nargs, value *args) {
+    value self = MORPHO_SELF(args);
+    if (!MORPHO_ISINSTANCE(self)) {
+        value ret[3]={ MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };
+        return morpho_return(v, 3, ret);
+    }
+
+    objectinstance *slf = MORPHO_GETINSTANCE(self);
+    int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    if (n<0) { morpho_runtimeerror(v, VM_INVALIDARGS); return MORPHO_NIL; }
+    
+    for (int i=n; i<slf->fields.capacity; i+=1) {
+        if (!MORPHO_ISNIL(slf->fields.contents[i].key)) {
+            value ret[3]={ MORPHO_INTEGER(i+1), slf->fields.contents[i].key, slf->fields.contents[i].val };
+            return morpho_return(v, 3, ret);
+        }
+    }
+
+    value ret[3]={ MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };
+    return morpho_return(v, 3, ret);
+}
+
 /** Generic serializer */
 value Object_serialize(vm *v, int nargs, value *args) {
     return MORPHO_NIL;
@@ -331,6 +354,7 @@ MORPHO_METHOD(MORPHO_INVOKE_METHOD, Object_invoke, MORPHO_FN_REENTRANT|MORPHO_FN
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, MORPHO_FN_IO),
 MORPHO_METHOD(MORPHO_COUNT_METHOD, Object_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Object_enumerate, MORPHO_FN_THROWS),
+MORPHO_METHOD(MORPHO_ITERATE_METHOD, Object_iterate, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_SERIALIZE_METHOD, Object_serialize, MORPHO_FN_NONE),
 MORPHO_METHOD(MORPHO_CLONE_METHOD, Object_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_LINEARIZATION_METHOD, Object_linearization, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)

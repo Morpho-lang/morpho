@@ -1363,6 +1363,22 @@ value Sparse_enumerate(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Iterate protocol */
+value Sparse_iterate(vm *v, int nargs, value *args) {
+    objectsparse *a=MORPHO_GETSPARSE(MORPHO_SELF(args));
+    int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    if (i<0) { linalg_raiseerror(v, LINALGERR_INDX_OUT_OF_BNDS); return MORPHO_NIL; }
+    
+    value out;
+    if (sparse_enumerate(a, i, &out)) {
+        value ret[3] = { MORPHO_INTEGER(i+1), out, MORPHO_INTEGER(i) };
+        return morpho_return(v, 3, ret);
+    }
+    
+    value ret[3] = { MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };
+    return morpho_return(v, 3, ret);
+}
+
 /** Print a sparse matrix */
 value Sparse_print(vm *v, int nargs, value *args) {
     value self = MORPHO_SELF(args);
@@ -1792,6 +1808,7 @@ MORPHO_BEGINCLASS(Sparse)
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Sparse_getindex, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Sparse_setindex, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_ENUMERATE_METHOD, Sparse_enumerate, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_ITERATE_METHOD, "(Int)", Sparse_iterate, MORPHO_FN_ALLOCATES|MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Sparse_print, MORPHO_FN_IO),
 MORPHO_METHOD(MORPHO_ADD_METHOD, Sparse_add, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_SUB_METHOD, Sparse_sub, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),

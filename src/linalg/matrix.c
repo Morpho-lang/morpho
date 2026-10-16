@@ -1563,10 +1563,27 @@ value Matrix_enumerate(vm *v, int nargs, value *args) {
     } else if (i<a->ncols*a->nrows) {
         out=matrix_getinterface(a)->getelfn(v, a->elements+i*a->nvals);
     } else {
-        linalg_raiseerror(v, LINALGERR_INDX_OUT_OF_BNDS);
+        
     }
     
     return out;
+}
+
+/** Iterate protocol */
+value Matrix_iterate(vm *v, int nargs, value *args) {
+    objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
+    int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    if (i<0) { linalg_raiseerror(v, LINALGERR_INDX_OUT_OF_BNDS); return MORPHO_NIL; }
+    
+    if (i<a->ncols*a->nrows) {
+        value ret[3] = { MORPHO_INTEGER(i+1),
+                         matrix_getinterface(a)->getelfn(v, a->elements+i*a->nvals),
+                         MORPHO_INTEGER(i) };
+        return morpho_return(v, 3, ret);
+    }
+    
+    value ret[3] = { MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };
+    return morpho_return(v, 3, ret);
 }
 
 /** Number of matrix elements */
@@ -1634,6 +1651,7 @@ MORPHO_METHOD_SIGNATURE(MATRIX_RESHAPE_METHOD, "(Int,Int)", Matrix_reshape, MORP
 MORPHO_METHOD_SIGNATURE(MATRIX_ROLL_METHOD, "Matrix (Int)", Matrix_roll__int, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MATRIX_ROLL_METHOD, "Matrix (Int,Int)", Matrix_roll__int_int, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "(Int)", Matrix_enumerate, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ITERATE_METHOD, "(Int)", Matrix_iterate, MORPHO_FN_ALLOCATES|MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Matrix_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MATRIX_DIMENSIONS_METHOD, "Tuple ()", Matrix_dimensions, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
 MORPHO_ENDCLASS

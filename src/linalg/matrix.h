@@ -208,6 +208,7 @@ IMPLEMENTATIONFN(Matrix_reshape);
 IMPLEMENTATIONFN(Matrix_roll__int);
 IMPLEMENTATIONFN(Matrix_roll__int_int);
 IMPLEMENTATIONFN(Matrix_enumerate);
+IMPLEMENTATIONFN(Matrix_iterate);
 IMPLEMENTATIONFN(Matrix_count);
 IMPLEMENTATIONFN(Matrix_dimensions);
 

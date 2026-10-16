@@ -920,6 +920,17 @@ static registerindx compiler_regtop(compiler *c) {
     return REGISTER_UNALLOCATED;
 }
 
+/** @brief Find the last allocated temporary register.
+ *  @details Named registers, including forward references, are skipped. */
+static registerindx compiler_regtoptemp(compiler *c) {
+    functionstate *f = compiler_currentfunctionstate(c);
+    for (registerindx i=f->registers.count-1; i>=0; i--) {
+        if (f->registers.data[i].isallocated &&
+            MORPHO_ISNIL(f->registers.data[i].symbol)) return i;
+    }
+    return REGISTER_UNALLOCATED;
+}
+
 /** @brief Check if a register is temporary or associated with a symbol
  *  @returns True if the register is temporary, false otherwise */
 static bool compiler_isregtemp(compiler *c, registerindx indx) {
@@ -2203,7 +2214,7 @@ static codeinfo compiler_compileregistersequence(compiler *c, int n, syntaxtreei
 
         if (compiler_haserror(c)) return CODEINFO_EMPTY;
         
-        if (compiler_regtop(c)!=reg) {
+        if (compiler_regtoptemp(c)!=reg) {
             compiler_regshow(c);
             UNREACHABLE("Incorrect register allocation compiling register sequence.");
         }
@@ -3798,7 +3809,7 @@ static codeinfo compiler_arglist(compiler *c, syntaxtreenode *node, registerindx
             if (isOptional) compiler_regsetoptionalarg(c, arginfo.dest);
         }
 
-        if (!compiler_haserror(c) && compiler_regtop(c)!=reg) {
+        if (!compiler_haserror(c) && compiler_regtoptemp(c)!=reg) {
             compiler_regshow(c);
             UNREACHABLE("Incorrectly freed registers in compiling argument list.");
         }

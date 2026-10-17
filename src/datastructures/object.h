@@ -8,6 +8,7 @@
 #define object_h
 
 #include <stddef.h>
+#include <stdatomic.h>
 #include "value.h"
 #include "dictionary.h"
 
@@ -33,7 +34,7 @@ struct sobject {
         OBJECT_ISUNMARKED,      // - UNMARKED means the object is managed by the GC
         OBJECT_ISMARKED         // - MARKED is used internally by the GC
     } status;
-    hash hsh;                   // hash value
+    _Atomic(hash) hsh;          // hash value
     struct sobject *next;       // All objects can be chained together (e.g. to attach to the VM that created them)
 };
 

@@ -587,7 +587,7 @@ value Array_iterate(vm *v, int nargs, value *args) {
     if (i<0) { morpho_runtimeerror(v, VM_INVALIDARGS); return MORPHO_NIL; }
     
     if (i < slf->nelements) {
-        value ret[3] = { MORPHO_INTEGER(i+1), slf->values[i], MORPHO_NIL };
+        value ret[3] = { MORPHO_INTEGER(i+1), slf->values[i], MORPHO_INTEGER(i) };
         return morpho_return(v, 3, ret);
     }
     value ret[3] = { MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };

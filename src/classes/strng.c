@@ -12,10 +12,10 @@
 #include "common.h"
 
 /* **********************************************************************
- * String objects
+ * String object
  * ********************************************************************** */
 
-/** String object definitions */
+/** Print the string  */
 void objectstring_printfn(object *obj, void *v) {
     morpho_printf(v, "%s", ((objectstring *) obj)->string);
 }
@@ -47,6 +47,20 @@ objecttypedefn objectstringdefn = {
     .cmpfn = objectstring_cmpfn
 };
 
+/* **********************************************************************
+ * objectstring constructors
+ * ********************************************************************** */
+
+/** internal helper to get character count */
+static size_t _getcharcount(objectstring *str) {
+    return atomic_load_explicit(&str->nchars, memory_order_relaxed);
+}
+
+/** Internal helper to set character count */
+static void _setcharcount(objectstring *str, size_t n) {
+    atomic_store_explicit(&str->nchars, n, memory_order_relaxed);
+}
+
 /** @brief Creates a string from an existing character array of specified length
  *  @param in     the string to copy
  *  @param length length of string to copy (e.g. strlen(in))
@@ -54,7 +68,7 @@ objecttypedefn objectstringdefn = {
  *  @warning A trailing \0 character is added to the string to ensure it is zero-terminated, 
  *           however any interior \0 characters are part of the string content; these can
  *           cause issues where string contents are used with C APIs. */
-objectstring *object_newstringwithlength(const char *in, size_t length) {
+objectstring *string_new(const char *in, size_t length) {
     objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
 
     if (new) {
@@ -64,6 +78,7 @@ objectstring *object_newstringwithlength(const char *in, size_t length) {
         } else {
             memset(new->string, 0, length);
         }
+        atomic_init(&new->nchars, (length==0 ? 0 : STRING_NCHARS_UNKNOWN)); // Initialize nchars cache
         new->string[length] = '\0'; // Ensure string is zero-terminated
         new->length=length;
     }
@@ -71,89 +86,125 @@ objectstring *object_newstringwithlength(const char *in, size_t length) {
     return new;
 }
 
-/** @brief Creates a string from an existing null terminated C string
- *  @param in     the string to copy
- *  @returns the object or NULL on failure */
-objectstring *object_newstring(const char *in) {
-    return object_newstringwithlength(in, strlen(in));
-}
-
-/** @brief Creates a string from an existing character array of specified length
- *  @param in     the string to copy
- *  @param length length of string to copy (e.g. strlen(in))
- *  @returns the object (as a value) which will be MORPHO_NIL on failure */
-value object_stringfromcstring(const char *in, size_t length) {
-    objectstring *str = object_newstringwithlength(in, length);
-    return (str ? MORPHO_OBJECT(str): MORPHO_NIL);
-}
-
-/** @brief Creates a string with given length
- *  @param length length of string to allocate
- *  @returns the object (as a value) which will be MORPHO_NIL on failure */
-objectstring *object_stringwithsize(size_t length) {
-    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
-
-    if (new) {
-        new->string=new->stringdata;
-        new->string[length] = '\0'; // Ensure pre-null terminated
-        memset(new->string, 0, length);
-        new->length=length;
-        return new;
-    }
-    return NULL;
-}
-
-/** @brief Converts a varray_char into a string.
+/** @brief Converts a varraychar into a string.
  *  @param in  the varray to convert
- *  @returns the object (as a value) which will be MORPHO_NIL on failure
- *  @warning The varray_char should not be zero terminated; the resulting string will be. */
-value object_stringfromvarraychar(varray_char *in) {
-    return object_stringfromcstring(in->data, in->count);
+ *  @returns the string
+ *  @warning It is not necessary to add a nul terminator to the varray; the string constructor will ensure the string is null terminated. */
+objectstring *string_fromvarraychar(varray_char *in) {
+    return string_new(in->data, in->count);
 }
 
-/** @brief Writes a trailing '\\0' so the buffer can be used as a C string.
- *  The terminator is stored at data[count] and is not included in count. */
-void string_zeroterminatevarraychar(varray_char *string) {
-    if (string && varray_charresize(string, 1)) string->data[string->count] = '\0';
-}
+/** Creates a string from a single utf8 character */
+objectstring *string_newcharacter(const char *c) {
+    int nbytes=morpho_utf8numberofbytes(c);
+    if (nbytes<=0) return NULL;
 
-/* Clones a string object */
-value object_clonestring(value val) {
-    value out = MORPHO_NIL;
-    if (MORPHO_ISSTRING(val)) {
-        objectstring *s = MORPHO_GETSTRING(val);
-        out=object_stringfromcstring(s->string, s->length);
-    }
-    return out;
-}
+    objectstring *new=object_newstringwithlength(c, nbytes);
+    if (new) _setcharcount(new, 1);
 
-/** @brief Concatenates strings together
- *  @param a      first string
- *  @param b      second string
- *  @returns the object (as a value) which will be MORPHO_NIL on failure  */
-value object_concatenatestring(value a, value b) {
-    objectstring *astring = MORPHO_GETSTRING(a);
-    objectstring *bstring = MORPHO_GETSTRING(b);
-    size_t length = (astring ? astring->length : 0) + (bstring ? bstring->length : 0);
-    value out = MORPHO_NIL;
-
-    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
-
-    if (new) {
-        new->string=new->stringdata;
-        new->length=length;
-        /* Copy across old strings */
-        if (astring) memcpy(new->string, astring->string, astring->length);
-        if (bstring) memcpy(new->string+(astring ? astring->length : 0), bstring->string, bstring->length);
-        new->string[length]='\0';
-        out = MORPHO_OBJECT(new);
-    }
-    return out;
+    return new;
 }
 
 /* **********************************************************************
  * String utility functions
  * ********************************************************************** */
+
+/** Clones a string */
+objectstring *string_clone(objectstring *s) {
+    objectstring *new = object_newstringwithlength(s->string, s->length);
+    if (new) _setcharcount(new, _getcharcount(s));
+    return new;
+}
+
+/** @brief Concatenates strings together
+ *  @param a      first string
+ *  @param b      second string
+ *  @returns a string object or NULL on failure  */
+objectstring *string_concatenate(objectstring *a, objectstring *b) {
+    size_t length = (a ? a->length : 0) + (b ? b->length : 0);
+    objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
+
+    if (new) {
+        new->string=new->stringdata;
+        new->length=length;
+        // Copy across old strings
+        if (a) memcpy(new->string, a->string, a->length);
+        if (b) memcpy(new->string+(a ? a->length : 0), b->string, b->length);
+        new->string[length]='\0';
+        
+        // Set up character count
+        size_t na=_getcharcount(a), nb=_getcharcount(b);
+        size_t newnchars = (na!=STRING_NCHARS_UNKNOWN && nb!=STRING_NCHARS_UNKNOWN ? na+nb : STRING_NCHARS_UNKNOWN);
+        atomic_init(&new->nchars, newnchars);
+    }
+    return new;
+}
+
+/** @brief Join values into a string
+ *  @param v      the virtual machine
+ *  @param prefix if a String, prepended with no separator
+ *  @param nparts number of values
+ *  @param parts  values to stringify
+ *  @param sep    separator inserted between elements, or NULL
+ *  @returns a string object */
+objectstring *string_join(vm *v, value prefix, unsigned int nparts, value *parts, const char *sep) {
+    varray_char buffer;
+    varray_charinit(&buffer);
+
+    if (MORPHO_ISSTRING(prefix)) {
+        objectstring *s = MORPHO_GETSTRING(prefix);
+        varray_charadd(&buffer, s->string, (int) s->length);
+    }
+
+    size_t seplen = sep ? strlen(sep) : 0;
+    for (unsigned int i=0; i<nparts; i++) {
+        if (i>0 && seplen>0) varray_charadd(&buffer, (char *) sep, (int) seplen);
+        morpho_printtobuffer(v, parts[i], &buffer);
+    }
+
+    objectstring *new = string_fromvarraychar(&buffer);
+    varray_charclear(&buffer);
+    return new;
+}
+
+/** Count number of characters in a string */
+size_t string_countchars(objectstring *s) {
+    size_t n=_getcharcount(s);
+    if (n!=STRING_NCHARS_UNKNOWN) return n;
+
+    n=0;
+    for (char *c=s->string, *end=s->string+s->length; c<end; n++) {
+        int nbytes=morpho_utf8numberofbytes(c);
+        if (nbytes<=0 || c+nbytes>end) return 0; // Protect against malformed strings
+
+        c+=nbytes;
+    }
+
+    _setcharcount(s, n);
+    return n;
+}
+
+/** Get a pointer to the i'th character of a string */
+char *string_index(objectstring *s, int i) {
+    if (i<0) return NULL;
+    size_t n=_getcharcount(s);
+
+    // ASCII fast path
+    if (n==s->length) return ((size_t) i<s->length ? s->string+i : NULL);
+
+    n=0;
+    char *end=s->string+s->length;
+
+    for (char *c=s->string; c<end; n++) {
+        if ((size_t) i==n) return c;
+
+        int nbytes=morpho_utf8numberofbytes(c);
+        if (nbytes<=0 || c+nbytes>end) return NULL; // Protect against malformed strings
+
+        c+=nbytes;
+    }
+    return NULL;
+}
 
 /** Convert a string to a number */
 bool string_tonumber(objectstring *string, value *out) {
@@ -189,53 +240,50 @@ bool string_tonumber(objectstring *string, value *out) {
     return false;
 }
 
-/** Count number of characters in a string */
-int string_countchars(objectstring *s) {
-    int n=0;
-    for (char *c = s->string; *c!='\0'; ) {
-        c+=morpho_utf8numberofbytes(c);
-        n++;
-    }
-    return n;
+/** @brief Writes a trailing '\\0' so the buffer can be used as a C string.
+ *  The terminator is stored at data[count] and is not included in count. */
+void string_zeroterminatevarraychar(varray_char *string) {
+    if (string && varray_charresize(string, 1)) string->data[string->count] = '\0';
 }
 
-/** Get a pointer to the i'th character of a string */
-char *string_index(objectstring *s, int i) {
-    if (i<0) return NULL;
-    int n=0;
-    for (char *c = s->string; *c!='\0'; ) {
-        if (i==n) return (char *) c;
-        c+=morpho_utf8numberofbytes(c);
-        n++;
-    }
-    return NULL;
+/* ----------------------------
+ * Legacy interface
+ * ---------------------------- */
+
+objectstring *object_newstringwithlength(const char *in, size_t length) {
+    return string_new(in, length);
 }
 
-/** @brief Join values into a string
- *  @param v      the virtual machine
- *  @param prefix if a String, prepended with no separator
- *  @param nparts number of values
- *  @param parts  values to stringify
- *  @param sep    separator inserted between elements, or NULL
- *  @returns a string object, or MORPHO_NIL on failure */
-value string_join(vm *v, value prefix, unsigned int nparts, value *parts, const char *sep) {
-    varray_char buffer;
-    varray_charinit(&buffer);
+value object_stringfromvarraychar(varray_char *in) {
+    objectstring *new=string_new(in->data, in->count);
+    return (new ? MORPHO_OBJECT(new) : MORPHO_NIL);
+}
 
-    if (MORPHO_ISSTRING(prefix)) {
-        objectstring *s = MORPHO_GETSTRING(prefix);
-        varray_charadd(&buffer, s->string, (int) s->length);
+/** @brief Concatenate two strings  */
+value object_concatenatestring(value a, value b) {
+    if (!MORPHO_ISSTRING(a) || !MORPHO_ISSTRING(b)) return MORPHO_NIL;
+    objectstring *new = string_concatenate(MORPHO_GETSTRING(a), MORPHO_GETSTRING(b));
+    return (new ? MORPHO_OBJECT(new) : MORPHO_NIL);
+}
+
+/** @brief Clone a string  */
+value object_clonestring(value val) {
+    objectstring *new = NULL;
+    if (MORPHO_ISSTRING(val)) {
+        new=string_clone(MORPHO_GETSTRING(val));
     }
+    return (new ? MORPHO_OBJECT(new): MORPHO_NIL);
+}
 
-    size_t seplen = sep ? strlen(sep) : 0;
-    for (unsigned int i=0; i<nparts; i++) {
-        if (i>0 && seplen>0) varray_charadd(&buffer, (char *) sep, (int) seplen);
-        morpho_printtobuffer(v, parts[i], &buffer);
-    }
+/** @brief Creates a string from an existing null terminated C string */
+objectstring *object_newstring(const char *in) {
+    return object_newstringwithlength(in, strlen(in));
+}
 
-    value out = object_stringfromvarraychar(&buffer);
-    varray_charclear(&buffer);
-    return morpho_wrapandbind(v, MORPHO_ISOBJECT(out) ? MORPHO_GETOBJECT(out) : NULL);
+/** @brief Creates a string from an existing character array of specified length  */
+value object_stringfromcstring(const char *in, size_t length) {
+    objectstring *str = object_newstringwithlength(in, length);
+    return (str ? MORPHO_OBJECT(str): MORPHO_NIL);
 }
 
 /* **********************************************************************
@@ -265,44 +313,30 @@ value String_print(vm *v, int nargs, value *args) {
 
 /** Clones a string */
 value String_clone(vm *v, int nargs, value *args) {
-    objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
-    value out = object_stringfromcstring(slf->string, slf->length);
-    if (MORPHO_ISNIL(out)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    morpho_bindobjects(v, 1, &out);
-    return out;
+    objectstring *new = string_clone(MORPHO_GETSTRING(MORPHO_SELF(args)));
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 /** Gets a specified character from a string */
 value String_getindex(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
     int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
 
     char *c = string_index(slf, n);
-    if (c) {
-        out=object_stringfromcstring(c, morpho_utf8numberofbytes(c));
-        morpho_bindobjects(v, 1, &out);
-    } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-    return out;
+    if (!c) {
+        morpho_runtimeerror(v, VM_OUTOFBOUNDS);
+        return MORPHO_NIL;
+    }
+    
+    return morpho_wrapandbind(v, (object *) string_newcharacter(c));
 }
 
 /** Enumerate members of a string */
 value String_enumerate(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
     int n=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-
-    if (n<0) {
-        out=MORPHO_INTEGER(string_countchars(slf));
-    } else {
-        char *c=string_index(slf, n);
-        if (c) {
-            out=object_stringfromcstring(c, morpho_utf8numberofbytes(c));
-            morpho_bindobjects(v, 1, &out);
-        } else morpho_runtimeerror(v, VM_OUTOFBOUNDS);
-    }
-
-    return out;
+    if (n<0) return MORPHO_INTEGER(string_countchars(slf));
+    return String_getindex(v, nargs, args);
 }
 
 /** Iterate protocol */
@@ -314,7 +348,7 @@ value String_iterate(vm *v, int nargs, value *args) {
     if (i<slf->length) {
         char *c = slf->string+i;
         int nbytes = morpho_utf8numberofbytes(c);
-        objectstring *new = object_newstringwithlength(c, nbytes);
+        objectstring *new = string_newcharacter(c);
         
         value ret[3]={ MORPHO_INTEGER(i+nbytes), morpho_wrapandbind(v, (object *) new), MORPHO_NIL };
         return morpho_return(v, 3, ret);
@@ -361,51 +395,52 @@ value String_split(vm *v, int nargs, value *args) {
     if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
     list_append(new, newstring);
 
-    out=MORPHO_OBJECT(new);
-    list_append(new, out);
-    morpho_bindobjects(v, new->val.count, new->val.data);
-    new->val.count-=1;
-
-    return out;
+    return morpho_wrapandbindrecursive(v, (object *) new);
 }
 
 /** Gets a substring of the string */
 value String_substring(vm *v, int nargs, value *args) {
-    objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
-    int begin=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
-    int end=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    objectstring *slf=MORPHO_GETSTRING(MORPHO_SELF(args));
+    int begin=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)), end=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
+    if (begin<0) begin=0;
+    objectstring *new=NULL;
 
-    if (end<0 || (begin>=slf->length && begin>0) || end-begin<0) {
-        out=MORPHO_OBJECT(object_stringwithsize(0));
+    size_t nchars=string_countchars(slf);
+    if (end<0 || end<begin || (size_t) begin>=nchars) {
+        new=object_newstringwithlength(NULL, 0);
     } else {
-        begin=(begin<0) ? 0 : begin;
-        end=(end>slf->length) ? slf->length : end;
-        char *cstr = string_index(slf, begin);
+        if ((size_t) end>nchars) end=(int) nchars;
 
-        // Get size in bytes of the chars to include
-        char *cstrend = cstr;
-        for (int i = 0; i<end-begin; ++i) {
-            cstrend+=morpho_utf8numberofbytes(cstrend);
-            if (*cstrend == '\0') break;
+        if (nchars==slf->length) { // ASCII fast path using byte offsets
+            new=object_newstringwithlength(slf->string+begin, end-begin);
+        } else { // UTF-8 path
+            char *first=string_index(slf, begin), *last=first;
+            char *limit=slf->string+slf->length;
+
+            for (int i=begin; i<end; i++) {
+                int nbytes=morpho_utf8numberofbytes(last);
+                if (nbytes<=0 || last+nbytes>limit) break;
+                last+=nbytes;
+            }
+
+            new=object_newstringwithlength(first, last-first);
         }
-        out=object_stringfromcstring(cstr, cstrend-cstr);
-    }
-    morpho_bindobjects(v, 1, &out);
 
-    return out;
+        if (new) _setcharcount(new, (size_t) (end-begin));
+    }
+    
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 /** Join a list of values into a string */
 value String_join__list(vm *v, int nargs, value *args) {
     objectlist *parts = MORPHO_GETLIST(MORPHO_GETARG(args, 0));
-    return string_join(v, MORPHO_SELF(args), parts->val.count, parts->val.data, NULL);
+    return morpho_wrapandbind(v, (object *) string_join(v, MORPHO_SELF(args), parts->val.count, parts->val.data, NULL));
 }
 
 value String_join__list_string(vm *v, int nargs, value *args) {
     objectlist *parts = MORPHO_GETLIST(MORPHO_GETARG(args, 0));
-    return string_join(v, MORPHO_SELF(args), parts->val.count, parts->val.data,
-                       MORPHO_GETCSTRING(MORPHO_GETARG(args, 1)));
+    return morpho_wrapandbind(v, (object *) string_join(v, MORPHO_SELF(args), parts->val.count, parts->val.data, MORPHO_GETCSTRING(MORPHO_GETARG(args, 1))));
 }
 
 MORPHO_BEGINCLASS(String)
@@ -429,8 +464,7 @@ MORPHO_ENDCLASS
 objecttype objectstringtype;
 
 void string_initialize(void) {
-    // Create string object type
-    //objectstringtype=object_addtype(&objectstringdefn);
+    // Note the objectstringtype is created by builtin_initialize as it is needed before object definitions
     
     // Locate the Object class to use as the parent class of String
     value objclass = builtin_findclassfromcstring(OBJECT_CLASSNAME);

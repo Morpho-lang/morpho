@@ -305,7 +305,7 @@ value File_readall(vm *v, int nargs, value *args) {
     size_t size;
     value out = MORPHO_NIL;
     if (f && file_getsize(f, &size)) {
-        objectstring *new=object_stringwithsize(size);
+        objectstring *new=object_newstringwithlength(NULL, size);
         if (new) {
             size_t nbytes = fread(new->string, sizeof(char), size, f);
             new->length=nbytes;

@@ -31,11 +31,15 @@ hash objectstring_hashfn(object *obj) {
 }
 
 int objectstring_cmpfn(object *a, object *b) {
-    objectstring *astring = (objectstring *) a;
-    objectstring *bstring = (objectstring *) b;
-    size_t len = (astring->length > bstring->length ? astring->length : bstring->length);
+    objectstring *aa=(objectstring *) a;
+    objectstring *bb=(objectstring *) b;
 
-    return -strncmp(astring->string, bstring->string, len);
+    size_t n=(aa->length<bb->length ? aa->length : bb->length);
+    int cmp=memcmp(aa->string, bb->string, n);
+
+    if (cmp) return -cmp;
+    if (aa->length==bb->length) return MORPHO_EQUAL;
+    return (bb->length>aa->length ? MORPHO_BIGGER : MORPHO_SMALLER);
 }
 
 objecttypedefn objectstringdefn = {
@@ -95,11 +99,11 @@ objectstring *string_fromvarraychar(varray_char *in) {
 }
 
 /** Creates a string from a single utf8 character */
-objectstring *string_newcharacter(const char *c) {
+static objectstring *string_newcharacter(const char *c) {
     int nbytes=morpho_utf8numberofbytes(c);
     if (nbytes<=0) return NULL;
 
-    objectstring *new=object_newstringwithlength(c, nbytes);
+    objectstring *new=string_new(c, nbytes);
     if (new) _setcharcount(new, 1);
 
     return new;
@@ -111,7 +115,7 @@ objectstring *string_newcharacter(const char *c) {
 
 /** Clones a string */
 objectstring *string_clone(objectstring *s) {
-    objectstring *new = object_newstringwithlength(s->string, s->length);
+    objectstring *new = string_new(s->string, s->length);
     if (new) _setcharcount(new, _getcharcount(s));
     return new;
 }
@@ -121,7 +125,7 @@ objectstring *string_clone(objectstring *s) {
  *  @param b      second string
  *  @returns a string object or NULL on failure  */
 objectstring *string_concatenate(objectstring *a, objectstring *b) {
-    size_t length = (a ? a->length : 0) + (b ? b->length : 0);
+    size_t length = a->length + b->length;
     objectstring *new = (objectstring *) object_new(sizeof(objectstring) + sizeof(char) * (length + 1), OBJECT_STRING);
 
     if (new) {
@@ -147,7 +151,7 @@ objectstring *string_concatenate(objectstring *a, objectstring *b) {
  *  @param parts  values to stringify
  *  @param sep    separator inserted between elements, or NULL
  *  @returns a string object */
-objectstring *string_join(vm *v, value prefix, unsigned int nparts, value *parts, const char *sep) {
+static objectstring *string_join(vm *v, value prefix, unsigned int nparts, value *parts, const char *sep) {
     varray_char buffer;
     varray_charinit(&buffer);
 

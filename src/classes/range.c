@@ -40,38 +40,30 @@ objecttypedefn objectrangedefn = {
 
 /** Determine the number of steps in a range */
 bool _range_count(objectrange *range) {
-    int nsteps=0;
-    if (MORPHO_ISFLOAT(range->start)) {
-        double diff=MORPHO_GETFLOATVALUE(range->end)-MORPHO_GETFLOATVALUE(range->start);
-        
-        double stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETFLOATVALUE(range->step));
-        double cnt = floor(diff / stp);
-        
-        if (cnt>(double) INT_MAX) return false;
-        
-        bool adjust = !(isfinite(cnt) && cnt < (double) INT_MIN);
-        if (adjust && isfinite(cnt)) nsteps = (int) cnt;
-        else if (!adjust) nsteps = -1;
-        
-        if (range->inclusive) {
-            if (MORPHO_ISEQUAL(range->start, range->end)) nsteps=1;
-            else if (adjust) while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(nsteps*stp)))<=0) nsteps++;
-            
-        } else if (adjust) {
-            while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(nsteps*stp)))<0) nsteps++;
-        }
-    } else {
-        int diff=MORPHO_GETINTEGERVALUE(range->end)-MORPHO_GETINTEGERVALUE(range->start);
-        int stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETINTEGERVALUE(range->step));
-        if (stp) nsteps = diff / stp ;
-        if (range->inclusive) {
-            if (diff==0) nsteps=1;
-            else if (nsteps*stp<=diff) nsteps++;
-        }
-    }
-    if (nsteps < 0) nsteps=0;
-    range->nsteps = (unsigned int) nsteps;
+    double start, end, step=1.0;
 
+    morpho_valuetofloat(range->start, &start);
+    morpho_valuetofloat(range->end, &end);
+    if (!MORPHO_ISNIL(range->step)) morpho_valuetofloat(range->step, &step);
+
+    if (step==0.0) return false;
+
+    double q=(end-start)/step;
+    if (!isfinite(q)) return false;
+
+    if (q<0.0) {
+        range->nsteps=0;
+        return true;
+    }
+
+    /* Snap a quotient that is numerically an integer onto that integer. */
+    double nearest=round(q);
+    if (MORPHO_ISEQUAL(MORPHO_FLOAT(q), MORPHO_FLOAT(nearest))) q=nearest;
+
+    double nsteps=(range->inclusive ? floor(q)+1.0 : ceil(q));
+    if (nsteps>(double) INT_MAX) return false;
+
+    range->nsteps=(unsigned int) nsteps;
     return true;
 }
 

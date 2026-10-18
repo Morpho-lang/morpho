@@ -60,6 +60,7 @@ typedef struct {
 #define STRING_SPLIT_METHOD               "split"
 #define STRING_ISNUMBER_METHOD            "isnumber"
 #define STRING_SUBSTRING_METHOD           "substring"
+#define STRING_TRIM_METHOD                "trim"
 
 /* -------------------------------------------------------
  * String error messages

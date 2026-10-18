@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include <ctype.h>
 
 #include "morpho.h"
 #include "classes.h"
@@ -447,6 +448,27 @@ value String_join__list_string(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) string_join(v, MORPHO_SELF(args), parts->val.count, parts->val.data, MORPHO_GETCSTRING(MORPHO_GETARG(args, 1))));
 }
 
+/** Removes leading and trailing whitespace */
+value String_trim(vm *v, int nargs, value *args) {
+    objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
+    size_t begin = 0, end = slf->length;
+
+    while (begin<end && isspace((unsigned char) slf->string[begin])) begin++;
+    while (end>begin && isspace((unsigned char) slf->string[end-1])) end--;
+
+    if (begin==0 && end==slf->length) return MORPHO_SELF(args); // No need to trim
+
+    objectstring *new = string_new(slf->string+begin, end-begin);
+
+    // Recalculate character count if known
+    if (new) {
+        size_t nchars = _getcharcount(slf);
+        if (nchars!=STRING_NCHARS_UNKNOWN) _setcharcount(new, nchars - begin - (slf->length-end));
+    }
+
+    return morpho_wrapandbind(v, (object *) new);
+}
+
 MORPHO_BEGINCLASS(String)
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", String_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "String ()", String_print, MORPHO_FN_IO),
@@ -458,7 +480,8 @@ MORPHO_METHOD_SIGNATURE(STRING_ISNUMBER_METHOD, "Bool ()", String_isnumber, MORP
 MORPHO_METHOD_SIGNATURE(STRING_SPLIT_METHOD, "List (String)", String_split, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(STRING_SUBSTRING_METHOD, "String (Int, Int)", String_substring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "String (List)", String_join__list, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "String (List, String)", String_join__list_string, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
+MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "String (List, String)", String_join__list_string, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(STRING_TRIM_METHOD, "String ()", String_trim, MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

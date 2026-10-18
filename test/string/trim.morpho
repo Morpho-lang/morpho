@@ -1,0 +1,51 @@
+// String.trim removes leading and trailing whitespace
+
+print "  hello  ".trim() == "hello"
+// expect: true
+
+print "\t\n\r\f\x0bhello \t\n\r\f\x0b".trim() == "hello"
+// expect: true
+
+print " \t\n\r\f\x0b".trim() == ""
+// expect: true
+
+print "hello".trim() == "hello"
+// expect: true
+
+print "".trim() == ""
+// expect: true
+
+print "  hello world  ".trim() == "hello world"
+// expect: true
+
+print "hello\nworld".trim() == "hello\nworld"
+// expect: true
+
+// Backspace is not whitespace
+print "\bhello\b".trim() == "\bhello\b"
+// expect: true
+
+// Unicode content is preserved
+print "  A~¶Þॐஃ  ".trim() == "A~¶Þॐஃ"
+// expect: true
+
+print "  A~¶Þॐஃ  ".trim().count()
+// expect: 6
+
+// Character count stays correct when it was already cached
+var cached = "  Hi \U0001F98B  "
+print cached.count()
+// expect: 8
+print cached.trim() == "Hi \U0001F98B"
+// expect: true
+print cached.trim().count()
+// expect: 4
+
+// The original string is unchanged, and trimming again is a no-op
+var s = "  hi  "
+print s.trim() == "hi"
+// expect: true
+print s == "  hi  "
+// expect: true
+print s.trim().trim() == "hi"
+// expect: true

@@ -213,36 +213,46 @@ char *string_index(objectstring *s, int i) {
 
 /** Convert a string to a number */
 bool string_tonumber(objectstring *string, value *out) {
-    bool minus=false;
+    bool success=false, minus=false;
     lexer l;
     token tok;
     error err;
+
     error_init(&err);
     lex_init(&l, string->string, 0);
 
-    if (lex(&l, &tok, &err)) {
-        if (tok.type==TOKEN_MINUS) { // Check for leading minus
-            minus=true;
-            if (!lex(&l, &tok, &err)) return false;
-        } else if (tok.type==TOKEN_PLUS) { // or plus
-            if (!lex(&l, &tok, &err)) return false;
-        }
+    if (!lex(&l, &tok, &err)) goto cleanup;
 
-        if (tok.type==TOKEN_INTEGER) {
-            long i = strtol(tok.start, NULL, 10);
-            if (minus) i=-i;
-            *out = MORPHO_INTEGER((int) i);
-            return true;
-        } else if (tok.type==TOKEN_NUMBER) {
-            double f = strtod(tok.start, NULL);
-            if (minus) f=-f;
-            *out = MORPHO_FLOAT(f);
-            return true;
-        }
+    if (tok.type==TOKEN_MINUS || tok.type==TOKEN_PLUS) {
+        minus = (tok.type==TOKEN_MINUS);
+        if (!lex(&l, &tok, &err)) goto cleanup;
     }
-    lex_clear(&l);
 
-    return false;
+    token numtok = tok;
+    char *end=NULL; // The numeric token must consume a valid complete number
+
+    if (numtok.type==TOKEN_INTEGER) {
+        long i = strtol(numtok.start, &end, 10);
+        if (end != numtok.start+numtok.length) goto cleanup;
+
+        if (minus) i=-i;
+        *out=MORPHO_INTEGER((int) i);
+    } else if (numtok.type==TOKEN_NUMBER) {
+        double f = strtod(numtok.start, &end);
+        if (end != numtok.start+numtok.length) goto cleanup;
+
+        if (minus) f=-f;
+        *out=MORPHO_FLOAT(f);
+    } else goto cleanup;
+
+    /* And nothing else may follow. */
+    if (!lex(&l, &tok, &err) || tok.type!=TOKEN_EOF) goto cleanup;
+
+    success=true;
+
+cleanup:
+    lex_clear(&l);
+    return success;
 }
 
 /** @brief Writes a trailing '\\0' so the buffer can be used as a C string.

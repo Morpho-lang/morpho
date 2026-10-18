@@ -1,4 +1,4 @@
-// Convert strings to numbers
+// Convert strings to numbers. The whole string must be a number.
 
 var a = "123"
 var b = "baa"
@@ -12,14 +12,14 @@ print b.isnumber()
 print "+1.23e-12".isnumber() 
 // expect: true
 
+print "125x + 3 #@#@".isnumber()
+// expect: false
+
+print "12.343".isnumber()
+// expect: true
+
 print Int("122")+1
 // expect: 123
-
-print Int("125x + 3 #@#@")+1 
-// expect: 126
-
-print Int("12.343")+1 
-// expect: 13
 
 print Float("1.1")
 // expect: 1.1
@@ -30,3 +30,5 @@ print Float("-1.1")
 print Float("+1e-3")
 // expect: 0.001
 
+print Float("12.343")
+// expect: 12.343

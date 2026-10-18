@@ -1,0 +1,4 @@
+// Int does not truncate a floating-point string
+
+print Int("12.343")+1
+// expect error 'ExpctArgNm'

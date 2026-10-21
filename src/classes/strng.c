@@ -401,6 +401,7 @@ value String_split(vm *v, int nargs, value *args) {
                 if (MORPHO_ISNIL(newstring)) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
                 list_append(new, newstring);
                 last=c+nbytes;
+                break; // one delimiter code point per source code point
             }
             s+=nbytes;
         }

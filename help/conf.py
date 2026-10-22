@@ -48,7 +48,12 @@ source_suffix = ['.rst', '.md']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'furo'
+html_theme_options = {
+    "light_logo": "morphologosmall.png",
+    "dark_logo": "morphologosmall-white.png",
+    "sidebar_hide_name": True,
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

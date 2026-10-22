@@ -1,0 +1,31 @@
+// Overriding one signature on a subclass must not change the parent's metafunction.
+
+class A {}
+
+class B {}
+
+class TypedBase {
+    select(A x) { return "A" }
+}
+
+class TypedMixin {
+    select(B x) { return "B" }
+}
+
+class TypedChild is TypedBase with TypedMixin {}
+
+class Refined is TypedChild {
+    select(A x) { return "child-A" }
+}
+
+print Refined().select(A())
+// expect: child-A
+
+print Refined().select(B())
+// expect: B
+
+print TypedChild().select(A())
+// expect: A
+
+print TypedChild().select(B())
+// expect: B

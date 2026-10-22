@@ -4222,8 +4222,7 @@ static objectclass *compiler_implementationclass(value fn) {
 
 /** Adds one method implementation to a class.
  * @param[in] local  true if declared in this class body; false if inherited/composed.
- * Duplicate signatures error only when local and this class already defined that signature.
- * Builtin methods replace the selector rather than composing into a metafunction. */
+ * Duplicate signatures error only when local and this class already defined that signature. */
 static void compiler_addmethodimplementation(compiler *c, syntaxtreenode *node, objectclass *klass, value symbol, value implementation, bool local) {
     value prev=MORPHO_NIL;
     dictionary_get(&klass->methods, symbol, &prev);
@@ -4232,9 +4231,12 @@ static void compiler_addmethodimplementation(compiler *c, syntaxtreenode *node, 
         dictionary_insert(&klass->methods, symbol, implementation);
         return;
     }
-    
-    if (MORPHO_ISBUILTINFUNCTION(prev) ||
-        (!local && MORPHO_ISBUILTINFUNCTION(implementation))) {
+
+    if (!local && MORPHO_ISBUILTINFUNCTION(implementation)) {
+        if (MORPHO_ISBUILTINFUNCTION(prev)) dictionary_insert(&klass->methods, symbol, implementation);
+        return;
+    }
+    if (MORPHO_ISBUILTINFUNCTION(prev)) {
         dictionary_insert(&klass->methods, symbol, implementation);
         return;
     }

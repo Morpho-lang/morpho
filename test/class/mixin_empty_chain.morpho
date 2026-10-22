@@ -1,0 +1,21 @@
+// User methods survive an intermediate class and more than one empty mixin.
+// Those mixins inherit Object.count and must not replace a custom count().
+
+class Grand {
+  inherited() { return "grand" }
+  count() { return "custom-count" }
+}
+
+class Parent is Grand {}
+
+class Empty1 {}
+
+class Empty2 {}
+
+class Child is Parent with Empty1, Empty2 {}
+
+print Child().inherited()
+// expect: grand
+
+print Child().count()
+// expect: custom-count

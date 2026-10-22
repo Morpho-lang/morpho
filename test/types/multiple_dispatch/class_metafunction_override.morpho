@@ -22,3 +22,10 @@ print b.foo(1)
 
 print b.foo(1, 2)
 // expect: parent-two
+
+var a = A()
+print a.foo(1)
+// expect: parent-one
+
+print a.foo(1, 2)
+// expect: parent-two

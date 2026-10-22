@@ -1,0 +1,23 @@
+// A local override replaces one inherited method and leaves the mixin's
+// method, and the superclass method, in place.
+
+class Base {
+  baseMethod() { return "base" }
+}
+
+class Mixin {
+  mixinMethod() { return "mixin" }
+}
+
+class Overriding is Base with Mixin {
+  baseMethod() { return "child" }
+}
+
+print Overriding().baseMethod()
+// expect: child
+
+print Overriding().mixinMethod()
+// expect: mixin
+
+print Base().baseMethod()
+// expect: base

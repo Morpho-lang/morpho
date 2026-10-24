@@ -1,0 +1,4 @@
+// Int rejects a string that is not entirely an integer
+
+print Int("125x + 3 #@#@")+1
+// expect error 'ExpctArgNm'

@@ -162,11 +162,12 @@ value builtin_int__float(vm *v, int nargs, value *args) {
 }
 
 value builtin_int__string(vm *v, int nargs, value *args) {
-    value arg = MORPHO_GETARG(args, 0);
-    string_tonumber(MORPHO_GETSTRING(arg), &arg);
-    if (MORPHO_ISFLOAT(arg)) return MORPHO_FLOATTOINTEGER(arg);
-    else if (MORPHO_ISINTEGER(arg)) return arg;
-    
+    value arg=MORPHO_GETARG(args, 0);
+    value out=MORPHO_NIL;
+
+    if (string_tonumber(MORPHO_GETSTRING(arg), &out) &&
+        MORPHO_ISINTEGER(out)) return out;
+
     morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_INT);
     return MORPHO_INTEGER(0);
 }
@@ -186,13 +187,15 @@ value builtin_float__float(vm *v, int nargs, value *args) {
 }
 
 value builtin_float__string(vm *v, int nargs, value *args) {
-    value arg = MORPHO_GETARG(args, 0);
-    string_tonumber(MORPHO_GETSTRING(arg), &arg);
-    if (MORPHO_ISFLOAT(arg)) return arg;
-    else if (MORPHO_ISINTEGER(arg)) return MORPHO_INTEGERTOFLOAT(arg);
-    
+    value out = MORPHO_NIL;
+
+    if (string_tonumber(MORPHO_GETSTRING(MORPHO_GETARG(args, 0)), &out)) {
+        if (MORPHO_ISFLOAT(out)) return out;
+        if (MORPHO_ISINTEGER(out)) return MORPHO_INTEGERTOFLOAT(out);
+    }
+
     morpho_runtimeerror(v, MATH_NUMARGS, FUNCTION_FLOAT);
-    return MORPHO_INTEGER(0);
+    return MORPHO_FLOAT(0.0);
 }
 
 value builtin_float__err(vm *v, int nargs, value *args) {

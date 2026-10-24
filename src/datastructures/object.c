@@ -50,7 +50,7 @@ objecttypedefn *object_getdefn(object *obj) {
  *  @param type   type to initialize with */
 void object_init(object *obj, objecttype type) {
     obj->next=NULL;
-    obj->hsh=HASH_EMPTY;
+    atomic_init(&obj->hsh, HASH_EMPTY);
     obj->status=OBJECT_ISUNMANAGED;
     obj->type=type;
 }
@@ -84,9 +84,13 @@ size_t object_size(object *obj) {
 /** Hash an object, either by calling its hash function or by hashing its pointer */
 hash object_hash(object *obj) {
     objecttypedefn *defn = object_getdefn(obj);
-    if (defn->hashfn) return (defn->hashfn) (obj);
-    
-    return dictionary_hashpointer(obj);
+    if (!defn->hashfn) return dictionary_hashpointer(obj); // No need to cache
+
+    hash h = atomic_load_explicit(&obj->hsh, memory_order_relaxed); // Use of atomic ensure safe for multithreading
+    if (h != HASH_EMPTY) return h;
+    h = (defn->hashfn)(obj);
+    atomic_store_explicit(&obj->hsh, h, memory_order_relaxed);
+    return h;
 }
 
 /** Compare two objects */

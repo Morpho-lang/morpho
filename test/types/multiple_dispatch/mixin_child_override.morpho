@@ -25,3 +25,9 @@ print c.f(1)
 
 print c.f("hi")
 // expect: string
+
+print A().f(1)
+// expect: int
+
+print B().f("hi")
+// expect: string

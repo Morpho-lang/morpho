@@ -40,35 +40,30 @@ objecttypedefn objectrangedefn = {
 
 /** Determine the number of steps in a range */
 bool _range_count(objectrange *range) {
-    range->nsteps=0;
-    if (MORPHO_ISFLOAT(range->start)) {
-        double diff=MORPHO_GETFLOATVALUE(range->end)-MORPHO_GETFLOATVALUE(range->start);
-        
-        double stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETFLOATVALUE(range->step));
-        double cnt = floor(diff / stp);
-        
-        if (cnt>(double) INT_MAX) return false;
-        
-        if (isfinite(cnt)) range->nsteps = (int) cnt;
-        
-        if (range->inclusive) {
-            if (MORPHO_ISEQUAL(range->start, range->end)) range->nsteps=1;
-            else while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(range->nsteps*stp)))<=0) range->nsteps++;
-            
-        } else {
-            while (morpho_comparevalue(MORPHO_FLOAT(fabs(diff)), MORPHO_FLOAT(fabs(range->nsteps*stp)))<0) range->nsteps++;
-        }
-    } else {
-        int diff=MORPHO_GETINTEGERVALUE(range->end)-MORPHO_GETINTEGERVALUE(range->start);
-        int stp=(MORPHO_ISNIL(range->step) ? 1 : MORPHO_GETINTEGERVALUE(range->step));
-        if (stp) range->nsteps = diff / stp ;
-        if (range->inclusive) {
-            if (diff==0) range->nsteps=1;
-            else if (range->nsteps*stp<=diff) range->nsteps++;
-        }
-    }
-    if (range->nsteps < 0) range->nsteps=0;
+    double start, end, step=1.0;
 
+    morpho_valuetofloat(range->start, &start);
+    morpho_valuetofloat(range->end, &end);
+    if (!MORPHO_ISNIL(range->step)) morpho_valuetofloat(range->step, &step);
+
+    if (step==0.0) return false;
+
+    double q=(end-start)/step;
+    if (!isfinite(q)) return false;
+
+    if (q<0.0) {
+        range->nsteps=0;
+        return true;
+    }
+
+    /* Snap a quotient that is numerically an integer onto that integer. */
+    double nearest=round(q);
+    if (MORPHO_ISEQUAL(MORPHO_FLOAT(q), MORPHO_FLOAT(nearest))) q=nearest;
+
+    double nsteps=(range->inclusive ? floor(q)+1.0 : ceil(q));
+    if (nsteps>(double) INT_MAX) return false;
+
+    range->nsteps=(unsigned int) nsteps;
     return true;
 }
 
@@ -183,6 +178,20 @@ value Range_enumerate(vm *v, int nargs, value *args) {
     return range_iterate(slf, n);
 }
 
+/** Iterate protocol */
+value Range_iterate(vm *v, int nargs, value *args) {
+    objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
+    int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    if (i<0) { morpho_runtimeerror(v, VM_INVALIDARGS); return MORPHO_NIL; }
+    
+    if (i < slf->nsteps) {
+        value ret[3] = { MORPHO_INTEGER(i+1), range_iterate(slf, i), MORPHO_INTEGER(i) };
+        return morpho_return(v, 3, ret);
+    }
+    value ret[3] = { MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };
+    return morpho_return(v, 3, ret);
+}
+
 /** Count number of items in a range */
 value Range_count(vm *v, int nargs, value *args) {
     objectrange *slf = MORPHO_GETRANGE(MORPHO_SELF(args));
@@ -209,6 +218,7 @@ MORPHO_BEGINCLASS(Range)
 MORPHO_METHOD_SIGNATURE(MORPHO_GETINDEX_METHOD, " (Int)", Range_getindex, MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_PRINT_METHOD, Object_print, MORPHO_FN_IO),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Range_enumerate, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ITERATE_METHOD, " (Int)", Range_iterate, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Range_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Range ()", Range_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS

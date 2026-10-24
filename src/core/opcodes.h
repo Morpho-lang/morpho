@@ -66,6 +66,9 @@ OPCODE(METHOD)
 /** Return */
 OPCODE(RETURN)
 
+/** Handle multiple returns */
+OPCODE(EXPECT)
+
 /** Create a closure */
 OPCODE(CLOSURE)
 

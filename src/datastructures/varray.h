@@ -45,7 +45,9 @@
     bool varray_##name##resize(varray_##name *v, int count); \
     int varray_##name##write(varray_##name *v, type data); \
     void varray_##name##clear(varray_##name *v); \
-    bool varray_##name##pop(varray_##name *v, type *dest);
+    bool varray_##name##pop(varray_##name *v, type *dest); \
+    bool varray_##name##first(varray_##name *v, type *dest); \
+    bool varray_##name##last(varray_##name *v, type *dest);
 
 #define DEFINE_VARRAY(name, type) \
 void varray_##name##init(varray_##name *v) { \
@@ -91,6 +93,20 @@ bool varray_##name##pop(varray_##name *v, type *dest) { \
     if (v->count>0) { \
         v->count-=1; \
         *dest = v->data[v->count]; \
+        return true; \
+    } \
+    return false; \
+} \
+bool varray_##name##first(varray_##name *v, type *dest) { \
+    if (v->count>0) { \
+        *dest = v->data[0]; \
+        return true; \
+    } \
+    return false; \
+} \
+bool varray_##name##last(varray_##name *v, type *dest) { \
+    if (v->count>0) { \
+        *dest = v->data[v->count-1]; \
         return true; \
     } \
     return false; \

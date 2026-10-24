@@ -72,6 +72,7 @@ DECLARE_VARRAY(parserule, parserule)
 
 /** Macro to check return of a bool function */
 #define PARSE_CHECK(f) if (!(f)) return false;
+#define PARSE_CHECKGOTO(f, label) if (!(f)) goto label;
 
 /* -------------------------------------------------------
  * Define a Parser
@@ -124,6 +125,9 @@ struct sparser {
 
 #define PARSE_SYMBLEXPECTED               "SymblExpct"
 #define PARSE_SYMBLEXPECTED_MSG           "Symbol expected."
+
+#define PARSE_EXPECTASSGN                 "ExpAssgn"
+#define PARSE_EXPECTASSGN_MSG             "Expected `=` in multiple assignment expression."
 
 #define PARSE_BLOCKTERMINATOREXP          "MssngBrc"
 #define PARSE_BLOCKTERMINATOREXP_MSG      "Expected '}' to finish block."

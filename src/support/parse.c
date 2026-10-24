@@ -375,32 +375,58 @@ bool parse_synchronize(parser *p);
  * Utility functions for this parser
  * ------------------------------------------- */
 
+/** Adds the contents of a varray into the syntaxtree
+ * @param[in] p     the parser
+ * @param[in] tok token to pass to addnode
+ * @param[in] type node type to use to create syntaxtree chain
+ * @param[in] elements the varray to wrap
+ * @param[out] out syntaxtreeindex of the head */
+bool parse_wraplist(parser *p, token *tok, syntaxtreenodetype type, varray_syntaxtreeindx *elements, syntaxtreeindx *out) {
+    syntaxtreeindx prev=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
+
+    for (unsigned int i=0; i<elements->count; i++) {
+        PARSE_CHECK(parse_addnode(p, type, MORPHO_NIL, tok, prev, elements->data[i], &current));
+        prev=current;
+    }
+    *out = prev;
+    return true;
+}
+
 /** @brief Parses a list of expressions
  * @param[in]  p     the parser
  * @param[in]  rightdelimiter  token type that denotes the end of the arguments list
+ * @param[in]  wrapsingleton whether to wrap a singleton
  * @param[out] nel the number of elements
  * @details Note that the arguments are output in reverse order, i.e. the
  *          first argument is deepest in the tree. */
-bool parse_expressionlist(parser *p, tokentype rightdelimiter, unsigned int *nel, void *out) {
-    syntaxtreeindx prev=SYNTAXTREE_UNCONNECTED, current=SYNTAXTREE_UNCONNECTED;
+bool parse_expressionlist(parser *p, tokentype rightdelimiter, bool wrapsingleton, unsigned int *nel, void *out) {
     token start = p->current;
-    unsigned int n=0;
+    bool success=false;
+    syntaxtreeindx current=SYNTAXTREE_UNCONNECTED;
+    varray_syntaxtreeindx elements;
+    varray_syntaxtreeindxinit(&elements);
     
     if (!parse_checktoken(p, rightdelimiter)) {
         do {
-            PARSE_CHECK(parse_pseudoexpression(p, &current));
-            PARSE_CHECK(parse_addnode(p, NODE_ARGLIST, MORPHO_NIL, &start, prev, current, &current));
-            prev = current;
-            n++;
+            PARSE_CHECKGOTO(parse_pseudoexpression(p, &current), parse_expressionlist_cleanup);
+            varray_syntaxtreeindxwrite(&elements, current);
         } while (parse_checktokenadvance(p, TOKEN_COMMA));
     }
     
-    /* Output the number of args */
-    if (nel) *nel=n;
+    // Output the number of args
+    if (nel) *nel = elements.count;
+    
+    // Now wrap the list
+    if (elements.count>1 || (wrapsingleton && elements.count==1)) {
+        PARSE_CHECKGOTO(parse_wraplist(p, &start, NODE_ARGLIST, &elements, &current), parse_expressionlist_cleanup);
+    }
     
     *((syntaxtreeindx *) out)=current;
+    success=true;
     
-    return true;
+parse_expressionlist_cleanup:
+    varray_syntaxtreeindxclear(&elements);
+    return success;
 }
 
 /** @brief Parses an argument list
@@ -901,7 +927,7 @@ bool parse_call(parser *p, void *out) {
     syntaxtreeindx right;
     unsigned int nargs;
     
-    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTPAREN, &nargs, &right));
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTPAREN, true, &nargs, &right));
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_CALLRGHTPARENMISSING));
     
     return parse_addnode(p, NODE_CALL, MORPHO_NIL, &start, left, right, out);
@@ -918,7 +944,7 @@ bool parse_index(parser *p, void *out) {
     syntaxtreeindx right;
     unsigned int nindx;
     
-    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTSQBRACKET, &nindx, &right));
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTSQBRACKET, true, &nindx, &right));
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_CALLRGHTPARENMISSING));
     
     return parse_addnode(p, NODE_INDEX, MORPHO_NIL, &start, left, right, (syntaxtreeindx *) out);
@@ -928,7 +954,7 @@ bool parse_index(parser *p, void *out) {
 bool parse_list(parser *p, void *out) {
     token start = p->previous;
     syntaxtreeindx right;
-    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTSQBRACKET, NULL, &right));
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTSQBRACKET, true, NULL, &right));
     PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTSQBRACKET, PARSE_MSSNGSQBRC));
 
     return parse_addnode(p, NODE_LIST, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, right, out);
@@ -987,10 +1013,54 @@ bool parse_switch(parser *p, void *out) {
  * Declarations
  * ------------------------------- */
 
+/** Parse a variable declaration with destructuring */
+bool parse_vardestructuring(parser *p, void *out) {
+    bool success=false;
+    token start = p->current;
+    syntaxtreeindx vars=SYNTAXTREE_UNCONNECTED, initializer=SYNTAXTREE_UNCONNECTED;
+    
+    if (parse_checktoken(p, TOKEN_RIGHTPAREN)) { parse_error(p, false, PARSE_VAREXPECTED); return false; }
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_RIGHTPAREN, false, NULL, &vars));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTPAREN, PARSE_MISSINGPARENTHESIS));
+    PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_EQUAL, PARSE_EXPECTEXPRESSION));
+    PARSE_CHECK(parse_expressionlist(p, TOKEN_NONE, false, NULL, &initializer));
+    
+    PARSE_CHECK(parse_statementterminator(p));
+    
+    syntaxtreenodetype flatten[] = { NODE_ARGLIST };
+    varray_syntaxtreeindx varnames;
+    varray_syntaxtreeindxinit(&varnames);
+    syntaxtree_flatten((syntaxtree *) p->out, vars, sizeof(flatten)/sizeof(syntaxtreenodetype), flatten, &varnames);
+    
+    syntaxtreeindx vindx, vardec=SYNTAXTREE_UNCONNECTED, assign=SYNTAXTREE_UNCONNECTED;
+    while (varray_syntaxtreeindxpop(&varnames, &vindx)) {
+        syntaxtreenode *var=parse_lookupnode(p, vindx);
+        if (!var || var->type!=NODE_SYMBOL) {
+            parse_error(p, false, PARSE_VAREXPECTED);
+            goto parse_vardestructuring_cleanup;
+        }
+        
+        syntaxtreeindx dec;
+        PARSE_CHECKGOTO(parse_addnode(p, NODE_DECLARATION, MORPHO_NIL, &start, vindx, SYNTAXTREE_UNCONNECTED, &dec), parse_vardestructuring_cleanup);
+        PARSE_CHECKGOTO(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, dec, vardec, &vardec), parse_vardestructuring_cleanup);
+    }
+    
+    PARSE_CHECKGOTO(parse_addnode(p, NODE_ASSIGN, MORPHO_NIL, &start, vars, initializer, &assign), parse_vardestructuring_cleanup);
+    PARSE_CHECKGOTO(parse_addnode(p, NODE_SEQUENCE, MORPHO_NIL, &start, vardec, assign, out), parse_vardestructuring_cleanup);
+    
+    success=true;
+    
+parse_vardestructuring_cleanup:
+    varray_syntaxtreeindxclear(&varnames);
+    return success;
+}
+
 /** Parses a variable declaration */
 bool parse_vardeclaration(parser *p, void *out) {
-    syntaxtreeindx symbol, initializer, new=SYNTAXTREE_UNCONNECTED, last=SYNTAXTREE_UNCONNECTED;
+    // Reroute if the declaration involves destructuring
+    if (parse_checktokenadvance(p, TOKEN_LEFTPAREN)) return parse_vardestructuring(p, out);
     
+    syntaxtreeindx symbol, initializer, new=SYNTAXTREE_UNCONNECTED, last=SYNTAXTREE_UNCONNECTED;
     do {
         token start = p->previous;
         
@@ -1237,12 +1307,45 @@ bool parse_printstatement(parser *p, void *out) {
     return parse_addnode(p, NODE_PRINT, MORPHO_NIL, &start, left, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
 
+/** Parse a multiple assignment expression */
+bool parse_assignmulti(parser *p, syntaxtreeindx first, void *out) {
+    token start = p->previous;
+    syntaxtreeindx new, left, right;
+    bool success=false;
+    varray_syntaxtreeindx lhs;
+    varray_syntaxtreeindxinit(&lhs);
+    varray_syntaxtreeindxwrite(&lhs, first);
+    
+    do { // Parse multiple assignments
+        PARSE_CHECKGOTO(parse_precedence(p, PREC_ASSIGN+1, &new), parse_assignmulti_cleanup);
+        varray_syntaxtreeindxwrite(&lhs, new);
+    } while (parse_checktokenadvance(p, TOKEN_COMMA));
+    
+    PARSE_CHECKGOTO(parse_checkrequiredtoken(p, TOKEN_EQUAL, PARSE_EXPECTASSGN), parse_assignmulti_cleanup);
+    
+    PARSE_CHECKGOTO(parse_expressionlist(p, TOKEN_NONE, false, NULL, &right), parse_assignmulti_cleanup);
+    
+    // Assemble
+    PARSE_CHECKGOTO(parse_wraplist(p, &start, NODE_ARGLIST, &lhs, &left), parse_assignmulti_cleanup);
+    PARSE_CHECKGOTO(parse_addnode(p, NODE_ASSIGN, MORPHO_NIL, &start, left, right, out), parse_assignmulti_cleanup);
+    
+    success=true;
+    
+parse_assignmulti_cleanup:
+    varray_syntaxtreeindxclear(&lhs);
+    return success;
+}
+
 /** Parse an expression statement */
 bool parse_expressionstatement(parser *p, void *out) {
     syntaxtreeindx new;
     PARSE_CHECK(parse_expression(p, &new));
+
+    if (parse_checktokenadvance(p, TOKEN_COMMA)) PARSE_CHECK(parse_assignmulti(p, new, &new));
+
     PARSE_CHECK(parse_statementterminator(p));
-    *((syntaxtreeindx *) out) = new;
+
+    *((syntaxtreeindx *) out)=new;
     return true;
 }
 
@@ -1423,15 +1526,13 @@ bool parse_breakstatement(parser *p, void *out) {
 
 /** Parse a return statement */
 bool parse_returnstatement(parser *p, void *out) {
-    token start = p->previous;
-    syntaxtreeindx left = SYNTAXTREE_UNCONNECTED;
-    
-    if (!parse_checkstatementterminator(p)) {
-        PARSE_CHECK(parse_pseudoexpression(p, &left));
-    }
-    
+    token start=p->previous;
+    syntaxtreeindx left=SYNTAXTREE_UNCONNECTED;
+
+    if (!parse_checkstatementterminator(p)) PARSE_CHECK(parse_expressionlist(p, TOKEN_NONE, false, NULL, &left));
+
     PARSE_CHECK(parse_statementterminator(p));
-    
+
     return parse_addnode(p, NODE_RETURN, MORPHO_NIL, &start, left, SYNTAXTREE_UNCONNECTED, (syntaxtreeindx *) out);
 }
 
@@ -1862,6 +1963,7 @@ void parse_initialize(void) {
     morpho_defineerror(PARSE_MISSINGSEMICOLONEXP, ERROR_PARSE, PARSE_MISSINGSEMICOLONEXP_MSG);
     morpho_defineerror(PARSE_VAREXPECTED, ERROR_PARSE, PARSE_VAREXPECTED_MSG);
     morpho_defineerror(PARSE_SYMBLEXPECTED, ERROR_PARSE, PARSE_SYMBLEXPECTED_MSG);
+    morpho_defineerror(PARSE_EXPECTASSGN, ERROR_PARSE, PARSE_EXPECTASSGN_MSG);
     morpho_defineerror(PARSE_BLOCKTERMINATOREXP, ERROR_PARSE, PARSE_BLOCKTERMINATOREXP_MSG);
     morpho_defineerror(PARSE_MSSNGSQBRC, ERROR_PARSE, PARSE_MSSNGSQBRC_MSG);
     morpho_defineerror(PARSE_MSSNGCOMMA, ERROR_PARSE, PARSE_MSSNGCOMMA_MSG);

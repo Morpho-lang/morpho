@@ -1053,6 +1053,23 @@ value Field_enumerate__int(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Iterate protocol */
+value Field_iterate(vm *v, int nargs, value *args) {
+    objectfield *a=MORPHO_GETFIELD(MORPHO_SELF(args));
+    int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    if (i<0) { morpho_runtimeerror(v, VM_INVALIDARGS); return MORPHO_NIL; }
+
+    if (i<(int) a->nelements) {
+        value el=MORPHO_NIL;
+        if (!field_getelementwithindex(a, i, &el)) UNREACHABLE("Could not get field element.");
+        value ret[3]={ MORPHO_INTEGER(i+1), el, MORPHO_INTEGER(i) };
+        return morpho_return(v, 3, ret);
+    }
+
+    value ret[3]={ MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };
+    return morpho_return(v, 3, ret);
+}
+
 /** Number of field elements */
 value Field_count(vm *v, int nargs, value *args) {
     objectfield *f=MORPHO_GETFIELD(MORPHO_SELF(args));
@@ -1422,6 +1439,7 @@ MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, _)", Field_setindex__int_
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Int, _)", Field_setindex__int_int_x, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_SETINDEX_METHOD, "(Int, Int, Int, _)", Field_setindex__int_int_int_x, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, "_ (Int)", Field_enumerate__int, MORPHO_FN_PUREFN),
+MORPHO_METHOD_SIGNATURE(MORPHO_ITERATE_METHOD, "_ (Int)", Field_iterate, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", Field_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_SUM_METHOD, "_ ()", Field_sum, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ASSIGN_METHOD, "(Field)", Field_assign__field, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),

@@ -12,3 +12,40 @@ print ";;;".split(";")
 
 print "hello".split(";")
 // expect: [ hello ]
+
+// A repeated delimiter code point is that code point once.
+print "abc".split("bb")
+// expect: [ a, c ]
+
+print "abc".split("b")
+// expect: [ a, c ]
+
+print "hello".split("ll")
+// expect: [ he, , o ]
+
+print "hello".split("l")
+// expect: [ he, , o ]
+
+print "a//b".split("//")
+// expect: [ a, , b ]
+
+print "a//b".split("/")
+// expect: [ a, , b ]
+
+print "// cube.fe".split("//")
+// expect: [ , ,  cube.fe ]
+
+print "// cube.fe".split("/")
+// expect: [ , ,  cube.fe ]
+
+print "xa".split("aba")
+// expect: [ x,  ]
+
+print "xa".split("ab")
+// expect: [ x,  ]
+
+print "abc".split("xx")
+// expect: [ abc ]
+
+print "1,2;3".split(",;")
+// expect: [ 1, 2, 3 ]

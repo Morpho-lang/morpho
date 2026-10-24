@@ -1,0 +1,24 @@
+// Distinct methods from both sides of a diamond remain reachable.
+
+class Root {
+  root() { return "root" }
+}
+
+class Left is Root {
+  left() { return "left" }
+}
+
+class Right is Root {
+  right() { return "right" }
+}
+
+class Diamond is Left with Right {}
+
+print Diamond().root()
+// expect: root
+
+print Diamond().left()
+// expect: left
+
+print Diamond().right()
+// expect: right

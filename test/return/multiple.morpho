@@ -1,0 +1,14 @@
+// Handle multiple return values from morpho code 
+
+fn f() {
+    return 1, 2
+}
+
+{
+    print f() // expect: (1, 2)
+
+    var a, b
+    (a, b) = f()
+    
+    print (a, b) // expect: (1, 2)
+}

@@ -1,0 +1,24 @@
+// A typed method beats an untyped fallback, including for a subclass
+// of the typed parameter.
+
+class Animal {}
+
+class Dog is Animal {}
+
+class Other {}
+
+class Receiver {
+    handle(x) { return "fallback" }
+    handle(Animal x) { return "animal" }
+}
+
+var r = Receiver()
+
+print r.handle(Animal())
+// expect: animal
+
+print r.handle(Dog())
+// expect: animal
+
+print r.handle(Other())
+// expect: fallback

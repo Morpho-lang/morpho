@@ -1,0 +1,41 @@
+// Class implementing the iterate() protocol
+
+class Squares {
+    init(max) { self.max = max }
+
+    iterate(i) {
+        var sq = i*i
+        if (sq <= self.max) return i + 1, sq, i
+        return nil, nil, nil
+    }
+
+    index(i) {
+        var sq = i*i
+        if (sq <= self.max) return sq
+        return nil
+    }
+}
+
+{
+    var s = Squares(150)
+    var i=0, sq
+
+    do {
+        (i, sq) = s.iterate(i)
+        print (i, sq)
+    } while (i)
+}
+// expect: (1, 0)
+// expect: (2, 1)
+// expect: (3, 4)
+// expect: (4, 9)
+// expect: (5, 16)
+// expect: (6, 25)
+// expect: (7, 36)
+// expect: (8, 49)
+// expect: (9, 64)
+// expect: (10, 81)
+// expect: (11, 100)
+// expect: (12, 121)
+// expect: (13, 144)
+// expect: (nil, nil)

@@ -36,8 +36,14 @@
 #define COMPILE_SELFOUTSIDECLASS          "SlfOtsdClss"
 #define COMPILE_SELFOUTSIDECLASS_MSG      "Cannot use 'self' outside of a class."
 
-#define COMPILE_RETURNININITIALIZER       "InitRtn"
+#define COMPILE_SELFASSGN                 "SlfAssgn"
+#define COMPILE_SELFASSGN_MSG             "You cannot modify 'self'."
+
+#define COMPILE_RETURNININITIALIZER       "InitRtrn"
 #define COMPILE_RETURNININITIALIZER_MSG   "Cannot return a value in an initializer."
+
+#define COMPILE_TOOMNYRTRN                "TooMnyRtrn"
+#define COMPILE_TOOMNYRTRN_MSG            "Too many return values."
 
 #define COMPILE_SUPERCLASSNOTFOUND        "SprNtFnd"
 #define COMPILE_SUPERCLASSNOTFOUND_MSG    "Superclass '%s' not found."
@@ -56,6 +62,12 @@
 
 #define COMPILE_TOOMANYPARAMS             "TooMnyPrm"
 #define COMPILE_TOOMANYPARAMS_MSG         "Too many parameters."
+
+#define COMPILE_TOOMANYASSGNTRGTS         "TooMnyAssgnTrgts"
+#define COMPILE_TOOMANYASSGNTRGTS_MSG     "Too many assignment targets."
+
+#define COMPILE_PRPRTYNMEXPCTD            "PrprtyNmExpctd"
+#define COMPILE_PRPRTYNMEXPCTD_MSG        "Property name expected in assignment."
 
 #define COMPILE_VARALREADYDECLARED        "VblDcl"
 #define COMPILE_VARALREADYDECLARED_MSG    "Variable with this name already declared in this scope."
@@ -119,6 +131,9 @@
 
 #define COMPILE_CLSSDPLCTIMPL             "ClssDplctImpl"
 #define COMPILE_CLSSDPLCTIMPL_MSG         "Duplicate implementation of method %s with same signature in class %s"
+
+#define COMPILE_FORINVAR                  "ForInVar"
+#define COMPILE_FORINVAR_MSG              "The `in` keyword must be preceded by an iteration variable and an optional key variable."
 
 /* **********************************************************************
  * Compiler typedefs

@@ -1,0 +1,19 @@
+// super resolves the superclass method when the class also has a mixin.
+
+class SuperBase {
+  f() { return "base" }
+}
+
+class Extra {
+  g() { return "extra" }
+}
+
+class SuperChild is SuperBase with Extra {
+  f() { return super.f() + "-child" }
+}
+
+print SuperChild().f()
+// expect: base-child
+
+print SuperChild().g()
+// expect: extra

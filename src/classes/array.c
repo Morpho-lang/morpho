@@ -169,7 +169,7 @@ void array_print(vm *v, objectarray *a) {
 
     unsigned int indx[a->ndim];
     if (array_print_recurse(v, a, indx, 0, &out)) {
-        varray_charwrite(&out, '\0'); // Ensure zero terminated
+        string_zeroterminatevarraychar(&out);
         morpho_printf(v, "%s", out.data);
     }
 
@@ -580,6 +580,20 @@ value Array_enumerate__int(vm *v, int nargs, value *args) {
     return out;
 }
 
+/** Iterate protocol */
+value Array_iterate(vm *v, int nargs, value *args) {
+    objectarray *slf = MORPHO_GETARRAY(MORPHO_SELF(args));
+    int i=MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
+    if (i<0) { morpho_runtimeerror(v, VM_INVALIDARGS); return MORPHO_NIL; }
+    
+    if (i < slf->nelements) {
+        value ret[3] = { MORPHO_INTEGER(i+1), slf->values[i], MORPHO_INTEGER(i) };
+        return morpho_return(v, 3, ret);
+    }
+    value ret[3] = { MORPHO_NIL, MORPHO_NIL, MORPHO_NIL };
+    return morpho_return(v, 3, ret);
+}
+
 /** Clone an array */
 value Array_clone(vm *v, int nargs, value *args) {
     objectarray *slf = MORPHO_GETARRAY(MORPHO_SELF(args));
@@ -601,6 +615,7 @@ MORPHO_METHOD_SIGNATURE(ARRAY_DIMENSIONS_METHOD, "List ()", Array_dimensions, MO
 MORPHO_METHOD(MORPHO_GETINDEX_METHOD, Array_getindex, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD(MORPHO_SETINDEX_METHOD, Array_setindex, MORPHO_FN_MUTATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_ENUMERATE_METHOD, " (Int)", Array_enumerate__int, MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(MORPHO_ITERATE_METHOD, " (Int)", Array_iterate, MORPHO_FN_PUREFN|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_CLONE_METHOD, "Array ()", Array_clone, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES)
 MORPHO_ENDCLASS
 

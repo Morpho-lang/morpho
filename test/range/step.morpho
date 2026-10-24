@@ -1,0 +1,48 @@
+// Steps that do not divide the span evenly, and steps that point the wrong way
+
+var a = Range(1,6,2)
+print a
+// expect: 1...6:2
+for (x in a) print x
+// expect: 1
+// expect: 3
+// expect: 5
+
+a = Range(6,1,-2)
+print a
+// expect: 6...1:-2
+for (x in a) print x
+// expect: 6
+// expect: 4
+// expect: 2
+
+a = InclusiveRange(1,6,2)
+print a
+// expect: 1..6:2
+for (x in a) print x
+// expect: 1
+// expect: 3
+// expect: 5
+
+a = InclusiveRange(6,1,-2)
+print a
+// expect: 6..1:-2
+for (x in a) print x
+// expect: 6
+// expect: 4
+// expect: 2
+
+a = Range(1,6,-2)
+print a
+// expect: 1...6:-2
+for (x in a) print x
+
+a = Range(6,1,2)
+print a
+// expect: 6...1:2
+for (x in a) print x
+
+a = Range(-0.1,-0.5,0.13)
+print a
+// expect: -0.1...-0.5:0.13
+for (x in a) print x

@@ -1,0 +1,26 @@
+// A mixin inherits Object.iterate. Composing it must not replace a
+// superclass method that already overrode that builtin.
+
+class Parent {
+  iterate() { return "parent" }
+  count() { return "count" }
+}
+
+class Mix {
+}
+
+class Child is Parent with Mix {
+}
+
+var c = Child()
+print c.iterate() // expect: parent
+print c.count() // expect: count
+
+// for-in over a plain object still uses Object.iterate
+class Bag {
+  init() { self.x = 1; self.y = 2 }
+}
+
+var names = []
+for (k in Bag()) names.append(k)
+print names.count() // expect: 2

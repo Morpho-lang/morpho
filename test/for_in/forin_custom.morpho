@@ -7,6 +7,11 @@ class Collection {
     if (k>=0) return (k+1)^2
     else return self.count
   }
+
+  iterate(k) {
+    if (k<self.count) return k+1, (k+1)^2, k
+    return nil, nil, nil
+  }
 }
 
 var a=Collection(4)

@@ -480,6 +480,35 @@ value String_trim(vm *v, int nargs, value *args) {
     return morpho_wrapandbind(v, (object *) new);
 }
 
+/** Maps ASCII letters through a ctype case function. Other code points are left unchanged. */
+static value String_changecase(vm *v, objectstring *slf, int (*convert)(int)) {
+    objectstring *new = string_clone(slf);
+
+    if (new) {
+        char *end = new->string+new->length;
+
+        for (char *c = new->string; c<end; ) {
+            int nbytes = morpho_utf8numberofbytes(c);
+            if (nbytes<=0 || c+nbytes>end) break; // Protect against malformed strings
+
+            if (nbytes==1) *c = (char) convert((unsigned char) *c);
+            c+=nbytes;
+        }
+    }
+
+    return morpho_wrapandbind(v, (object *) new);
+}
+
+/** Converts ASCII letters to upper case */
+value String_upper(vm *v, int nargs, value *args) {
+    return String_changecase(v, MORPHO_GETSTRING(MORPHO_SELF(args)), toupper);
+}
+
+/** Converts ASCII letters to lower case */
+value String_lower(vm *v, int nargs, value *args) {
+    return String_changecase(v, MORPHO_GETSTRING(MORPHO_SELF(args)), tolower);
+}
+
 MORPHO_BEGINCLASS(String)
 MORPHO_METHOD_SIGNATURE(MORPHO_COUNT_METHOD, "Int ()", String_count, MORPHO_FN_PUREFN),
 MORPHO_METHOD_SIGNATURE(MORPHO_PRINT_METHOD, "String ()", String_print, MORPHO_FN_IO),
@@ -492,7 +521,9 @@ MORPHO_METHOD_SIGNATURE(STRING_SPLIT_METHOD, "List (String)", String_split, MORP
 MORPHO_METHOD_SIGNATURE(STRING_SUBSTRING_METHOD, "String (Int, Int)", String_substring, MORPHO_FN_PUREFN|MORPHO_FN_ALLOCATES),
 MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "String (List)", String_join__list, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
 MORPHO_METHOD_SIGNATURE(MORPHO_JOIN_METHOD, "String (List, String)", String_join__list_string, MORPHO_FN_REENTRANT|MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
-MORPHO_METHOD_SIGNATURE(STRING_TRIM_METHOD, "String ()", String_trim, MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
+MORPHO_METHOD_SIGNATURE(STRING_TRIM_METHOD, "String ()", String_trim, MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(STRING_UPPER_METHOD, "String ()", String_upper, MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS),
+MORPHO_METHOD_SIGNATURE(STRING_LOWER_METHOD, "String ()", String_lower, MORPHO_FN_ALLOCATES|MORPHO_FN_THROWS)
 MORPHO_ENDCLASS
 
 /* **********************************************************************

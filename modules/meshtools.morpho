@@ -102,6 +102,26 @@ class MeshBuilder {
 
     return m
   }
+
+  // Restore the vertex order passed to addedge, addface, or addvolume.
+  // keep, when set, selects which ids of that grade to restore.
+  orient(mesh, grade=nil, keep=nil) {
+    if (!self.elements) return mesh
+    for (el, i in self.elements) {
+      if (!isnil(grade) and i+1!=grade) continue
+      if (el.count()==0) continue
+      var conn = mesh.connectivitymatrix(0, i+1)
+      if (!conn) continue
+      for (lst, id in el) {
+        if (!isnil(keep) and !keep.contains(id)) continue
+        var order = []
+        for (v in lst) order.append(v)
+        conn.setrowindices(id, order)
+      }
+    }
+    mesh.resetconnectivity()
+    return mesh
+  }
 }
 
 /* **********************************
@@ -420,12 +440,61 @@ fn _cvert(ev, faces, ef) {
   return cv
 }
 
-/* Flip the edge */
+fn _directededge(tri, a, b) {
+  for (i in 0...3) {
+    var j=i+1
+    if (j==3) j=0
+    if (tri[i]==a and tri[j]==b) return true
+  }
+  return false
+}
+
+fn _vec3(v) {
+  if (v.count()>=3) return v
+  return Matrix([v[0], v[1], 0])
+}
+
+fn _normal(vert, i, j, k) {
+  var u=_vec3(vert.column(j)-vert.column(i)), w=_vec3(vert.column(k)-vert.column(i))
+  return Matrix([u[1]*w[2]-u[2]*w[1], u[2]*w[0]-u[0]*w[2], u[0]*w[1]-u[1]*w[0]])
+}
+
+// Reject a new diagonal that already exists, a flat triangle, or a reversed one.
+fn _hasends(edges, c, d) {
+  for (i in 0...edges.dimensions()[1]) {
+    var ev=edges.rowindices(i)
+    if (ev.count()==2 and ((ev[0]==c and ev[1]==d) or (ev[0]==d and ev[1]==c))) return true
+  }
+  return false
+}
+
+fn _geometryok(vert, a, b, c, d) {
+  var n0=_normal(vert, a, b, c), n1=_normal(vert, b, a, d)
+  var m0=_normal(vert, a, d, c), m1=_normal(vert, b, c, d)
+  var scale=n0.norm()+n1.norm()
+  if (m0.norm()<=1e-14*scale or m1.norm()<=1e-14*scale) return false
+  if (m0.inner(n0)<=0 or m1.inner(n1)<=0) return false
+  return true
+}
+
+/* Replace ab with cd, keeping the oriented boundary of the two triangles. */
 fn _edgeflip(m, iedge, edges, faces, ev, cv, ef) {
-  edges.setrowindices(iedge, cv)
-  faces.setrowindices(ef[0], [ev[0], cv[0], cv[1]])
-  faces.setrowindices(ef[1], [ev[1], cv[0], cv[1]])
+  var t0=faces.rowindices(ef[0]), t1=faces.rowindices(ef[1])
+  if (t0.count()!=3 or t1.count()!=3 or cv.count()!=2) return false
+  var a=ev[0], b=ev[1], c=cv[0], d=cv[1]
+  if (!_directededge(t0, a, b)) {
+    var tmp=a
+    a=b
+    b=tmp
+  }
+  if (!_directededge(t0, a, b) or !_directededge(t1, b, a)) return false
+  if (c==d or _hasends(edges, c, d)) return false
+  if (!_geometryok(m.vertexmatrix(), a, b, c, d)) return false
+  edges.setrowindices(iedge, [c, d])
+  faces.setrowindices(ef[0], [a, d, c])
+  faces.setrowindices(ef[1], [b, c, d])
   m.resetconnectivity()
+  return true
 }
 
 fn equiangulate(m, quiet=false, fix=nil) {
@@ -448,16 +517,78 @@ fn equiangulate(m, quiet=false, fix=nil) {
     if (ef.count()!=2) continue  // Only edges that are connected to two triangles
 
     var cv=_cvert(ev, faces, ef)
-    if (_equiangulatetest(vert, ev, cv)) {
-      _edgeflip(m, iedge, edges, faces, ev, cv, ef)
-      edgetoface = m.connectivitymatrix(2,1) // Recalculate connectivity
-      verttoedge = m.connectivitymatrix(1,0) // Recalculate connectivity
-      nflip+=1
+    if (cv.count()==2 and _equiangulatetest(vert, ev, cv)) {
+      if (_edgeflip(m, iedge, edges, faces, ev, cv, ef)) {
+        edgetoface = m.connectivitymatrix(2,1) // Recalculate connectivity
+        verttoedge = m.connectivitymatrix(1,0) // Recalculate connectivity
+        nflip+=1
+      }
     }
   }
 
   if (!quiet) print "Equiangulate: ${nflip} edges flipped."
 
+  return nil
+}
+
+// Shift each free vertex toward the area-weighted centroid of its triangles,
+// then keep only the part tangent to the area-weighted normal.
+fn vertexAverage(mesh, fix=nil, strength=0.5) {
+  if (mesh.maxgrade()<2) return nil
+  var vert = mesh.vertexmatrix()
+  if (vert.dimensions()[0]!=3) return nil
+
+  var faces = mesh.connectivitymatrix(0, 2)
+  var vertFaces = mesh.connectivitymatrix(2, 0)
+  var nf = mesh.count(2)
+  var area = Area().integrand(mesh)
+  var normal = Matrix(3, nf)
+  var center = Matrix(3, nf)
+
+  for (f in 0...nf) {
+    var el = faces.rowindices(f)
+    if (el.count()!=3) continue
+    var raw = _normal(vert, el[0], el[1], el[2])
+    var len = raw.norm()
+    if (len<=1e-14) continue
+    normal.setcolumn(f, raw/len)
+    var a=vert.column(el[0]), b=vert.column(el[1]), c=vert.column(el[2])
+    center.setcolumn(f, (a+b+c)/3)
+  }
+
+  // Boundary and triple-junction edges, plus edges in fix, hold their endpoints.
+  var hold = Selection(mesh)
+  if (!isnil(fix)) hold = hold.union(fix)
+  if (mesh.count(1)>0) {
+    var edgeFaces = mesh.connectivitymatrix(2, 1)
+    var edgeVerts = mesh.connectivitymatrix(0, 1)
+    for (e in 0...mesh.count(1)) {
+      if (edgeFaces.rowindices(e).count()==2 and (isnil(fix) or !fix[1, e])) continue
+      for (v in edgeVerts.rowindices(e)) hold[0, v] = true
+    }
+  }
+
+  var next = vert.clone()
+  for (i in 0...mesh.count()) {
+    if (hold[0, i]) continue
+    var acc = Matrix([0, 0, 0])
+    var nsum = Matrix([0, 0, 0])
+    var wsum = 0
+    for (f in vertFaces.rowindices(i)) {
+      var weight = area[2, f]
+      if (weight<=1e-14) continue
+      acc = acc + weight*center.column(f)
+      nsum = nsum + weight*normal.column(f)
+      wsum = wsum + weight
+    }
+    if (wsum<=1e-14) continue
+    var nn = nsum.inner(nsum)
+    if (nn<=1e-14) continue
+    var d = acc/wsum - vert.column(i)
+    d = d - (d.inner(nsum)/nn)*nsum
+    next.setcolumn(i, vert.column(i) + strength*d)
+  }
+  mesh.setvertexmatrix(next)
   return nil
 }
 
@@ -1041,6 +1172,9 @@ class MeshRefiner is MeshAdaptiveRefiner {
  
   refine2(id, el, vert, nel, dict) { // refine faces
     var nv = el.count()
+    // Position on the parent's boundary: vertex i at 2*i, midpoint of i->i+1 at 2*i+1.
+    var pos = Dictionary()
+    for (i in 0...nv) pos[el[i]] = 2*i
     var refedge = []
 
     for (i in 0...nv) { // Generate midpoints
@@ -1049,8 +1183,18 @@ class MeshRefiner is MeshAdaptiveRefiner {
         var node = self.tree.ismember(midpoint)
         if (node) {
           refedge.append([el[i], el[j], node.id])
+          if (j==i+1) pos[node.id] = 2*i+1
+          if (i==0 and j==nv-1) pos[node.id] = 2*nv-1
         }
       }
+    }
+
+    // List the child's vertices in the parent's cyclic order.
+    fn wind(tri) {
+      for (v in tri) if (!pos.contains(v)) return tri
+      var order = tri.clone()
+      order.sort(fn (a, b) pos[a]-pos[b])
+      return order
     }
 
     /* Three possible outcomes of refinement:
@@ -1065,35 +1209,35 @@ class MeshRefiner is MeshAdaptiveRefiner {
       return false 
     } else if (nref==1) {
       var tid
-      for (id in el) if (!refedge[0].ismember(id)) tid = id
+      for (v in el) if (!refedge[0].ismember(v)) tid = v
 
-      self.addelement(id, areaGrade, [refedge[0][0], refedge[0][2], tid], dict)
-      self.addelement(id, areaGrade, [refedge[0][2], refedge[0][1], tid], dict)
+      self.addelement(id, areaGrade, wind([refedge[0][0], refedge[0][2], tid]), dict)
+      self.addelement(id, areaGrade, wind([refedge[0][2], refedge[0][1], tid]), dict)
 
       if (nel[1]>0) {
         self.addelement(id, lineGrade, [refedge[0][2], tid], nil)
       }
     } else if (nref==2) {
       var shareid, xid, yid
-      for (id in el) {
-        if (refedge[0].ismember(id) && refedge[1].ismember(id)) shareid = id
-        if (refedge[0].ismember(id) && !refedge[1].ismember(id)) xid = id
-        if (!refedge[0].ismember(id) && refedge[1].ismember(id)) yid = id
+      for (v in el) {
+        if (refedge[0].ismember(v) && refedge[1].ismember(v)) shareid = v
+        if (refedge[0].ismember(v) && !refedge[1].ismember(v)) xid = v
+        if (!refedge[0].ismember(v) && refedge[1].ismember(v)) yid = v
       }
 
-      self.addelement(id, areaGrade, [shareid, refedge[0][2], refedge[1][2]], dict)
-      self.addelement(id, areaGrade, [xid, refedge[0][2], refedge[1][2]], dict)
-      self.addelement(id, areaGrade, [xid, yid, refedge[1][2]], dict)
+      self.addelement(id, areaGrade, wind([shareid, refedge[0][2], refedge[1][2]]), dict)
+      self.addelement(id, areaGrade, wind([xid, refedge[0][2], refedge[1][2]]), dict)
+      self.addelement(id, areaGrade, wind([xid, yid, refedge[1][2]]), dict)
 
       if (nel[1]>0) {
         self.addelement(id, lineGrade, [refedge[1][2], xid], nil)
         self.addelement(id, lineGrade, [refedge[0][2], refedge[1][2]], nil)
       }
     } else if (nref==3) {
-      self.addelement(id, areaGrade, [el[0], refedge[0][2], refedge[1][2]], dict)
-      self.addelement(id, areaGrade, [el[1], refedge[0][2], refedge[2][2]], dict)
-      self.addelement(id, areaGrade, [el[2], refedge[1][2], refedge[2][2]], dict)
-      self.addelement(id, areaGrade, [refedge[0][2], refedge[1][2], refedge[2][2]], dict)
+      self.addelement(id, areaGrade, wind([el[0], refedge[0][2], refedge[1][2]]), dict)
+      self.addelement(id, areaGrade, wind([el[1], refedge[0][2], refedge[2][2]]), dict)
+      self.addelement(id, areaGrade, wind([el[2], refedge[1][2], refedge[2][2]]), dict)
+      self.addelement(id, areaGrade, wind([refedge[0][2], refedge[1][2], refedge[2][2]]), dict)
 
       if (nel[1]>0) {
         self.addelement(id, lineGrade, [refedge[0][2], refedge[1][2]], nil)
@@ -1211,8 +1355,12 @@ class MeshRefiner is MeshAdaptiveRefiner {
     self._clearelists()
 
     self.refinemap = refmap
-
-    return (self.new=self.mb.build())
+    self.new = self.mb.build()
+    // build() forgets face winding. Volume-only faces are absent from refinemap.
+    if (self.refinemap.count()>areaGrade) {
+      self.mb.orient(self.new, grade=areaGrade, keep=self.refinemap[areaGrade])
+    }
+    return self.new
   }
 
   refine(selection=nil) {

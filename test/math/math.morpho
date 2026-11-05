@@ -27,6 +27,15 @@ print ceil(3.5)
 print arctan(-0.2,-0.5)
 // expect: -1.9513
 
+print asinh(1)
+// expect: 0.881374
+
+print acosh(2)
+// expect: 1.31696
+
+print atanh(0.5)
+// expect: 0.549306
+
 print abs(-1.2)
 // expect: 1.2
 

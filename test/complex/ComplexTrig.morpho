@@ -99,3 +99,27 @@ for (Z in compList){
 // expect: true
 // expect: true
 }
+
+// asinh
+for (Z in compList){
+    print abs(sinh(asinh(Z))-Z)<tol
+// expect: true
+// expect: true
+// expect: true
+}
+
+// acosh
+for (Z in compList){
+    print abs(cosh(acosh(Z))-Z)<tol
+// expect: true
+// expect: true
+// expect: true
+}
+
+// atanh
+for (Z in compList){
+    print abs(tanh(atanh(Z))-Z)<tol
+// expect: true
+// expect: true
+// expect: true
+}

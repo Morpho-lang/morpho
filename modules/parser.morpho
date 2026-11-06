@@ -1,63 +1,262 @@
-// Basic tokenizer
+/* ***************************************************************
+ * Parser
+ * ======
+ * Simple parsing library
+ **************************************************************** */
+
+var _TokenErr = Error("TokenErr", "Tokenizer error.")
+var _ParseErr = Error("ParseErr", "Parse error.")
+
+/* ----------------------------------------------------------------
+ * Token
+ *
+ * Single token in a stream of input
+ * ---------------------------------------------------------------- */
+
+class Token {
+  init(text, line, column, quote=nil) {
+      self.text = text
+      self.line = line
+      self.column = column
+      self.quote = quote
+  }
+
+  prnt() {
+    System.prnt("Token: ${self.text} (line: ${self.line}, column: ${self.column})")
+  }
+}
+
+/* ----------------------------------------------------------------
+ * Tokenizer
+ *
+ * Splits a stream of input into tokens, skipping whitespace and comments.
+ * ---------------------------------------------------------------- */
+
+class Tokenizer {
+  init(stream, whitespace=" \t\r\n", delimiters="", lineComment=nil, blockComment=nil) {
+    self.stream = stream // The stream to use
+    self.line = 1        // Current line number
+    self.column = 0      // Current column number
+
+    self.whitespace = Dictionary() // Whitespace characters
+    for (c in whitespace) self.whitespace[c] = true
+
+    self.delimiters = Dictionary() // Delimiter characters
+    for (c in delimiters) self.delimiters[c] = true
+
+    if (!isnil(lineComment) && (!isstring(lineComment) || lineComment.count()==0)) _TokenErr.throw("Optional argument lineComment must be nonempty.")
+    self.lineComment = lineComment
+
+    if (!isnil(blockComment) && (!islist(blockComment) || blockComment.count()!=2 ||
+        !isstring(blockComment[0]) || !isstring(blockComment[1]) ||
+        blockComment[0].count()==0 || blockComment[1].count()==0)) _TokenErr.throw("Optional argument blockComment must be (start, end) with nonempty strings.")
+    self.blockStart = isnil(blockComment) ? nil : blockComment[0]
+    self.blockEnd = isnil(blockComment) ? nil : blockComment[1]
+
+    self.lookahead = []    // Buffered tokens
+    self.characters = []   // Buffered raw characters
+    self.current = nil
+    self._advance() // Initialize Tokenizer with first character
+  }
+
+  _advance() { // Advance by one character
+    if (self.current=="\n") {
+      self.line += 1
+      self.column = 1
+    } else self.column += 1
+
+    if (self.characters.count()>0) self.current = self.characters.pop()
+    else self.current = self.stream.readchar()
+
+    return self.current
+  }
+
+  _atEnd() { return isnil(self.current) }
+  _isWhitespace(c) { return self.whitespace.contains(c) }
+  _isDelimiter(c) { return self.delimiters.contains(c) }
+
+  _matches(s) { // Match a string without consuming characters.
+    if (isnil(s) || _atEnd() || self.current!=s[0]) return false
+
+    for (i in 1...s.count()) {
+      while (self.characters.count()<i) self.characters.insert(0, self.stream.readchar())
+      if (self.characters[self.characters.count()-i]!=s[i]) return false
+    }
+    return true
+  }
+
+  _peekChar() { // Next character without consuming it.
+    if (self.characters.count()==0) self.characters.insert(0, self.stream.readchar())
+    return self.characters[self.characters.count()-1]
+  }
+
+  _exponentSign(token) { // True when + or - continues a numeric exponent.
+    var n=token.count()
+    if (n<2 || (self.current!="+" && self.current!="-")) return false
+    var mark=token[n-1]
+    if (mark!="e" && mark!="E") return false
+    var nxt=_peekChar()
+    if (isnil(nxt)) return false
+    return (String.join(token)+self.current+nxt).isnumber()
+  }
+
+  _skipIgnored() { // Skip whitespace and comments.
+    while (!_atEnd()) {
+      if (_isWhitespace(self.current)) {
+        _advance()
+      } else if (_matches(self.lineComment)) {
+        for (c in self.lineComment) _advance()
+
+        // Leave newline available as a delimiter.
+        while (!_atEnd() && self.current!="\n") _advance()
+      } else if (_matches(self.blockStart)) {
+        var line=self.line, column=self.column
+
+        for (c in self.blockStart) _advance()
+
+        while (!_atEnd() && !_matches(self.blockEnd)) _advance()
+
+        if (_atEnd()) _TokenErr.throw("Unterminated block comment at line ${line}, column ${column}.")
+        for (c in self.blockEnd) _advance()
+      } else break
+    }
+  }
+
+  _next() {
+    var token = []
+    _skipIgnored()
+    if (_atEnd()) return nil
+
+    var line=self.line, column=self.column
+    var quote=nil
+
+    if (self.current=="\"") {
+      quote=self.current
+      _advance()
+    } else if (_isDelimiter(self.current)) {
+      var char=self.current
+      _advance()
+      return Token(char, line, column)
+    }
+
+    while (!_atEnd()) {
+      if (quote) {
+        if (self.current=="\\") { // \" and \\ are escapes; other backslashes are kept.
+          _advance()
+          if (_atEnd()) _TokenErr.throw("Unterminated escape at line ${line}, column ${column}.")
+          if (self.current!="\"" && self.current!="\\") token.append("\\")
+          token.append(self.current)
+          _advance()
+          continue
+        }
+        if (self.current==quote) break
+      } else if (_isWhitespace(self.current) ||
+                 (_isDelimiter(self.current) && !_exponentSign(token)) ||
+                 _matches(self.lineComment) ||
+                 _matches(self.blockStart)) break
+
+      token.append(self.current)
+      _advance()
+    }
+
+    if (quote) {
+      if (_atEnd()) _TokenErr.throw("Unterminated quoted token at line ${line}, column ${column}.")
+      _advance() // Consume closing quote
+    }
+
+    return Token(String.join(token), line, column, quote=quote)
+  }
+
+  next() {
+    if (self.lookahead.count()>0) return self.lookahead.pop()
+    return _next()
+  }
+
+  peek(n=0) {
+    if (!isint(n) || n<0) _TokenErr.throw("Peek offset must be a nonnegative integer.")
+    while (self.lookahead.count()<=n) {
+      var tok=_next()
+      if (!tok) return nil
+      self.lookahead.insert(0, tok)
+    }
+    return self.lookahead[self.lookahead.count()-1-n]
+  }
+}
+
+/* ----------------------------------------------------------------
+ * Parser
+ *
+ * Processes a stream of tokens, providing a simple interface for parsing
+ * ---------------------------------------------------------------- */
+
+class Parser {
+  init(Tokenizer tokenizer) {
+    self.tokenizer = tokenizer
+  }
+
+  init(stream) {
+    self.init(Tokenizer(stream))
+  }
+
+  next() { return self.tokenizer.next() }
+  peek(n=0) { return self.tokenizer.peek(n=n) }
+  eof() { return isnil(self.tokenizer.peek()) }
+
+  _error(Error err) { err.throw() }
+  _error(msg) { _ParseErr.throw(msg) }
+
+  expect(String text, error=nil) { 
+    var token = self.next()
+
+    if (!token) {
+        if (error) _error(error)
+        _error("Expected '${text}' but reached end of input.")
+    }
+
+    if (token.text != text) {
+        if (error) _error(error)
+        _error("Expected '${text}' but found '${token.text}' at line ${token.line}, column ${token.column}.")
+    }
+
+    return token
+  }
+
+  _number(type, cons) {
+    var token = self.next()
+    if (!token) _error("Expected ${type} but reached end of input.")
+
+    try {
+      return cons(token.text)
+    } catch {
+      "ExpctArgNm" : _error("Expected ${type} but found '${token.text}' at line ${token.line}, column ${token.column}.")
+    }
+  }
+
+  integer() { return self._number("integer", Int) }
+  float() { return self._number("number", Float) }
+}
+
+/* ----------------------------------------------------------------
+ * StringStream
+ *
+ * Reads a string one character at a time, matching the interface
+ * of the File class. 
+ * ---------------------------------------------------------------- */
 
 class StringStream {
   init(str) {
     self.str = str
-    self.len = str.count() 
-    self.n = 0
+    self.cursor = 0
+    self.char = nil 
   }
 
-  readchar() {
-    if (self.n>=self.len) return nil 
-    var out = self.str[self.n]
-    self.n+=1 
-    return out
+  readChar() {
+    if (self.eof()) return nil
+    self.cursor, self.char = self.str.iterate(self.cursor)
+    return self.char
   }
 
-  eof() {
-    return (self.n >= self.len)
-  }
+  readchar() { return self.readChar() } // Legacy support
+
+  eof() { return !Bool(self.cursor) }
 } 
-
-class Tokenizer {
-  init(stream, whitespace=" \n") {
-    self.stream = stream // The stream to use
-    self.current = self.advance() // Current character
-
-    self.whitespace = Dictionary() // Whitespace characters
-    for (c in whitespace) self.whitespace[c] = true
-  }
-
-  advance() {
-    self.current = self.stream.readchar()
-    return self.current
-  }
-
-  atend() {
-    return self.stream.eof()
-  }
-
-  iswhitespace(c) {
-    return self.whitespace.contains(c)
-  }
-
-  skipwhitespace() {
-    while (self.iswhitespace(self.current) && !self.atend()) {
-      self.advance()
-    }
-  }
-
-  next() {
-    var token = nil
-
-    self.skipwhitespace()
-    while (!self.atend()) {
-      var char = self.current
-      if (!char) break
-      if (self.iswhitespace(char)) break
-      if (token) token+=char else token=char
-      self.advance()
-    }
-    return token
-  }
-}

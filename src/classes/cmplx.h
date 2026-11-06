@@ -107,6 +107,9 @@ value complex_builtinacos(vm *v, objectcomplex *c);
 value complex_builtinsinh(vm *v, objectcomplex *c);
 value complex_builtincosh(vm *v, objectcomplex *c);
 value complex_builtintanh(vm *v, objectcomplex *c);
+value complex_builtinasinh(vm *v, objectcomplex *c);
+value complex_builtinacosh(vm *v, objectcomplex *c);
+value complex_builtinatanh(vm *v, objectcomplex *c);
 value complex_builtinsqrt(vm *v, objectcomplex *c);
 
 value complex_builtinfloor(vm *v, objectcomplex *c);

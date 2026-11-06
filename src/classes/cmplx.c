@@ -237,6 +237,9 @@ COMPLEX_BUILTIN(acos,MorphoComplex,RET_COMPLEX)
 COMPLEX_BUILTIN(sinh,MorphoComplex,RET_COMPLEX)
 COMPLEX_BUILTIN(cosh,MorphoComplex,RET_COMPLEX)
 COMPLEX_BUILTIN(tanh,MorphoComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(asinh,MorphoComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(acosh,MorphoComplex,RET_COMPLEX)
+COMPLEX_BUILTIN(atanh,MorphoComplex,RET_COMPLEX)
 COMPLEX_BUILTIN(sqrt,MorphoComplex,RET_COMPLEX)
 
 value complex_builtinfloor(vm * v, objectcomplex *c) {

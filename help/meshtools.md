@@ -116,6 +116,20 @@ This function takes optional arguments:
 
 *Note* this function modifies the mesh in place; it does not create a new mesh.
 
+## VertexAverage
+[tagvertexaverage]: # (vertexaverage)
+
+Smooths a mesh: Moves each free vertex toward the area-weighted center of its surrounding triangles, ensuring the motion remains in the tangent plane.
+
+    vertexAverage(mesh)
+
+This function takes optional arguments:
+
+* `fix`: A `Selection` of edges whose endpoints should not move.
+* `strength`: How far to move each vertex. The default is 0.5.
+
+The mesh must have triangular faces and 3D vertex positions. Boundary edges, and edges that belong to other than two faces, also hold their endpoints.
+
 ## ChangeMeshDimension
 [tagchangemeshdimension]: # (changemeshdimension)
 
@@ -254,6 +268,17 @@ Returns the `Selection` constructed by the builder:
 
     var s = sb.build()
 
+## Refinemesh
+[tagrefinemesh]: # (refinemesh)
+
+Subdivides a triangle mesh. Each edge is split at its midpoint, and each triangle becomes four. Returns a new mesh; the original is left unchanged.
+
+    var fine = refinemesh(mesh)
+
+If the mesh has no edges, `refinemesh` adds them first.
+
+To refine a mesh and update associated `Field`s and `Selection`s, use `MeshRefiner` instead.
+
 ## MeshRefiner
 [tagmeshrefiner]: # (meshrefiner)
 
@@ -313,3 +338,23 @@ To use, create a `MeshMerge` object with a list of meshes to merge,
 and then call the `merge` method to return a combined mesh:
 
     var newmesh = mrg.merge()
+
+## MeshChecker
+[tagmeshchecker]: # (meshchecker)
+
+The `MeshChecker` class checks a mesh and reports any problems as warnings. 
+
+    var chk = MeshChecker(mesh)
+    chk.check()
+
+`check` looks for elements with the wrong number of vertices, inconsistent connectivity, elements of non-positive size, duplicate vertices, and duplicate elements. Set `quiet` to `true` to suppress the "Checking mesh..." message:
+
+    var chk = MeshChecker(mesh, quiet=true)
+
+`sizetol` is the cutoff for those size and duplicate-vertex checks. The default is `1e-4`.
+
+    chk.sizetol = 1e-6
+
+`countElements` prints how many elements are in each grade:
+
+    chk.countElements()

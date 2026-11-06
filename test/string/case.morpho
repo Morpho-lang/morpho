@@ -1,0 +1,49 @@
+// String.upper and String.lower convert ASCII letters
+
+print "Hello".upper()
+// expect: HELLO
+
+print "Hello".lower()
+// expect: hello
+
+print "abc123 XYZ!".upper()
+// expect: ABC123 XYZ!
+
+print "abc123 XYZ!".lower()
+// expect: abc123 xyz!
+
+print "".upper()
+// expect: 
+
+print "".lower()
+// expect: 
+
+print "Hello".upper().lower()
+// expect: hello
+
+// The original string is unchanged
+var s = "Hi"
+print s.upper() == "HI"
+// expect: true
+print s.lower() == "hi"
+// expect: true
+print s == "Hi"
+// expect: true
+
+// Non-ASCII bytes are left unchanged
+print "AbC~¶Þॐஃ".upper() == "ABC~¶Þॐஃ"
+// expect: true
+print "AbC~¶Þॐஃ".lower() == "abc~¶Þॐஃ"
+// expect: true
+
+var cached = "Hi \U0001F98B"
+print cached.count()
+// expect: 4
+print cached.upper() == "HI \U0001F98B"
+// expect: true
+print cached.upper().count()
+// expect: 4
+print cached.lower() == "hi \U0001F98B"
+// expect: true
+print cached.lower().count()
+// expect: 4

@@ -61,6 +61,8 @@ typedef struct {
 #define STRING_ISNUMBER_METHOD            "isnumber"
 #define STRING_SUBSTRING_METHOD           "substring"
 #define STRING_TRIM_METHOD                "trim"
+#define STRING_UPPER_METHOD               "upper"
+#define STRING_LOWER_METHOD               "lower"
 
 /* -------------------------------------------------------
  * String error messages

@@ -51,6 +51,7 @@ Morpho
    :caption: Modules
    :maxdepth: 1
 
+   broadcast
    color
    constants
    delaunay
@@ -61,6 +62,7 @@ Morpho
    meshslice
    meshtools
    optimize
+   parser
    plot
 
 .. toctree::

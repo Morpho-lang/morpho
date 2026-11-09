@@ -130,9 +130,9 @@ void resources_searchfolder(resourceenumerator *en, char *path) {
     if (platform_directorycontentsinit(&contents, path)) {
         while (platform_directorycontents(&contents, buffer, size)) {
             /* Construct the file name */
-            size_t len = strlen(path)+strlen(buffer)+2;
+            size_t buflen = strlen(path)+strlen(buffer)+2;
             
-            char file[len];
+            char file[buflen];
             strcpy(file, path);
             strcat(file, sep);
             strcat(file, buffer);
@@ -144,7 +144,7 @@ void resources_searchfolder(resourceenumerator *en, char *path) {
             }
 
             /* Add the file or folder to the work list */
-            value v = object_stringfromcstring(file, len);
+            value v = object_stringfromcstring(file, strlen(file));
             if (MORPHO_ISSTRING(v)) varray_valuewrite(&en->resources, v);
         }
         platform_directorycontentsclear(&contents);

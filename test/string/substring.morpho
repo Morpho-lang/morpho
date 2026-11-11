@@ -12,3 +12,7 @@ print str.substring(0,20)
 // expect: Hi Hi Hello 🦋
 print str.substring(-2,5)
 // expect: Hi Hi
+
+// Past the last character of a multibyte string. Byte length is 2, character count is 1.
+print "\u00e9".substring(1, 2)
+// expect: 

@@ -1,0 +1,3 @@
+// A NaN step used to hang in _range_count
+
+var range = 0.0..1.0:(0/0) // expect error 'RngStpSz'

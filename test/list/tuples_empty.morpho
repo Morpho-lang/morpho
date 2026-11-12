@@ -1,0 +1,10 @@
+// Tuples and sets from an empty list
+
+print [].tuples()
+// expect: [  ]
+print [].sets()
+// expect: [  ]
+print [].tuples(3)
+// expect: [  ]
+print [].sets(4)
+// expect: [  ]

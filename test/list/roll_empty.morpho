@@ -1,0 +1,6 @@
+// Roll an empty list
+
+print [].roll(1)
+// expect: [  ]
+print [].roll(0)
+// expect: [  ]

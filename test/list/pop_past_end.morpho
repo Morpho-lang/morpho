@@ -1,0 +1,5 @@
+// Pop the index one past the last element
+
+var a = [1, 2, 3]
+print a.pop(3)
+// expect error 'IndxBnds'

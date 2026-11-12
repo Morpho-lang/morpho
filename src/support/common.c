@@ -239,6 +239,8 @@ bool morpho_countparameters(value f, int *nparams) {
  @param[in] n - n-tuples to generate
  @param[in] c - workspace: supply an unsigned integer array of size 2xn  */
 void morpho_tuplesinit(unsigned int nval, unsigned int n, unsigned int *c, tuplemode mode) {
+    if (n==0 || nval==0) return;
+
     unsigned int *counter=c, *cmax=c+n; // Counters
     for (unsigned int i=0; i<n; i++) {
         counter[i]=(mode == MORPHO_SETMODE ? i : 0 );
@@ -257,7 +259,7 @@ bool morpho_tuples(unsigned int nval, value *list, unsigned int n, unsigned int 
     unsigned int *counter=c, *cmax=c+n; // Counters
     int k;
 
-    if (counter[0]>cmax[0]) return false; // Done
+    if (n==0 || nval==0 || counter[0]>cmax[0]) return false; // Done
 
     // Generate tuple from counter
     for (unsigned int i=0; i<n; i++) tuple[i]=list[counter[i]];

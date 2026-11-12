@@ -263,6 +263,8 @@ objectlist *list_roll(objectlist *a, int nplaces) {
     if (new) {
         new->val.count=a->val.count;
         unsigned int N = a->val.count;
+        if (N==0) return new;
+
         int n = abs(nplaces);
         if (n>N) n = n % N;
         unsigned int Np = N - n; // Number of elements to roll
@@ -313,6 +315,9 @@ objectarrayerror list_slicecopy(value * a,value * out, unsigned int ndim, unsign
 /** Generate sets/tuples and return as a list of lists */
 value list_generatetuples(vm *v, objectlist *list, unsigned int n, tuplemode mode) {
     unsigned int nval=list->val.count;
+
+    if (n==0 || nval==0) return morpho_wrapandbind(v, (object *) object_newlist(0, NULL));
+
     unsigned int work[2*n];
     value tuple[n];
     morpho_tuplesinit(list->val.count, n, work, mode);
@@ -328,11 +333,7 @@ value list_generatetuples(vm *v, objectlist *list, unsigned int n, tuplemode mod
         }
     }
 
-    list_append(new, MORPHO_OBJECT(new));
-    morpho_bindobjects(v, new->val.count, new->val.data);
-    new->val.count--; // And pop it back off
-
-    return MORPHO_OBJECT(new);
+    return morpho_wrapandbindrecursive(v, (object *) new);
 
 list_generatetuples_cleanup:
     morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
@@ -370,13 +371,9 @@ value list_constructor(vm *v, int nargs, value *args) {
     
     if (!new) new = object_newlist(nargs, args+1);
 
-    if (new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-
-        if (!MORPHO_ISNIL(init)) {
-            builtin_enumerateloop(v, init, list_enumerableinitializer, new);
-        }
+    out = morpho_wrapandbind(v, (object *) new);
+    if (!MORPHO_ISNIL(init) && !MORPHO_ISNIL(out)) {
+        builtin_enumerateloop(v, init, list_enumerableinitializer, new);
     }
 
     return out;
@@ -430,7 +427,7 @@ value List_pop(vm *v, int nargs, value *args) {
             int indx = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
             
             if (indx<0) indx+=slf->val.count;
-            if (indx<0 || indx>slf->val.count) {
+            if (indx<0 || (unsigned int) indx>=slf->val.count) {
                 morpho_runtimeerror(v, VM_OUTOFBOUNDS);
                 return MORPHO_NIL;
             }
@@ -464,11 +461,9 @@ value List_getindex__slice(vm *v, int nargs, value *args) {
     value out=MORPHO_NIL;
     objectarrayerror err = getslice(&MORPHO_SELF(args), &list_slicedim, &list_sliceconstructor, &list_slicecopy, nargs, &MORPHO_GETARG(args, 0), &out);
     if (err!=ARRAY_OK) MORPHO_RAISE(v, array_to_list_error(err) );
-    if (MORPHO_ISOBJECT(out)) {
-        morpho_bindobjects(v,1,&out);
-    } else MORPHO_RAISE(v, VM_NONNUMINDX);
+    if (!MORPHO_ISOBJECT(out)) MORPHO_RAISE(v, VM_NONNUMINDX);
 
-    return out;
+    return morpho_wrapandbind(v, MORPHO_GETOBJECT(out));
 }
 
 value List_getindex__err(vm *v, int nargs, value *args) {
@@ -518,7 +513,6 @@ value List_print(vm *v, int nargs, value *args) {
 /** Convert a list to a string */
 value List_tostring(vm *v, int nargs, value *args) {
     objectlist *lst=MORPHO_GETLIST(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
 
     varray_char buffer;
     varray_charinit(&buffer);
@@ -530,13 +524,9 @@ value List_tostring(vm *v, int nargs, value *args) {
     }
     varray_charadd(&buffer, " ]", 2);
 
-    out = object_stringfromvarraychar(&buffer);
-    if (MORPHO_ISSTRING(out)) {
-        morpho_bindobjects(v, 1, &out);
-    }
+    objectstring *str = string_fromvarraychar(&buffer);
     varray_charclear(&buffer);
-
-    return out;
+    return morpho_wrapandbind(v, (object *) str);
 }
 
 /** Enumerate members of a list */
@@ -641,44 +631,24 @@ value List_sets__fallback(vm *v, int nargs, value *args) {
 /** Clones a list */
 value List_clone(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    objectlist *new = list_clone(slf);
-    if (!new) morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-    value out = MORPHO_OBJECT(new);
-    morpho_bindobjects(v, 1, &out);
-    return out;
+    return morpho_wrapandbind(v, (object *) list_clone(slf));
 }
 
 /** Joins two lists together  */
 value List_join__list(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
-
     objectlist *operand = MORPHO_GETLIST(MORPHO_GETARG(args, 0));
-    objectlist *new = list_concatenate(slf, operand);
 
-    if (new) {
-        out = MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    }
-
-    return out;
+    return morpho_wrapandbind(v, (object *) list_concatenate(slf, operand));
 }
 
 /** Roll a list */
 value List_roll(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    value out = MORPHO_NIL;
     int roll;
     morpho_valuetoint(MORPHO_GETARG(args, 0), &roll);
 
-    objectlist *new = list_roll(slf, roll);
-
-    if (new) {
-        out = MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    }
-
-    return out;
+    return morpho_wrapandbind(v, (object *) list_roll(slf, roll));
 }
 
 value List_roll__err(vm *v, int nargs, value *args) {
@@ -708,15 +678,7 @@ value List_sort_fn(vm *v, int nargs, value *args) {
 /** Returns a tuple of indices that would sort the list self */
 value List_order(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
-
-    objecttuple *new=list_order(slf);
-    if (new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-
-    return out;
+    return morpho_wrapandbind(v, (object *) list_order(slf));
 }
 
 /** Returns a list with the order reversed */

@@ -1,4 +1,4 @@
-// A continuation byte used to hang in string_countchars
+// Count an invalid UTF-8 string
 
 print "\x80".count()
 // expect: 0

@@ -68,6 +68,9 @@ typedef struct {
  * String error messages
  * ------------------------------------------------------- */
 
+#define STRING_INVLDUTF8                  "InvldUtf8"
+#define STRING_INVLDUTF8_MSG              "Invalid UTF-8 string."
+
 /* -------------------------------------------------------
  * Legacy interface
  * ------------------------------------------------------- */

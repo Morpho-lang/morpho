@@ -1,0 +1,7 @@
+// Sort from inside the comparison function
+
+var a = [3, 1, 2]
+fn cmp(x, y) {
+    return a.sort(cmp)
+}
+a.sort(cmp) // expect error 'StckOvflw'

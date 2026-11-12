@@ -377,7 +377,7 @@ value Tuple_sort_fn(vm *v, int nargs, value *args) {
     if (new) {
         bool success=list_sortcontentswithfn(v, MORPHO_GETARG(args, 0), new->tuple, new->length);
         if (!success) {
-            morpho_runtimeerror(v, LIST_SRTFN);
+            if (!morpho_checkerror(morpho_geterror(v))) morpho_runtimeerror(v, LIST_SRTFN);
             object_free((object *) new);
             return MORPHO_NIL;
         }

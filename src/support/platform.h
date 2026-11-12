@@ -29,6 +29,16 @@
 #endif
 
 /* -------------------------------------------------------
+ * Thread-local storage
+ * ------------------------------------------------------- */
+
+#ifdef _WIN32
+#define MORPHO_THREADLOCAL __declspec(thread)
+#else
+#define MORPHO_THREADLOCAL __thread
+#endif
+
+/* -------------------------------------------------------
  * Detecting platform name
  * ------------------------------------------------------- */
 

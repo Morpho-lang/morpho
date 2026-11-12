@@ -1,0 +1,3 @@
+// Split a string containing an invalid UTF-8 byte
+
+print "\x80hello".split("a") // expect error 'InvldUtf8'

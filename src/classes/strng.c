@@ -388,6 +388,14 @@ value String_split(vm *v, int nargs, value *args) {
     objectstring *slf = MORPHO_GETSTRING(MORPHO_SELF(args));
     value out=MORPHO_NIL;
     objectstring *split = MORPHO_GETSTRING(MORPHO_GETARG(args, 0));
+
+    /* A non-empty string with a character count of zero is not valid UTF-8. */
+    if ((slf->length>0 && string_countchars(slf)==0) ||
+        (split->length>0 && string_countchars(split)==0)) {
+        morpho_runtimeerror(v, STRING_INVLDUTF8);
+        return MORPHO_NIL;
+    }
+
     objectlist *new = object_newlist(0, NULL);
 
     if (!new) { morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED); return MORPHO_NIL; }
@@ -544,4 +552,6 @@ void string_initialize(void) {
     
     // String constructor function
     morpho_addfunction(STRING_CLASSNAME, STRING_CLASSNAME " (...)", string_constructor, MORPHO_FN_CONSTRUCTOR, NULL);
+
+    morpho_defineerror(STRING_INVLDUTF8, ERROR_HALT, STRING_INVLDUTF8_MSG);
 }

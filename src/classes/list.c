@@ -7,6 +7,7 @@
 #include "morpho.h"
 #include "classes.h"
 #include "common.h"
+#include "platform.h"
 
 /* **********************************************************************
  * objectlist definitions
@@ -120,6 +121,9 @@ bool list_getelement(objectlist *list, int i, value *out) {
     return true;
 }
 
+/** True while a caller-supplied comparison function is running. */
+static MORPHO_THREADLOCAL bool list_insort = false;
+
 /** Sort function for list_sort */
 int list_sortfunction(const void *a, const void *b) {
     value l=*(value *) a, r=*(value *) b;
@@ -158,8 +162,15 @@ static int _sortfn(const void *a, const void *b, void *context) {
 
 /** Sort a list of values */
 bool list_sortcontentswithfn(vm *v, value cmpfn, value *values, size_t count) {
+    if (list_insort) {
+        morpho_runtimeerror(v, VM_STCKOVFLW);
+        return false;
+    }
+
+    list_insort = true;
     _sortfninfo info = { .v = v, .cmpfn = cmpfn, .errq=false };
     platform_qsort_r(values, count, sizeof(value), &info, _sortfn);
+    list_insort = false;
     return !info.errq;
 }
 
@@ -677,13 +688,18 @@ value List_roll__err(vm *v, int nargs, value *args) {
 
 /** Sorts a list */
 value List_sort(vm *v, int nargs, value *args) {
+    if (list_insort) {
+        morpho_runtimeerror(v, VM_STCKOVFLW);
+        return MORPHO_NIL;
+    }
     list_sort(MORPHO_GETLIST(MORPHO_SELF(args)));
     return MORPHO_NIL;
 }
 
 value List_sort_fn(vm *v, int nargs, value *args) {
     objectlist *slf = MORPHO_GETLIST(MORPHO_SELF(args));
-    if (!list_sortwithfn(v, MORPHO_GETARG(args, 0), slf)) {
+    if (!list_sortwithfn(v, MORPHO_GETARG(args, 0), slf) &&
+        !morpho_checkerror(morpho_geterror(v))) {
         morpho_runtimeerror(v, LIST_SRTFN);
     }
     return MORPHO_NIL;

@@ -1,0 +1,3 @@
+// Split on an invalid UTF-8 separator
+
+print "hello".split("\x80") // expect error 'InvldUtf8'

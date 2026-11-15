@@ -1,0 +1,4 @@
+// The product of the dimensions must fit in an integer
+
+print Array(65536, 65536)
+// expect error 'Alloc'

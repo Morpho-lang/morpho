@@ -1,0 +1,4 @@
+// A negative dimension does not fit in an integer
+
+print Array(-1)
+// expect error 'Alloc'

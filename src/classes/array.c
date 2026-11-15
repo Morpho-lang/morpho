@@ -38,10 +38,26 @@ objecttypedefn objectarraydefn = {
     .cmpfn=NULL
 };
 
+/** Product of dim. False if a dimension or the product does not fit in an integer. */
+static bool array_count(unsigned int ndim, unsigned int *dim, unsigned int *nel) {
+    size_t n = ndim>0;
+
+    for (unsigned int i=0; i<ndim; i++) {
+        if (dim[i]>(unsigned) INT32_MAX || (dim[i] && n>SIZE_MAX/dim[i])) return false;
+        n *= dim[i];
+    }
+    if (n>(size_t) INT32_MAX) return false;
+
+    *nel = (unsigned int) n;
+    return true;
+}
+
 /** Initializes an array given the size */
 void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) {
     object_init((object *) array, OBJECT_ARRAY);
-    unsigned int nel = (ndim==0 ? 0 : 1);
+    unsigned int nel = 0, stride = 1;
+
+    array_count(ndim, dim, &nel);
 
     /* Store pointers into the data array */
     array->dimensions=array->data;
@@ -52,8 +68,8 @@ void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) 
     array->ndim=ndim;
     for (unsigned int i=0; i<ndim; i++) {
         array->dimensions[i]=MORPHO_INTEGER(dim[i]);
-        array->multipliers[i]=MORPHO_INTEGER(nel);
-        nel*=dim[i];
+        array->multipliers[i]=MORPHO_INTEGER(stride);
+        stride*=dim[i];
     }
 
     /* Store the size of the object for convenient access */
@@ -80,12 +96,13 @@ void object_arrayinit(objectarray *array, unsigned int ndim, unsigned int *dim) 
  *          1, 2, // multipliers for each index to access elements
  *          1, 3, 2, 4 // the elements in column major order */
 objectarray *object_newarray(unsigned int ndim, unsigned int *dim) {
-    /* Calculate the number of elements */
-    unsigned int nel=(ndim==0 ? 0 : dim[0]);
-    for (unsigned int i=1; i<ndim; i++) nel*=dim[i];
+    unsigned int nel;
+    if (!array_count(ndim, dim, &nel)) return NULL;
 
-    size_t size = sizeof(objectarray)+sizeof(value)*(2*ndim + nel);
+    size_t nvalues = (size_t) nel + 2*(size_t) ndim;
+    if (nvalues > (SIZE_MAX - sizeof(objectarray)) / sizeof(value)) return NULL;
 
+    size_t size = sizeof(objectarray) + sizeof(value)*nvalues;
     objectarray *new = (objectarray *) object_new(size, OBJECT_ARRAY);
     if (new) object_arrayinit(new, ndim, dim);
 
@@ -98,10 +115,9 @@ objectarray *object_newarray(unsigned int ndim, unsigned int *dim) {
 
 /** Converts a list of values to a list of integers */
 bool array_valuelisttoindices(unsigned int ndim, value *in, unsigned int *out) {
-
     for (unsigned int i=0; i<ndim; i++) {
         if (MORPHO_ISINTEGER(in[i])) out[i]=MORPHO_GETINTEGERVALUE(in[i]);
-        else if(MORPHO_ISFLOAT(in[i])) out[i]=round(MORPHO_GETFLOATVALUE(in[i]));
+        else if (MORPHO_ISFLOAT(in[i])) out[i]=round(MORPHO_GETFLOATVALUE(in[i]));
         else return false;
     }
 
@@ -410,6 +426,7 @@ objectarray *array_constructfromlist(unsigned int ndim, unsigned int *dim, objec
     }
 
     objectarray *new = object_newarray(nldim, ldim);
+    if (!new) return NULL;
     array_copyfromnestedlist(initializer, new);
 
     return new;
@@ -441,7 +458,10 @@ value array_constructor(vm *v, int nargs, value *args) {
     }
 
     // Get dimensions
-    if (ndim>0) array_valuelisttoindices(ndim, &MORPHO_GETARG(args, 0), dim);
+    if (ndim>0 && !array_valuelisttoindices(ndim, &MORPHO_GETARG(args, 0), dim)) {
+        morpho_runtimeerror(v, ARRAY_ARGS);
+        return MORPHO_NIL;
+    }
     // Initializer is the first non-numerical argument; anything after is ignored
     if (ndim<nargs) initializer=MORPHO_GETARG(args, ndim);
 
@@ -460,14 +480,7 @@ value array_constructor(vm *v, int nargs, value *args) {
         morpho_runtimeerror(v, ARRAY_INIT);
     }
 
-    // Bind the new array to the VM
-    value out=MORPHO_NIL;
-    if (new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    }
-
-    return out;
+    return morpho_wrapandbind(v, (object *) new);
 }
 
 /** Checks that an array is being indexed with the correct number of indices with a generic interface */
@@ -479,7 +492,8 @@ bool array_slicedim(value * a, unsigned int ndim){
 
 /** Constructsan array is with a generic interface */
 void array_sliceconstructor(unsigned int *slicesize,unsigned int ndim,value* out){
-    *out = MORPHO_OBJECT(object_newarray(ndim,slicesize));
+    objectarray *new = object_newarray(ndim, slicesize);
+    *out = (new ? MORPHO_OBJECT(new) : MORPHO_NIL);
 }
 
 /** Copies data from array a to array out with a generic interface */
@@ -512,9 +526,8 @@ value Array_getindex(vm *v, int nargs, value *args) {
         // these aren't simple indices, lets try to make a slice
         objectarrayerror err = getslice(&MORPHO_SELF(args),&array_slicedim,&array_sliceconstructor,&array_slicecopy,nargs,&MORPHO_GETARG(args, 0),&out);
         if (err!=ARRAY_OK) MORPHO_RAISE(v, array_error(err) );
-        if (!MORPHO_ISNIL(out)){
-            morpho_bindobjects(v,1,&out);
-        } else MORPHO_RAISE(v, VM_NONNUMINDX);
+        if (!MORPHO_ISOBJECT(out)) MORPHO_RAISE(v, VM_NONNUMINDX);
+        return morpho_wrapandbind(v, MORPHO_GETOBJECT(out));
     }
 
     return out;
@@ -545,23 +558,19 @@ value Array_print(vm *v, int nargs, value *args) {
 
 /** Find an array's size */
 value Array_count(vm *v, int nargs, value *args) {
-    objectarray *slf = MORPHO_GETARRAY(MORPHO_SELF(args));
+    objectarray *a = MORPHO_GETARRAY(MORPHO_SELF(args));
+    unsigned int dim[a->ndim ? a->ndim : 1], nel = 0;
 
-    return MORPHO_INTEGER(slf->nelements);
+    if (array_valuelisttoindices(a->ndim, a->dimensions, dim)) array_count(a->ndim, dim, &nel);
+
+    return MORPHO_INTEGER(nel);
 }
 
 /** Array dimensions */
 value Array_dimensions(vm *v, int nargs, value *args) {
     objectarray *a=MORPHO_GETARRAY(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
-    objectlist *new=object_newlist(a->ndim, a->data);
 
-    if (new) {
-        out=MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    } else morpho_runtimeerror(v, ERROR_ALLOCATIONFAILED);
-
-    return out;
+    return morpho_wrapandbind(v, (object *) object_newlist(a->ndim, a->data));
 }
 
 /** Enumerate members of an array */
@@ -597,15 +606,8 @@ value Array_iterate(vm *v, int nargs, value *args) {
 /** Clone an array */
 value Array_clone(vm *v, int nargs, value *args) {
     objectarray *slf = MORPHO_GETARRAY(MORPHO_SELF(args));
-    value out=MORPHO_NIL;
 
-    objectarray *new = object_clonearray(slf);
-    if (new) {
-        out = MORPHO_OBJECT(new);
-        morpho_bindobjects(v, 1, &out);
-    }
-
-    return out;
+    return morpho_wrapandbind(v, (object *) object_clonearray(slf));
 }
 
 MORPHO_BEGINCLASS(Array)

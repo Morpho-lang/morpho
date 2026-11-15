@@ -81,6 +81,9 @@
 #define COMPILE_IMPORTFLD                 "ImprtFld"
 #define COMPILE_IMPORTFLD_MSG             "Import of file '%s' failed."
 
+#define COMPILE_CIRCULARIMPORT            "CrcImprt"
+#define COMPILE_CIRCULARIMPORT_MSG        "Circular import of '%s'."
+
 #define COMPILE_BRKOTSDLP                 "BrkOtsdLp"
 #define COMPILE_BRKOTSDLP_MSG             "Break encountered outside a loop."
 

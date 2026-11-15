@@ -5361,7 +5361,7 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             if (dictionary_get(&root->modules, MORPHO_OBJECT(&chkmodname), &symboldict)) {
                 if (MORPHO_ISDICTIONARY(symboldict)) {
                     compiler_applymoduleexports(c, MORPHO_GETDICTIONARY(symboldict), (fordict.count>0 ? &fordict : NULL), nmspace);
-                }
+                } else compiler_error(c, module, COMPILE_CIRCULARIMPORT, fname);
                 
                 goto compiler_import_cleanup;
             }
@@ -5403,6 +5403,9 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             debugannotation_setmodule(&c->out->annotations, modname);
             cc.parent=c; /* Ensures global variables can be found */
 
+            /* Record the module while it is being compiled */
+            dictionary_insert(&root->modules, modname, MORPHO_TRUE);
+
             morpho_compile(src.data, &cc, false, &c->err);
 
             if (ERROR_SUCCEEDED(c->err)) {
@@ -5429,7 +5432,8 @@ static codeinfo compiler_import(compiler *c, syntaxtreenode *node, registerindx 
             compiler_clear(&cc);
             varray_charclear(&src);
             
-            dictionary_insert(&root->modules, modname, symboldict);
+            if (MORPHO_ISDICTIONARY(symboldict)) dictionary_insert(&root->modules, modname, symboldict);
+            else dictionary_remove(&root->modules, modname);
         } else compiler_error(c, module, COMPILE_FILENOTFOUND, fname);
     }
 
@@ -5633,6 +5637,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_FILENOTFOUND, ERROR_COMPILE, COMPILE_FILENOTFOUND_MSG);
     morpho_defineerror(COMPILE_MODULENOTFOUND, ERROR_COMPILE, COMPILE_MODULENOTFOUND_MSG);
     morpho_defineerror(COMPILE_IMPORTFLD, ERROR_COMPILE, COMPILE_IMPORTFLD_MSG);
+    morpho_defineerror(COMPILE_CIRCULARIMPORT, ERROR_COMPILE, COMPILE_CIRCULARIMPORT_MSG);
     morpho_defineerror(COMPILE_BRKOTSDLP, ERROR_COMPILE, COMPILE_BRKOTSDLP_MSG);
     morpho_defineerror(COMPILE_CNTOTSDLP, ERROR_COMPILE, COMPILE_CNTOTSDLP_MSG);
     morpho_defineerror(COMPILE_OPTPRMDFLT, ERROR_COMPILE, COMPILE_OPTPRMDFLT_MSG);

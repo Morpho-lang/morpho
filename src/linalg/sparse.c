@@ -366,7 +366,7 @@ sparseccs_resize_error:
  * @param[out] entries  the entries themselves
  * @param[out] values  (optional) the values */
 bool sparseccs_getrowindiceswithvalues(sparseccs *ccs, int col, int *nentries, int **entries, double **values) {
-    if (col>=ccs->ncols) return false;
+    if (col<0 || col>=ccs->ncols) return false;
     *nentries=ccs->cptr[col+1]-ccs->cptr[col];
     *entries=ccs->rix+ccs->cptr[col];
     if (values) *values=ccs->values+ccs->cptr[col];
@@ -385,7 +385,7 @@ bool sparseccs_getrowindices(sparseccs *ccs, int col, int *nentries, int **entri
  * @param[out] entries  the entries themselves
  * @warning Use with caution */
 bool sparseccs_setrowindices(sparseccs *ccs, int col, int nentries, int *entries) {
-    if (col>=ccs->ncols) return false;
+    if (col<0 || col>=ccs->ncols) return false;
     if (nentries!=ccs->cptr[col+1]-ccs->cptr[col]) return false;
     int *e=ccs->rix+ccs->cptr[col];
     for (unsigned int i=0; i<nentries; i++) e[i]=entries[i];
@@ -1694,7 +1694,7 @@ value Sparse_rowindices(vm *v, int nargs, value *args) {
             int col = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0));
             int nentries=0, *entries=NULL;
 
-            if (col<s->ccs.ncols) {
+            if (col>=0 && col<s->ccs.ncols) {
                 if (sparseccs_getrowindices(&s->ccs, col, &nentries, &entries)) {
                     objectlist *new = object_newlist(nentries, NULL);
                     if (new) {
@@ -1726,7 +1726,7 @@ value Sparse_setrowindices(vm *v, int nargs, value *args) {
             int nentries=list_length(list);
             int entries[nentries];
 
-            if (col<s->ccs.ncols) {
+            if (col>=0 && col<s->ccs.ncols) {
                 for (int i=0; i<nentries; i++) {
                     value entry;
                     if (list_getelement(list, i, &entry) &&

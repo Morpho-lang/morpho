@@ -753,6 +753,7 @@ bool matrix_printtobuffer(objectmatrix *m, char *format, varray_char *out) {
 /** Rolls the matrix list */
 static void _rollflat(objectmatrix *a, objectmatrix *b, int nplaces) {
     MatrixCount_t N=a->nrows*a->ncols*a->nvals;
+    if (N==0) return;
     MatrixCount_t n = abs(nplaces)*a->nvals;
     if (n>N) n = n % N;
     MatrixCount_t Np = N - n; // Number of elements to roll
@@ -778,6 +779,7 @@ linalgError_t matrix_roll(objectmatrix *a, int nplaces, int axis, objectmatrix *
     
     switch(axis) {
         case 0:
+            if (a->nrows==0) break;
             for (int i=0; i<a->nrows; i++) {
                 int j = (i+nplaces);
                 while (j<0) j+=a->nrows;
@@ -1522,8 +1524,12 @@ value Matrix_reshape(vm *v, int nargs, value *args) {
     objectmatrix *a=MORPHO_GETMATRIX(MORPHO_SELF(args));
     int nrows = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 0)),
         ncols = MORPHO_GETINTEGERVALUE(MORPHO_GETARG(args, 1));
-    
-    if (nrows*ncols==a->nrows*a->ncols) {
+    size_t need, have;
+
+    if (nrows>=0 && ncols>=0 &&
+        !_mul_overflow_size((size_t) nrows, (size_t) ncols, &need) &&
+        !_mul_overflow_size((size_t) a->nrows, (size_t) a->ncols, &have) &&
+        need==have) {
         a->nrows=nrows;
         a->ncols=ncols;
     } else morpho_runtimeerror(v, LINALG_INCOMPATIBLEMATRICES);

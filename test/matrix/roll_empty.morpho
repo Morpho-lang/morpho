@@ -1,0 +1,7 @@
+// Roll a matrix with no entries
+
+var m = Matrix(1, 0)
+print m.roll(1, 1)
+// expect: [ ]
+print m.roll(0, 0)
+// expect: [ ]

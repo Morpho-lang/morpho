@@ -1,0 +1,4 @@
+// Wide integer format
+
+print 1.format("%20000i").count()
+// expect: 254

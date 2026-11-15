@@ -1,0 +1,5 @@
+// A column index must lie in the matrix
+
+var s = Sparse([[0, 0, 1]])
+print s.rowindices(-1)
+// expect error 'LnAlgMtrxIndxBnds'

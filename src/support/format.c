@@ -78,7 +78,9 @@ bool _format_printtobuffer(value v, format *f, varray_char *out) {
     
     if (MORPHO_ISFLOAT(v)) nchars=snprintf(buffer, SPRINTFBUFFER, format, MORPHO_GETFLOATVALUE(v));
     else nchars=snprintf(buffer, SPRINTFBUFFER, format, MORPHO_GETINTEGERVALUE(v));
-    
+
+    if (nchars<0) return false;
+    if (nchars>=SPRINTFBUFFER) nchars=(int) strlen(buffer);
     varray_charadd(out, buffer, nchars);
     
     return true;

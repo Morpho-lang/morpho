@@ -1418,6 +1418,7 @@ void functional_initialize(void) {
     morpho_defineerror(FUNC_FESPACE, ERROR_HALT, FUNC_FESPACE_MSG);
     morpho_defineerror(FUNC_NOFESPACE, ERROR_HALT, FUNC_NOFESPACE_MSG);
     morpho_defineerror(FUNCTIONAL_ARGS, ERROR_HALT, FUNCTIONAL_ARGS_MSG);
+    morpho_defineerror(FUNCTIONAL_VERTEXCOUNT, ERROR_HALT, FUNCTIONAL_VERTEXCOUNT_MSG);
 
     functional_poolinitialized = false;
 

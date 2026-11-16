@@ -116,6 +116,7 @@ MORPHO_ENDCLASS
 
 /** Calculate area enclosed */
 bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    if (nv!=2) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 2, nv);
     double *x[nv], cx[mesh->dim], normcx;
     for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
 
@@ -134,7 +135,7 @@ bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
 
 /** Analytic gradient of 1/2 |x0 × x1|. */
 bool areaenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
-    if (nv!=2) return true;
+    if (nv!=2) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 2, nv);
     double *x[2], x0[3]={0,0,0}, x1[3]={0,0,0}, c[3], f0[3], f1[3], nrm;
     for (int j=0; j<nv; j++) if (matrix_getcolumnptr(mesh->vert, vid[j], &x[j])!=LINALGERR_OK) return false;
     for (int k=0; k<mesh->dim; k++) { x0[k]=x[0][k]; x1[k]=x[1][k]; }

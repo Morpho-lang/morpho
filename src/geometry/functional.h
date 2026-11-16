@@ -52,6 +52,9 @@
 #define FUNCTIONAL_ARGS                "FnctlArgs"
 #define FUNCTIONAL_ARGS_MSG            "Invalid arguments passed to this functional."
 
+#define FUNCTIONAL_VERTEXCOUNT         "FnctlVrtCnt"
+#define FUNCTIONAL_VERTEXCOUNT_MSG     "Element id %d has incorrect number of vertices: expected %d but found %d."
+
 /* -------------------------------------------------------
  * Functional types
  * ------------------------------------------------------- */

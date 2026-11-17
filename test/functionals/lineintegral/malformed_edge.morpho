@@ -1,0 +1,5 @@
+// One-vertex edge
+var m = Mesh(Matrix([[0], [0], [0]]))
+m.addgrade(1, Sparse([[0, 0, 1]]))
+print LineIntegral(fn (x) 1).total(m)
+// expect error: 'FnctlVrtCnt'

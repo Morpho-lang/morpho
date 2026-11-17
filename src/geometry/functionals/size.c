@@ -78,6 +78,7 @@ bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
 
 /** Calculate scaled gradient */
 bool length_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale) {
+    if (nv!=2) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 2, nv);
     double *x[nv], s0[mesh->dim], norm;
     for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
 
@@ -189,6 +190,7 @@ bool area_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, voi
 
 /** Calculate scaled gradient */
 bool area_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale) {
+    if (nv!=3) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 3, nv);
     double *x[nv], s0[3], s1[3], s01[3], s010[3], s011[3];
     double norm;
     for (int j=0; j<3; j++) { s0[j]=0; s1[j]=0; s01[j]=0; s010[j]=0; s011[j]=0; }
@@ -239,6 +241,7 @@ MORPHO_ENDCLASS
 
 /** Calculate enclosed volume */
 bool volumeenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    if (nv!=3) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 3, nv);
     double *x[nv], cx[mesh->dim];
     for (int j=0; j<nv; j++) if (matrix_getcolumnptr(mesh->vert, vid[j], &x[j])!=LINALGERR_OK) return false;
 
@@ -250,6 +253,7 @@ bool volumeenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
 
 /** Calculate gradient */
 bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
+    if (nv!=3) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 3, nv);
     double *x[nv], cx[mesh->dim], dot;
     for (int j=0; j<nv; j++) if (matrix_getcolumnptr(mesh->vert, vid[j], &x[j])!=LINALGERR_OK) return false;
 
@@ -290,6 +294,7 @@ MORPHO_ENDCLASS
 
 /** Calculate volume */
 bool volume_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
+    if (nv!=4) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 4, nv);
     double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim], cx[mesh->dim];
     for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
 
@@ -305,6 +310,7 @@ bool volume_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
 
 /** Calculate scaled gradient */
 bool volume_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale) {
+    if (nv!=4) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 4, nv);
     double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim];
     double s31[mesh->dim], s21[mesh->dim], cx[mesh->dim], uu;
     for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);

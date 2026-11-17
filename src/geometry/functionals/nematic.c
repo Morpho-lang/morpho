@@ -140,6 +140,7 @@ bool nematic_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, 
 
     // Evaluate gradients of the director
     if (eref->grade==2) {
+        if (nv!=3) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 3, nv);
         if (!gradsq_evaluategradient(mesh, eref->field, nv, vid, gradnnraw)) return
             false;
     } else if (eref->grade==3) {
@@ -327,6 +328,7 @@ bool nematicelectric_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
     double ee[mesh->dim];
     if (MORPHO_ISFIELD(eref->field)) {
         if (eref->grade==2) {
+            if (nv!=3) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 3, nv);
             if (!gradsq_evaluategradient(mesh, MORPHO_GETFIELD(eref->field), nv, vid, ee)) return false;
         } else if (eref->grade==3) {
             if (!gradsq_evaluategradient3d(mesh, MORPHO_GETFIELD(eref->field), nv, vid, ee)) return false;

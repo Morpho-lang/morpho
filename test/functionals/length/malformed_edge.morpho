@@ -1,0 +1,6 @@
+// One-vertex edge
+var v = Matrix([[0, 1], [0, 0], [0, 0]])
+var m = Mesh(v)
+m.addgrade(1, Sparse([[0, 0, 1]]))
+print Length().gradient(m)
+// expect error: 'FnctlVrtCnt'

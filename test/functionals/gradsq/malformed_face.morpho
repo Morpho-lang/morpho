@@ -1,0 +1,6 @@
+// One-vertex face
+var m = Mesh(Matrix([[0], [0], [0]]))
+m.addgrade(2, Sparse([[0, 0, 1]]))
+var f = Field(m, Matrix([1]))
+print GradSq(f).total(m)
+// expect error: 'FnctlVrtCnt'

@@ -973,6 +973,7 @@ bool integral_integrandfn(unsigned int dim, double *t, double *x, unsigned int n
 /** Bind elref to an element, compute its measure, and fill vertex coordinate pointers. */
 static bool integral_bindelement(vm *v, objectmesh *mesh, elementid id, int nv, int *vid,
                                  integralref *iref, objectintegralelementref *elref, double **x) {
+    if (nv!=iref->g+1) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, iref->g+1, nv);
     _integral_bindelref(elref, mesh, iref->g, id, nv, vid, x, iref);
     if (!functional_elementsize(v, iref->weightbyref ? iref->mref : mesh, iref->g, id, nv, vid, &elref->elementsize))
         return false;

@@ -1,0 +1,5 @@
+// One-vertex face
+var m = Mesh(Matrix([[0, 1], [0, 0], [0, 0]]))
+m.addgrade(2, Sparse([[0, 0, 1]]))
+print Area().gradient(m)
+// expect error: 'FnctlVrtCnt'

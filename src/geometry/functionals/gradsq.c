@@ -175,6 +175,7 @@ bool gradsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
     if (!functional_elementsize(v, mesh, eref->grade, id, nv, vid, &size)) return false;
 
     if (eref->grade==2) {
+        if (nv!=3) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 3, nv);
         if (!gradsq_evaluategradient(mesh, eref->field, nv, vid, grad)) return false;
     } else if (eref->grade==3) {
         if (!gradsq_evaluategradient3d(mesh, eref->field, nv, vid, grad)) return false;

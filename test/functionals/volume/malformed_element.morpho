@@ -1,0 +1,8 @@
+// Three-vertex volume element
+var v = Matrix([[0, 1, 2], [0, 0, 0], [0, 0, 0]])
+var m = Mesh(v)
+var trips = []
+for (i in 0...3) trips.append([i, 0, 1])
+m.addgrade(3, Sparse(trips))
+print Volume().total(m)
+// expect error: 'FnctlVrtCnt'

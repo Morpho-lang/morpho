@@ -1356,19 +1356,23 @@ bool parse_expressionstatement(parser *p, void *out) {
  *                   -       body
  **/
 bool parse_blockstatement(parser *p, void *out) {
+    if (!parse_incrementrecursiondepth(p)) return false;
+
     syntaxtreeindx body = SYNTAXTREE_UNCONNECTED;
     token start = p->previous;
     tokentype terminator[] = { TOKEN_RIGHTCURLYBRACKET };
-    
-    PARSE_CHECK(parse_declarationmulti(p, 1, terminator, &body));
-    if (parse_checktoken(p, TOKEN_EOF)) {
-        parse_error(p, false, PARSE_INCOMPLETEEXPRESSION);
-        return false;
-    } else {
-        PARSE_CHECK(parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_BLOCKTERMINATOREXP));
+    bool success=false;
+
+    if (parse_declarationmulti(p, 1, terminator, &body)) {
+        if (parse_checktoken(p, TOKEN_EOF)) {
+            parse_error(p, false, PARSE_INCOMPLETEEXPRESSION);
+        } else if (parse_checkrequiredtoken(p, TOKEN_RIGHTCURLYBRACKET, PARSE_BLOCKTERMINATOREXP)) {
+            success=parse_addnode(p, NODE_SCOPE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, body, out);
+        }
     }
-    
-    return parse_addnode(p, NODE_SCOPE, MORPHO_NIL, &start, SYNTAXTREE_UNCONNECTED, body, out);
+
+    parse_decrementrecursiondepth(p);
+    return success;
 }
 
 /** Parse an if statement */
@@ -1577,7 +1581,10 @@ bool parse_breakpointstatement(parser *p, void *out) {
 
 /** Parses an expression */
 bool parse_expression(parser *p, void *out) {
-    return parse_precedence(p, PREC_ASSIGN, out);
+    if (!parse_incrementrecursiondepth(p)) return false;
+    bool success=parse_precedence(p, PREC_ASSIGN, out);
+    parse_decrementrecursiondepth(p);
+    return success;
 }
 
 /** Parses an expression that may include an anonymous function */

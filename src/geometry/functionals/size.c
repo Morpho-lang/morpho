@@ -68,7 +68,7 @@ bool functional_elementgradient(vm *v, objectmesh *mesh, grade g, elementid id, 
 bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     if (nv!=2) { *out=0; return true; }
     double *x[nv], s0[mesh->dim];
-    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) LINALG_ERRCHECKVMRETURN(matrix_getcolumnptr(mesh->vert, vid[j], &x[j]), false);
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
 
@@ -80,7 +80,7 @@ bool length_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, v
 bool length_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc, double scale) {
     if (nv!=2) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 2, nv);
     double *x[nv], s0[mesh->dim], norm;
-    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) LINALG_ERRCHECKVMRETURN(matrix_getcolumnptr(mesh->vert, vid[j], &x[j]), false);
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     norm=functional_vecnorm(mesh->dim, s0);
@@ -119,7 +119,7 @@ MORPHO_ENDCLASS
 bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     if (nv!=2) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 2, nv);
     double *x[nv], cx[mesh->dim], normcx;
-    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) LINALG_ERRCHECKVMRETURN(matrix_getcolumnptr(mesh->vert, vid[j], &x[j]), false);
 
     if (mesh->dim==2) {
         functional_veccross2d(x[0], x[1], cx);
@@ -138,7 +138,7 @@ bool areaenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *
 bool areaenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
     if (nv!=2) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 2, nv);
     double *x[2], x0[3]={0,0,0}, x1[3]={0,0,0}, c[3], f0[3], f1[3], nrm;
-    for (int j=0; j<nv; j++) if (matrix_getcolumnptr(mesh->vert, vid[j], &x[j])!=LINALGERR_OK) return false;
+    for (int j=0; j<nv; j++) LINALG_ERRCHECKVMRETURN(matrix_getcolumnptr(mesh->vert, vid[j], &x[j]), false);
     for (int k=0; k<mesh->dim; k++) { x0[k]=x[0][k]; x1[k]=x[1][k]; }
 
     functional_veccross(x0, x1, c);
@@ -177,7 +177,7 @@ bool area_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, voi
     if (nv!=3) { *out=0; return true; }
     double *x[nv], s0[3], s1[3], cx[3];
     for (int j=0; j<3; j++) { s0[j]=0; s1[j]=0; cx[j]=0; }
-    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) LINALG_ERRCHECKVMRETURN(matrix_getcolumnptr(mesh->vert, vid[j], &x[j]), false);
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     functional_vecsub(mesh->dim, x[2], x[1], s1);
@@ -194,7 +194,7 @@ bool area_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *vid
     double *x[nv], s0[3], s1[3], s01[3], s010[3], s011[3];
     double norm;
     for (int j=0; j<3; j++) { s0[j]=0; s1[j]=0; s01[j]=0; s010[j]=0; s011[j]=0; }
-    for (int j=0; j<nv; j++) if (matrix_getcolumnptr(mesh->vert, vid[j], &x[j])!=LINALGERR_OK) return false;
+    for (int j=0; j<nv; j++) LINALG_ERRCHECKVMRETURN(matrix_getcolumnptr(mesh->vert, vid[j], &x[j]), false);
 
     functional_vecsub(mesh->dim, x[1], x[0], s0);
     functional_vecsub(mesh->dim, x[2], x[1], s1);
@@ -243,7 +243,7 @@ MORPHO_ENDCLASS
 bool volumeenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     if (nv!=3) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 3, nv);
     double *x[nv], cx[mesh->dim];
-    for (int j=0; j<nv; j++) if (matrix_getcolumnptr(mesh->vert, vid[j], &x[j])!=LINALGERR_OK) return false;
+    for (int j=0; j<nv; j++) LINALG_ERRCHECKVMRETURN(matrix_getcolumnptr(mesh->vert, vid[j], &x[j]), false);
 
     functional_veccross(x[0], x[1], cx);
 
@@ -255,7 +255,7 @@ bool volumeenclosed_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
 bool volumeenclosed_gradient(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, objectmatrix *frc) {
     if (nv!=3) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 3, nv);
     double *x[nv], cx[mesh->dim], dot;
-    for (int j=0; j<nv; j++) if (matrix_getcolumnptr(mesh->vert, vid[j], &x[j])!=LINALGERR_OK) return false;
+    for (int j=0; j<nv; j++) LINALG_ERRCHECKVMRETURN(matrix_getcolumnptr(mesh->vert, vid[j], &x[j]), false);
 
     functional_veccross(x[0], x[1], cx);
     dot=functional_vecdot(mesh->dim, cx, x[2]);
@@ -296,7 +296,7 @@ MORPHO_ENDCLASS
 bool volume_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int *vid, void *ref, double *out) {
     if (nv!=4) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 4, nv);
     double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim], cx[mesh->dim];
-    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) LINALG_ERRCHECKVMRETURN(matrix_getcolumnptr(mesh->vert, vid[j], &x[j]), false);
 
     functional_vecsub(mesh->dim, x[1], x[0], s10);
     functional_vecsub(mesh->dim, x[2], x[0], s20);
@@ -313,7 +313,7 @@ bool volume_gradient_scale(vm *v, objectmesh *mesh, elementid id, int nv, int *v
     if (nv!=4) MORPHO_FAILVARGS(v, FUNCTIONAL_VERTEXCOUNT, id, 4, nv);
     double *x[nv], s10[mesh->dim], s20[mesh->dim], s30[mesh->dim];
     double s31[mesh->dim], s21[mesh->dim], cx[mesh->dim], uu;
-    for (int j=0; j<nv; j++) matrix_getcolumnptr(mesh->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) LINALG_ERRCHECKVMRETURN(matrix_getcolumnptr(mesh->vert, vid[j], &x[j]), false);
 
     functional_vecsub(mesh->dim, x[1], x[0], s10);
     functional_vecsub(mesh->dim, x[2], x[0], s20);

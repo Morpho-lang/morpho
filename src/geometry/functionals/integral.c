@@ -676,8 +676,8 @@ static bool integral_evaluatecg(vm *v) {
     objectmatrix gramdef = MORPHO_STATICMATRIX(gramdefel, gdim, gdim);
     objectmatrix r = MORPHO_STATICMATRIX(rel, gdim, gdim); // Intermediate calculations
     
-    linearelasticity_calculategram(elref->iref->mref->vert, elref->mesh->dim, elref->nv, elref->vid, &gramref);
-    linearelasticity_calculategram(elref->mesh->vert, elref->mesh->dim, elref->nv, elref->vid, &gramdef);
+    LINALG_ERRCHECKVMRETURN(linearelasticity_calculategram(elref->iref->mref->vert, elref->mesh->dim, elref->nv, elref->vid, &gramref), false);
+    LINALG_ERRCHECKVMRETURN(linearelasticity_calculategram(elref->mesh->vert, elref->mesh->dim, elref->nv, elref->vid, &gramdef), false);
     
     memcpy(qel, gramrefel, sizeof(double)*(size_t)gdim*(size_t)gdim);
     if (!functional_matinv(gdim, qel)) return false;
@@ -711,9 +711,10 @@ static value integral_cgfn(vm *v, int nargs, value *args) {
  * and inverse jacobians.
  */
 
-static void _integral_fetchvertices(objectintegralelementref *elref, objectmesh *mesh, int nv, elementid *vid, double **x) {
+static linalgError_t _integral_fetchvertices(objectintegralelementref *elref, objectmesh *mesh, int nv, elementid *vid, double **x) {
     // Fetch reference vertices
-    for (int j=0; j<nv; j++) matrix_getcolumnptr(elref->iref->mref->vert, vid[j], &x[j]);
+    for (int j=0; j<nv; j++) LINALG_ERRCHECKRETURN(matrix_getcolumnptr(elref->iref->mref->vert, vid[j], &x[j]));
+    return LINALGERR_OK;
 }
 
 static void _integral_edgevectors(grade g, int dim, double **x, double *out) {
@@ -739,7 +740,7 @@ static bool integral_evaluatejacobian(vm *v) {
     double *x[nv];                  // Vertex positions of the reference element
     
     objectmesh *mref = elref->iref->mref; // Reference mesh
-    if (mref) _integral_fetchvertices(elref, mref, nv, elref->vid, x);
+    if (mref) LINALG_ERRCHECKVMRETURN(_integral_fetchvertices(elref, mref, nv, elref->vid, x), false);
     
     // Construct matrix of edge vectors for target and reference elements
     double starget[dim*dim], sinv[dim*dim];

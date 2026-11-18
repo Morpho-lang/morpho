@@ -254,7 +254,7 @@ bool linetorsionsq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int 
     /* We now have an ordered list of vertices.
        Get the vertex positions */
     double *x[6];
-    for (int i=0; i<6; i++) matrix_getcolumnptr(mesh->vert, vlist[i], &x[i]);
+    for (int i=0; i<6; i++) LINALG_ERRCHECKVMGOTO(matrix_getcolumnptr(mesh->vert, vlist[i], &x[i]), linecurvsq_torsion_cleanup);
 
     double A[3], B[3], C[3], crossAB[3], crossBC[3];
     functional_vecsub(3, x[1], x[0], A);
@@ -419,7 +419,7 @@ bool meancurvaturesq_integrand(vm *v, objectmesh *mesh, elementid id, int nv, in
 
         double *x[3], s0[3], s1[3], s01[3], s101[3];
         double norm;
-        for (int j=0; j<3; j++) matrix_getcolumnptr(mesh->vert, vids[j], &x[j]);
+        for (int j=0; j<3; j++) LINALG_ERRCHECKVMGOTO(matrix_getcolumnptr(mesh->vert, vids[j], &x[j]), meancurvsq_cleanup);
 
         /* s0 = x1-x0; s1 = x2-x1 */
         functional_vecsub(mesh->dim, x[1], x[0], s0);
@@ -494,7 +494,7 @@ bool gausscurvature_integrand(vm *v, objectmesh *mesh, elementid id, int nv, int
         if (!curvature_ordervertices(&synid, nvert, vids)) goto gausscurv_cleanup;
 
         double *x[3], s0[3], s1[3], s01[3];
-        for (int j=0; j<3; j++) matrix_getcolumnptr(mesh->vert, vids[j], &x[j]);
+        for (int j=0; j<3; j++) LINALG_ERRCHECKVMGOTO(matrix_getcolumnptr(mesh->vert, vids[j], &x[j]), gausscurv_cleanup);
 
         /* s0 = x1-x0; s1 = x2-x0 */
         functional_vecsub(mesh->dim, x[1], x[0], s0);

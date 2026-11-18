@@ -11,6 +11,7 @@
 #ifdef MORPHO_INCLUDE_GEOMETRY
 
 #include "functional.h"
+#include "linalg.h"
 
 /* -------------------------------------------------------
  * LinearElasticity veneer class
@@ -23,7 +24,7 @@
 #define LINEARELASTICITY_POISSON_PROPERTY     "poissonratio"
 #define LINEARELASTICITY_CACHE_PROPERTY       "_refcache"
 
-void linearelasticity_calculategram(objectmatrix *vert, int dim, int nv, int *vid, objectmatrix *gram);
+linalgError_t linearelasticity_calculategram(objectmatrix *vert, int dim, int nv, int *vid, objectmatrix *gram);
 
 void elasticity_initialize(void);
 

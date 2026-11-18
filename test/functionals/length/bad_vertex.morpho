@@ -1,0 +1,7 @@
+// Vertex id past the vertex matrix
+var verts = Matrix([[0, 1], [0, 0]])
+var m = Mesh(verts)
+var conn = Sparse([[0, 0, 1], [5, 0, 1]])
+m.addgrade(1, conn)
+print Length().total(m)
+// expect error: 'LnAlgMtrxIndxBnds'

@@ -37,15 +37,16 @@ typedef struct {
 } linearelasticityref;
 
 /** Calculates the Gram matrix */
-void linearelasticity_calculategram(objectmatrix *vert, int dim, int nv, int *vid, objectmatrix *gram) {
+linalgError_t linearelasticity_calculategram(objectmatrix *vert, int dim, int nv, int *vid, objectmatrix *gram) {
     int gdim=nv-1; // Dimension of Gram matrix
     double *x[nv], // Positions of vertices
             s[gdim][dim]; // Side vectors
 
-    for (int j=0; j<nv; j++) matrix_getcolumnptr(vert, vid[j], &x[j]); // Get vertices
+    for (int j=0; j<nv; j++) LINALG_ERRCHECKRETURN(matrix_getcolumnptr(vert, vid[j], &x[j]));
     for (int j=1; j<nv; j++) functional_vecsub(dim, x[j], x[0], s[j-1]); // u_i = X_i - X_0
     // <u_i, u_j>
     for (int i=0; i<nv-1; i++) for (int j=0; j<nv-1; j++) gram->elements[i+j*gdim]=functional_vecdot(dim, s[i], s[j]);
+    return LINALGERR_OK;
 }
 
 /** Caches the inv(G0) and measure from the reference mesh at grade g.
@@ -75,7 +76,7 @@ static bool linearelasticity_buildcache(vm *v, objectmesh *refmesh, grade g, val
 
         double *col=cache->elements+(size_t) id*(size_t) stride;
         objectmatrix gram=MORPHO_STATICMATRIX(col, gdim, gdim);
-        linearelasticity_calculategram(refmesh->vert, refmesh->dim, nv, vid, &gram);
+        LINALG_ERRCHECKVMRETURN(linearelasticity_calculategram(refmesh->vert, refmesh->dim, nv, vid, &gram), false);
         if (!functional_matinv(gdim, col)) MORPHO_FAIL(v, FUNCTIONAL_ARGS);
         if (!functional_elementsize(v, refmesh, g, id, nv, vid, &col[gdim*gdim])) {
             MORPHO_FAIL(v, FUNCTIONAL_ARGS);
@@ -148,7 +149,7 @@ bool linearelasticity_integrand(vm *v, objectmesh *mesh, elementid id, int nv, i
 
     double gramdefel[gdim*gdim], rel[gdim*gdim], cgel[gdim*gdim];
     objectmatrix gramdef=MORPHO_STATICMATRIX(gramdefel, gdim, gdim);
-    linearelasticity_calculategram(mesh->vert, mesh->dim, nv, vid, &gramdef);
+    LINALG_ERRCHECKVMRETURN(linearelasticity_calculategram(mesh->vert, mesh->dim, nv, vid, &gramdef), false);
 
     functional_matmul(gdim, gdim, gdim, gramdefel, invG0, rel); /* G G0^{-1} */
 

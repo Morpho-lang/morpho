@@ -108,6 +108,9 @@
 #define COMPILE_NSTDCLSS                  "NstdClss"
 #define COMPILE_NSTDCLSS_MSG              "Cannot define a class within another class."
 
+#define COMPILE_NESTINGTOODEEP            "NstdFn"
+#define COMPILE_NESTINGTOODEEP_MSG        "Function nesting is too deep."
+
 #define COMPILE_INVLDLBL                  "InvldLbl"
 #define COMPILE_INVLDLBL_MSG              "Invalid label in catch statment."
 

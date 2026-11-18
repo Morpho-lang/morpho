@@ -174,13 +174,16 @@ static inline bool compiler_ininitializer(compiler *c) {
  * Increment and decrement the fstack
  * ------------------------------------------- */
 
-/** Begins a new function, advancing the fstack pointer */
-void compiler_beginfunction(compiler *c, objectfunction *func, functiontype type) {
+/** Begins a new function, advancing the fstack pointer.
+ * @return true on success; false if the function stack is full. */
+bool compiler_beginfunction(compiler *c, objectfunction *func, functiontype type) {
+    if (c->fstackp+1>=MORPHO_CALLFRAMESTACKSIZE) return false;
     c->fstackp++;
     compiler_functionstateinit(&c->fstack[c->fstackp]);
     c->fstack[c->fstackp].func=func;
     c->fstack[c->fstackp].type=type;
     debugannotation_setfunction(&c->out->annotations, func);
+    return true;
 }
 
 /** Sets the function register count */
@@ -3626,7 +3629,7 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
     if (ismethod &&
         MORPHO_ISSTRING(node->content) &&
         isinitializer ) ftype=INITIALIZER;
-    compiler_beginfunction(c, func, ftype);
+    if (!compiler_beginfunction(c, func, ftype)) { compiler_error(c, node, COMPILE_NESTINGTOODEEP); return CODEINFO_EMPTY; }
 
     /* The function has a reference to itself in r0, which may be 'self' if we're in a method */
     value r0symbol=node->content;
@@ -5645,6 +5648,7 @@ void compile_initialize(void) {
     morpho_defineerror(COMPILE_MLTVARPRMTR, ERROR_COMPILE, COMPILE_MLTVARPRMTR_MSG);
     morpho_defineerror(COMPILE_MSSNGLOOPBDY, ERROR_COMPILE, COMPILE_MSSNGLOOPBDY_MSG);
     morpho_defineerror(COMPILE_NSTDCLSS, ERROR_COMPILE, COMPILE_NSTDCLSS_MSG);
+    morpho_defineerror(COMPILE_NESTINGTOODEEP, ERROR_COMPILE, COMPILE_NESTINGTOODEEP_MSG);
     morpho_defineerror(COMPILE_VARPRMLST, ERROR_COMPILE, COMPILE_VARPRMLST_MSG);
     morpho_defineerror(COMPILE_INVLDLBL, ERROR_COMPILE, COMPILE_INVLDLBL_MSG);
     morpho_defineerror(COMPILE_MSSNGINDX, ERROR_COMPILE, COMPILE_MSSNGINDX_MSG);

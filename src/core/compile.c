@@ -3535,7 +3535,7 @@ static codeinfo compiler_typeddeclaration(compiler *c, syntaxtreenode *node, reg
     return out;
 }
 
-/** Compiles an parameter declaration */
+/** Compiles a parameter declaration */
 static registerindx compiler_functionparameters(compiler *c, syntaxtreeindx indx) {
     syntaxtreenode *node = compiler_getnode(c, indx);
     if (!node) return REGISTER_UNALLOCATED;
@@ -3566,10 +3566,8 @@ static registerindx compiler_functionparameters(compiler *c, syntaxtreeindx indx
             break;
         }
         case NODE_ARGLIST:
-        {
             compiler_functionparameters(c, node->left);
             compiler_functionparameters(c, node->right);
-        }
             break;
         case NODE_RANGE:
         {
@@ -3638,18 +3636,17 @@ static codeinfo compiler_function(compiler *c, syntaxtreenode *node, registerind
 
     /* -- Compile the parameters -- */
     compiler_functionparameters(c, node->left);
-    
+    if (func->nargs+func->nopt>MORPHO_MAXARGS) {
+        compiler_error(c, node, COMPILE_TOOMANYPARAMS);
+        compiler_endfunction(c);
+        return CODEINFO_EMPTY;
+    }
+
     value signature[function_countpositionalargs(func)+1];
     for (int i=0; i<func->nargs; i++) compiler_regtype(c, i+1, &signature[i]);
     if (function_hasvargs(func)) signature[func->nargs]=MORPHO_NIL;
     function_setsignature(func, signature);
     signature_setvarg(&func->sig, function_hasvargs(func));
-
-    /* Check we don't have too many arguments */
-    if (func->nargs+func->nopt>MORPHO_MAXARGS) {
-        compiler_error(c, node, COMPILE_TOOMANYPARAMS);
-        return CODEINFO_EMPTY;
-    }
 
     /* Install the top-level callable snapshot before the body so recursive
        references LCT the new overload set. Preserve import origin on extend. */
